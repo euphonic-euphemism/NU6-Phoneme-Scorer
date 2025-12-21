@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NU-6 Phoneme Scoring</title>
+
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .phoneme-btn { transition: all 0.2s; }
+        .ipa-text { font-family: 'Times New Roman', serif; }
+        .tab-btn { transition: all 0.2s; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .page-break { page-break-before: always; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useRef } = React;
+
+        // --- INLINE ICONS ---
+        const IconBase = ({ children, className, ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+                {children}
+            </svg>
+        );
+
+        const Calculator = (props) => (
+            <IconBase {...props}><rect width="16" height="20" x="4" y="2" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></IconBase>
+        );
+        const Save = (props) => (
+            <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconBase>
+        );
+        const FolderOpen = (props) => (
+            <IconBase {...props}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></IconBase>
+        );
+        const Trash2 = (props) => (
+            <IconBase {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase>
+        );
+        const CheckCircle2 = (props) => (
+            <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></IconBase>
+        );
+        const RotateCcw = (props) => (
+            <IconBase {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></IconBase>
+        );
+        const Check = (props) => (
+            <IconBase {...props}><polyline points="20 6 9 17 4 12"/></IconBase>
+        );
+        const BarChart3 = (props) => (
+            <IconBase {...props}><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></IconBase>
+        );
+        const ArrowRight = (props) => (
+            <IconBase {...props}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></IconBase>
+        );
+        const ArrowUpRight = (props) => (
+            <IconBase {...props}><path d="M7 7h10v10" /><path d="M7 17 17 7" /></IconBase>
+        );
+        const ArrowDownRight = (props) => (
+            <IconBase {...props}><path d="m7 7 10 10" /><path d="M17 7v10H7" /></IconBase>
+        );
+        const Minus = (props) => (
+            <IconBase {...props}><path d="M5 12h14" /></IconBase>
+        );
+
+        // --- DATA: NU-6 LISTS ---
+        const LIST_1A = [
+            { i: 1, w: "LAUD", p: ["l", "ɔ", "d"] }, { i: 2, w: "BOAT", p: ["b", "oʊ", "t"] }, { i: 3, w: "POOL", p: ["p", "u", "l"] }, { i: 4, w: "NAG", p: ["n", "æ", "g"] }, { i: 5, w: "LIMB", p: ["l", "ɪ", "m"] },
+            { i: 6, w: "SHOUT", p: ["ʃ", "aʊ", "t"] }, { i: 7, w: "SUB", p: ["s", "ʌ", "b"] }, { i: 8, w: "VINE", p: ["v", "aɪ", "n"] }, { i: 9, w: "DIME", p: ["d", "aɪ", "m"] }, { i: 10, w: "GOOSE", p: ["g", "u", "s"] },
+            { i: 11, w: "WHIP", p: ["w", "ɪ", "p"] }, { i: 12, w: "TOUGH", p: ["t", "ʌ", "f"] }, { i: 13, w: "PUFF", p: ["p", "ʌ", "f"] }, { i: 14, w: "KEEN", p: ["k", "i", "n"] }, { i: 15, w: "DEATH", p: ["d", "ɛ", "θ"] },
+            { i: 16, w: "SELL", p: ["s", "ɛ", "l"] }, { i: 17, w: "TAKE", p: ["t", "eɪ", "k"] }, { i: 18, w: "FALL", p: ["f", "ɔ", "l"] }, { i: 19, w: "RAISE", p: ["r", "eɪ", "z"] }, { i: 20, w: "THIRD", p: ["θ", "ɝ", "d"] },
+            { i: 21, w: "GAP", p: ["g", "æ", "p"] }, { i: 22, w: "FAT", p: ["f", "æ", "t"] }, { i: 23, w: "MET", p: ["m", "ɛ", "t"] }, { i: 24, w: "JAR", p: ["dʒ", "ɑ", "r"] }, { i: 25, w: "DOOR", p: ["d", "ɔ", "r"] },
+            { i: 26, w: "LOVE", p: ["l", "ʌ", "v"] }, { i: 27, w: "SURE", p: ["ʃ", "ʊ", "r"] }, { i: 28, w: "KNOCK", p: ["n", "ɑ", "k"] }, { i: 29, w: "CHOICE", p: ["tʃ", "ɔɪ", "s"] }, { i: 30, w: "HASH", p: ["h", "æ", "ʃ"] },
+            { i: 31, w: "LOT", p: ["l", "ɑ", "t"] }, { i: 32, w: "RAID", p: ["r", "eɪ", "d"] }, { i: 33, w: "HURL", p: ["h", "ɝ", "l"] }, { i: 34, w: "MOON", p: ["m", "u", "n"] }, { i: 35, w: "PAGE", p: ["p", "eɪ", "dʒ"] },
+            { i: 36, w: "YES", p: ["j", "ɛ", "s"] }, { i: 37, w: "REACH", p: ["r", "i", "tʃ"] }, { i: 38, w: "KING", p: ["k", "ɪ", "ŋ"] }, { i: 39, w: "HOME", p: ["h", "oʊ", "m"] }, { i: 40, w: "RAG", p: ["r", "æ", "g"] },
+            { i: 41, w: "WHICH", p: ["w", "ɪ", "tʃ"] }, { i: 42, w: "WEEK", p: ["w", "i", "k"] }, { i: 43, w: "SIZE", p: ["s", "aɪ", "z"] }, { i: 44, w: "MODE", p: ["m", "oʊ", "d"] }, { i: 45, w: "BEAN", p: ["b", "i", "n"] },
+            { i: 46, w: "TIP", p: ["t", "ɪ", "p"] }, { i: 47, w: "CHALK", p: ["tʃ", "ɔ", "k"] }, { i: 48, w: "JAIL", p: ["dʒ", "eɪ", "l"] }, { i: 49, w: "BURN", p: ["b", "ɝ", "n"] }, { i: 50, w: "KITE", p: ["k", "aɪ", "t"] }
+        ];
+
+        const LIST_2A = [
+            { i: 1, w: "PICK", p: ["p", "ɪ", "k"] }, { i: 2, w: "ROOM", p: ["r", "u", "m"] }, { i: 3, w: "NICE", p: ["n", "aɪ", "s"] }, { i: 4, w: "SAID", p: ["s", "ɛ", "d"] }, { i: 5, w: "FAIL", p: ["f", "eɪ", "l"] },
+            { i: 6, w: "SOUTH", p: ["s", "aʊ", "θ"] }, { i: 7, w: "WHITE", p: ["w", "aɪ", "t"] }, { i: 8, w: "KEEP", p: ["k", "i", "p"] }, { i: 9, w: "DEAD", p: ["d", "ɛ", "d"] }, { i: 10, w: "LOAF", p: ["l", "oʊ", "f"] },
+            { i: 11, w: "DAB", p: ["d", "æ", "b"] }, { i: 12, w: "NUMB", p: ["n", "ʌ", "m"] }, { i: 13, w: "JUICE", p: ["dʒ", "u", "s"] }, { i: 14, w: "CHIEF", p: ["tʃ", "i", "f"] }, { i: 15, w: "MERGE", p: ["m", "ɝ", "dʒ"] },
+            { i: 16, w: "WAG", p: ["w", "æ", "g"] }, { i: 17, w: "RAIN", p: ["r", "eɪ", "n"] }, { i: 18, w: "WITCH", p: ["w", "ɪ", "tʃ"] }, { i: 19, w: "SOAP", p: ["s", "oʊ", "p"] }, { i: 20, w: "YOUNG", p: ["j", "ʌ", "ŋ"] },
+            { i: 21, w: "TON", p: ["t", "ʌ", "n"] }, { i: 22, w: "KEG", p: ["k", "ɛ", "g"] }, { i: 23, w: "CALM", p: ["k", "ɑ", "m"] }, { i: 24, w: "TOOL", p: ["t", "u", "l"] }, { i: 25, w: "PIKE", p: ["p", "aɪ", "k"] },
+            { i: 26, w: "MILL", p: ["m", "ɪ", "l"] }, { i: 27, w: "HUSH", p: ["h", "ʌ", "ʃ"] }, { i: 28, w: "SHACK", p: ["ʃ", "æ", "k"] }, { i: 29, w: "READ", p: ["r", "i", "d"] }, { i: 30, w: "ROT", p: ["r", "ɑ", "t"] },
+            { i: 31, w: "HATE", p: ["h", "eɪ", "t"] }, { i: 32, w: "LIVE", p: ["l", "ɪ", "v"] }, { i: 33, w: "BOOK", p: ["b", "ʊ", "k"] }, { i: 34, w: "VOICE", p: ["v", "ɔɪ", "s"] }, { i: 35, w: "GAZE", p: ["g", "eɪ", "z"] },
+            { i: 36, w: "PAD", p: ["p", "æ", "d"] }, { i: 37, w: "THOUGHT", p: ["θ", "ɔ", "t"] }, { i: 38, w: "BOUGHT", p: ["b", "ɔ", "t"] }, { i: 39, w: "TURN", p: ["t", "ɝ", "n"] }, { i: 40, w: "CHAIR", p: ["tʃ", "ɛ", "r"] },
+            { i: 41, w: "LORE", p: ["l", "ɔ", "r"] }, { i: 42, w: "BITE", p: ["b", "aɪ", "t"] }, { i: 43, w: "HAZE", p: ["h", "eɪ", "z"] }, { i: 44, w: "MATCH", p: ["m", "æ", "tʃ"] }, { i: 45, w: "LEARN", p: ["l", "ɝ", "n"] },
+            { i: 46, w: "SHAWL", p: ["ʃ", "ɔ", "l"] }, { i: 47, w: "DEEP", p: ["d", "i", "p"] }, { i: 48, w: "GIN", p: ["dʒ", "ɪ", "n"] }, { i: 49, w: "GOAL", p: ["g", "oʊ", "l"] }, { i: 50, w: "FAR", p: ["f", "ɑ", "r"] }
+        ];
+
+        const LIST_3A = [
+            { i: 1, w: "BASE", p: ["b", "eɪ", "s"] }, { i: 2, w: "MESS", p: ["m", "ɛ", "s"] }, { i: 3, w: "CAUSE", p: ["k", "ɔ", "z"] }, { i: 4, w: "MOP", p: ["m", "ɑ", "p"] }, { i: 5, w: "GOOD", p: ["g", "ʊ", "d"] },
+            { i: 6, w: "LUCK", p: ["l", "ʌ", "k"] }, { i: 7, w: "WALK", p: ["w", "ɔ", "k"] }, { i: 8, w: "YOUTH", p: ["j", "u", "θ"] }, { i: 9, w: "PAIN", p: ["p", "eɪ", "n"] }, { i: 10, w: "DATE", p: ["d", "eɪ", "t"] },
+            { i: 11, w: "PEARL", p: ["p", "ɝ", "l"] }, { i: 12, w: "SEARCH", p: ["s", "ɝ", "tʃ"] }, { i: 13, w: "DITCH", p: ["d", "ɪ", "tʃ"] }, { i: 14, w: "TALK", p: ["t", "ɔ", "k"] }, { i: 15, w: "RING", p: ["r", "ɪ", "ŋ"] },
+            { i: 16, w: "GERM", p: ["dʒ", "ɝ", "m"] }, { i: 17, w: "LIFE", p: ["l", "aɪ", "f"] }, { i: 18, w: "TEAM", p: ["t", "i", "m"] }, { i: 19, w: "LID", p: ["l", "ɪ", "d"] }, { i: 20, w: "POLE", p: ["p", "oʊ", "l"] },
+            { i: 21, w: "RODE", p: ["r", "oʊ", "d"] }, { i: 22, w: "SHALL", p: ["ʃ", "æ", "l"] }, { i: 23, w: "LATE", p: ["l", "eɪ", "t"] }, { i: 24, w: "CHEEK", p: ["tʃ", "i", "k"] }, { i: 25, w: "BEG", p: ["b", "ɛ", "g"] },
+            { i: 26, w: "GUN", p: ["g", "ʌ", "n"] }, { i: 27, w: "JUG", p: ["dʒ", "ʌ", "g"] }, { i: 28, w: "SHEEP", p: ["ʃ", "i", "p"] }, { i: 29, w: "FIVE", p: ["f", "aɪ", "v"] }, { i: 30, w: "RUSH", p: ["r", "ʌ", "ʃ"] },
+            { i: 31, w: "RAT", p: ["r", "æ", "t"] }, { i: 32, w: "VOID", p: ["v", "ɔɪ", "d"] }, { i: 33, w: "WIRE", p: ["w", "aɪ", "r"] }, { i: 34, w: "HALF", p: ["h", "æ", "f"] }, { i: 35, w: "NOTE", p: ["n", "oʊ", "t"] },
+            { i: 36, w: "WHEN", p: ["w", "ɛ", "n"] }, { i: 37, w: "NAME", p: ["n", "eɪ", "m"] }, { i: 38, w: "THIN", p: ["θ", "ɪ", "n"] }, { i: 39, w: "TELL", p: ["t", "ɛ", "l"] }, { i: 40, w: "BAR", p: ["b", "ɑ", "r"] },
+            { i: 41, w: "MOUSE", p: ["m", "aʊ", "s"] }, { i: 42, w: "HIRE", p: ["h", "aɪ", "r"] }, { i: 43, w: "CAB", p: ["k", "æ", "b"] }, { i: 44, w: "HIT", p: ["h", "ɪ", "t"] }, { i: 45, w: "CHAT", p: ["tʃ", "æ", "t"] },
+            { i: 46, w: "PHONE", p: ["f", "oʊ", "n"] }, { i: 47, w: "SOUP", p: ["s", "u", "p"] }, { i: 48, w: "DODGE", p: ["d", "ɑ", "dʒ"] }, { i: 49, w: "SEIZE", p: ["s", "i", "z"] }, { i: 50, w: "COOL", p: ["k", "u", "l"] }
+        ];
+
+        const LIST_4A = [
+            { i: 1, w: "PASS", p: ["p", "æ", "s"] }, { i: 2, w: "DOLL", p: ["d", "ɑ", "l"] }, { i: 3, w: "BACK", p: ["b", "æ", "k"] }, { i: 4, w: "RED", p: ["r", "ɛ", "d"] }, { i: 5, w: "WASH", p: ["w", "ɔ", "ʃ"] },
+            { i: 6, w: "SOUR", p: ["s", "aʊ", "r"] }, { i: 7, w: "BONE", p: ["b", "oʊ", "n"] }, { i: 8, w: "GET", p: ["g", "ɛ", "t"] }, { i: 9, w: "WHEAT", p: ["w", "i", "t"] }, { i: 10, w: "THUMB", p: ["θ", "ʌ", "m"] },
+            { i: 11, w: "SALE", p: ["s", "eɪ", "l"] }, { i: 12, w: "YEARN", p: ["j", "ɝ", "n"] }, { i: 13, w: "WIFE", p: ["w", "aɪ", "f"] }, { i: 14, w: "SUCH", p: ["s", "ʌ", "tʃ"] }, { i: 15, w: "NEAT", p: ["n", "i", "t"] },
+            { i: 16, w: "PEG", p: ["p", "ɛ", "g"] }, { i: 17, w: "MOB", p: ["m", "ɑ", "b"] }, { i: 18, w: "GAS", p: ["g", "æ", "s"] }, { i: 19, w: "CHECK", p: ["tʃ", "ɛ", "k"] }, { i: 20, w: "JOIN", p: ["dʒ", "ɔɪ", "n"] },
+            { i: 21, w: "LEASE", p: ["l", "i", "s"] }, { i: 22, w: "LONG", p: ["l", "ɔ", "ŋ"] }, { i: 23, w: "CHAIN", p: ["tʃ", "eɪ", "n"] }, { i: 24, w: "KILL", p: ["k", "ɪ", "l"] }, { i: 25, w: "HOLE", p: ["h", "oʊ", "l"] },
+            { i: 26, w: "LEAN", p: ["l", "i", "n"] }, { i: 27, w: "TAPE", p: ["t", "eɪ", "p"] }, { i: 28, w: "TIRE", p: ["t", "aɪ", "r"] }, { i: 29, w: "DIP", p: ["d", "ɪ", "p"] }, { i: 30, w: "ROSE", p: ["r", "oʊ", "z"] },
+            { i: 31, w: "CAME", p: ["k", "eɪ", "m"] }, { i: 32, w: "FIT", p: ["f", "ɪ", "t"] }, { i: 33, w: "MAKE", p: ["m", "eɪ", "k"] }, { i: 34, w: "VOTE", p: ["v", "oʊ", "t"] }, { i: 35, w: "JUDGE", p: ["dʒ", "ʌ", "dʒ"] },
+            { i: 36, w: "FOOD", p: ["f", "u", "d"] }, { i: 37, w: "RIPE", p: ["r", "aɪ", "p"] }, { i: 38, w: "HAVE", p: ["h", "æ", "v"] }, { i: 39, w: "ROUGH", p: ["r", "ʌ", "f"] }, { i: 40, w: "KICK", p: ["k", "ɪ", "k"] },
+            { i: 41, w: "LOSE", p: ["l", "u", "z"] }, { i: 42, w: "NEAR", p: ["n", "i", "r"] }, { i: 43, w: "PERCH", p: ["p", "ɝ", "tʃ"] }, { i: 44, w: "SHIRT", p: ["ʃ", "ɝ", "t"] }, { i: 45, w: "BATH", p: ["b", "æ", "θ"] },
+            { i: 46, w: "TIME", p: ["t", "aɪ", "m"] }, { i: 47, w: "HALL", p: ["h", "ɔ", "l"] }, { i: 48, w: "MOOD", p: ["m", "u", "d"] }, { i: 49, w: "DOG", p: ["d", "ɔ", "g"] }, { i: 50, w: "SHOULD", p: ["ʃ", "ʊ", "d"] }
+        ];
+
+        // --- HELPER: GET LIST DATA ---
+        const getListData = (listId) => {
+            switch(listId) {
+                case '1A': return LIST_1A;
+                case '2A': return LIST_2A;
+                case '3A': return LIST_3A;
+                case '4A': return LIST_4A;
+                default: return LIST_1A;
+            }
+        };
+
+        const calculateStats = (listId, section, scores) => {
+            const allWords = getListData(listId);
+            let visibleWords = allWords;
+            if (section === 'first') visibleWords = allWords.slice(0, 25);
+            else if (section === 'second') visibleWords = allWords.slice(25, 50);
+
+            let totalPhonemes = 0;
+            let correctPhonemes = 0;
+            let correctWords = 0;
+            let totalWords = visibleWords.length;
+
+            visibleWords.forEach(word => {
+                let wordCorrectCount = 0;
+                let wordPhonemeCount = 0;
+                word.p.forEach((phoneme, pIndex) => {
+                    if (phoneme === '-') return;
+                    wordPhonemeCount++;
+                    totalPhonemes++;
+                    const key = `${listId}_${word.i}_${pIndex}`;
+                    if (scores[key]) {
+                        correctPhonemes++;
+                        wordCorrectCount++;
+                    }
+                });
+                if (wordCorrectCount === wordPhonemeCount && wordPhonemeCount > 0) {
+                    correctWords++;
+                }
+            });
+
+            return {
+                totalPhonemes,
+                correctPhonemes,
+                phonemePercent: totalPhonemes === 0 ? 0 : Math.round((correctPhonemes / totalPhonemes) * 100),
+                correctWords,
+                totalWords,
+                wordPercent: totalWords === 0 ? 0 : Math.round((correctWords / totalWords) * 100),
+                visibleWords
+            };
+        };
+
+        // --- STATISTICAL SIGNIFICANCE (Thornton & Raffin, 1978) ---
+        const getTheta = (x, n) => {
+            return Math.asin(Math.sqrt(x / (n + 1))) + Math.asin(Math.sqrt((x + 1) / (n + 1)));
+        };
+
+        const getCriticalLimits = (scorePercent, n, confidence) => {
+            const x = Math.round((scorePercent / 100) * n);
+            const theta = getTheta(x, n);
+            let variance;
+            if (n >= 50) {
+                variance = 1 / (n + 0.5);
+            } else {
+                variance = 1 / (n + 1);
+            }
+            const seDiff = Math.sqrt(2 * variance);
+            const z = confidence === 95 ? 1.96 : 1.2816;
+
+            const lowerTheta = theta - (z * seDiff);
+            const upperTheta = theta + (z * seDiff);
+
+            let lowerLimit = 0;
+            let upperLimit = 100;
+
+            for (let i = 0; i <= n; i++) {
+                if (getTheta(i, n) >= lowerTheta) {
+                    lowerLimit = Math.round((i/n)*100);
+                    break;
+                }
+            }
+            for (let i = n; i >= 0; i--) {
+                if (getTheta(i, n) <= upperTheta) {
+                    upperLimit = Math.round((i/n)*100);
+                    break;
+                }
+            }
+            return { lower: lowerLimit, upper: upperLimit };
+        };
+
+        // --- MAIN APP ---
+        const App = () => {
+            const [patientName, setPatientName] = useState('');
+            const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
+            const [activeTab, setActiveTab] = useState('scoring');
+            const [activeTestId, setActiveTestId] = useState('A');
+            const [confidenceLevel, setConfidenceLevel] = useState(95);
+            const [clearConfirm, setClearConfirm] = useState(false);
+            const [listeningEffort, setListeningEffort] = useState(5); // Default 5 (No Difference)
+            const fileInputRef = useRef(null);
+
+            const [tests, setTests] = useState({
+                A: {
+                    id: 'A',
+                    listId: '1A',
+                    section: 'first',
+                    condition: 'Unaided',
+                    deviceModel: '',
+                    level: '',
+                    snr: '',
+                    scores: {}
+                },
+                B: {
+                    id: 'B',
+                    listId: '2A',
+                    section: 'first',
+                    condition: 'New Tech',
+                    deviceModel: '',
+                    level: '',
+                    snr: '',
+                    scores: {}
+                }
+            });
+
+            const activeTest = tests[activeTestId];
+            const statsA = useMemo(() => calculateStats(tests.A.listId, tests.A.section, tests.A.scores), [tests.A]);
+            const statsB = useMemo(() => calculateStats(tests.B.listId, tests.B.section, tests.B.scores), [tests.B]);
+            const activeStats = activeTestId === 'A' ? statsA : statsB;
+
+            const wordCriticalLimits = useMemo(() => {
+                if (statsA.totalWords === 0) return { lower: 0, upper: 100 };
+                return getCriticalLimits(statsA.wordPercent, statsA.totalWords, confidenceLevel);
+            }, [statsA.wordPercent, statsA.totalWords, confidenceLevel]);
+
+            const phonemeCriticalLimits = useMemo(() => {
+                if (statsA.totalPhonemes === 0) return { lower: 0, upper: 100 };
+                return getCriticalLimits(statsA.phonemePercent, statsA.totalPhonemes, confidenceLevel);
+            }, [statsA.phonemePercent, statsA.totalPhonemes, confidenceLevel]);
+
+            const isWordDiffSig = statsB.wordPercent < wordCriticalLimits.lower || statsB.wordPercent > wordCriticalLimits.upper;
+            const isPhonemeDiffSig = statsB.phonemePercent < phonemeCriticalLimits.lower || statsB.phonemePercent > phonemeCriticalLimits.upper;
+
+            const updateActiveTest = (field, value) => {
+                setTests(prev => {
+                    const newTests = {
+                        ...prev,
+                        [activeTestId]: {
+                            ...prev[activeTestId],
+                            [field]: value
+                        }
+                    };
+
+                    // Constraint: If Test A is Full List, Test B must be Full List
+                    if (activeTestId === 'A' && field === 'section' && value === 'full') {
+                        newTests.B.section = 'full';
+                    }
+
+                    return newTests;
+                });
+            };
+
+            const togglePhoneme = (wordIndex, pIndex) => {
+                const listId = activeTest.listId;
+                const key = `${listId}_${wordIndex}_${pIndex}`;
+
+                setTests(prev => {
+                    const currentScores = prev[activeTestId].scores;
+                    const newScores = { ...currentScores, [key]: !currentScores[key] };
+                    return {
+                        ...prev,
+                        [activeTestId]: {
+                            ...prev[activeTestId],
+                            scores: newScores
+                        }
+                    };
+                });
+            };
+
+            const markAll = (correct) => {
+                const listData = activeStats.visibleWords;
+                const listId = activeTest.listId;
+                setTests(prev => {
+                    const newScores = { ...prev[activeTestId].scores };
+                    listData.forEach(word => {
+                        word.p.forEach((phoneme, pIndex) => {
+                            if (phoneme === '-') return;
+                            const key = `${listId}_${word.i}_${pIndex}`;
+                            newScores[key] = correct;
+                        });
+                    });
+                    return {
+                        ...prev,
+                        [activeTestId]: { ...prev[activeTestId], scores: newScores }
+                    };
+                });
+            };
+
+            const handleSave = () => {
+                const data = { patientName, testDate, tests, activeTestId, activeTab, confidenceLevel, listeningEffort };
+                const jsonString = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonString], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `NU6_${patientName.replace(/\s+/g, '_')}_${testDate}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const handleOpenClick = () => {
+                fileInputRef.current.click();
+            };
+
+            const handleFileChange = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.tests && data.patientName !== undefined) {
+                            setPatientName(data.patientName);
+                            setTestDate(data.testDate);
+                            setTests(data.tests);
+                            setActiveTestId(data.activeTestId || 'A');
+                            setActiveTab(data.activeTab || 'scoring');
+                            if(data.confidenceLevel) setConfidenceLevel(data.confidenceLevel);
+                            if(data.listeningEffort !== undefined) setListeningEffort(data.listeningEffort);
+                        } else {
+                            alert("Invalid file format");
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert("Error reading file");
+                    }
+                };
+                reader.readAsText(file);
+                event.target.value = '';
+            };
+
+            const resetCurrent = () => {
+                const listData = activeStats.visibleWords;
+                const listId = activeTest.listId;
+                setTests(prev => {
+                    const newScores = { ...prev[activeTestId].scores };
+                    listData.forEach(word => {
+                        word.p.forEach((p, idx) => delete newScores[`${listId}_${word.i}_${idx}`]);
+                    });
+                    return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores } };
+                });
+            };
+
+            const clearAllData = () => {
+                if (clearConfirm) {
+                    setPatientName('');
+                    setTestDate(new Date().toISOString().split('T')[0]);
+                    setTests({
+                        A: { id: 'A', listId: '1A', section: 'first', condition: 'Unaided', deviceModel: '', level: '', snr: '', scores: {} },
+                        B: { id: 'B', listId: '2A', section: 'first', condition: 'New Tech', deviceModel: '', level: '', snr: '', scores: {} }
+                    });
+                    setActiveTestId('A');
+                    setActiveTab('scoring');
+                    setListeningEffort(5);
+                    setClearConfirm(false);
+                } else {
+                    setClearConfirm(true);
+                    setTimeout(() => setClearConfirm(false), 3000);
+                }
+            };
+
+            const getEffortColor = (val) => {
+                if (val <= 4) return 'text-emerald-600';
+                if (val >= 6) return 'text-red-600';
+                return 'text-blue-600';
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-100 p-4 md:p-8 print:p-0 print:bg-white">
+                    <div className="max-w-5xl mx-auto space-y-6">
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 print:hidden">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                                        <Calculator className="w-6 h-6 text-blue-600" />
+                                        NU-6 Phoneme Scorer
+                                    </h1>
+                                    <p className="text-slate-500 text-sm">Comparison Mode & Multi-list Support</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 justify-end">
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+                                    <button onClick={handleOpenClick} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium">
+                                        <FolderOpen className="w-4 h-4" /> Open
+                                    </button>
+                                    <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                        <Save className="w-4 h-4" /> Save
+                                    </button>
+                                    <button onClick={clearAllData} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium ${clearConfirm ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>
+                                        <Trash2 className="w-4 h-4" /> {clearConfirm ? "Confirm?" : "Clear All"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pb-6 border-b border-slate-100">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Patient Name</label>
+                                    <input type="text" value={patientName} onChange={(e) => setPatientName(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Enter name..." />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Test Date</label>
+                                    <input type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+                                </div>
+                                <div className="flex items-end">
+                                    <div className="bg-slate-50 p-2 rounded-lg text-xs text-slate-600 border border-slate-200 w-full">
+                                        <strong>Comparison Mode Active:</strong> Toggle between Test A and Test B below to input scores, then view the Comparison tab.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit">
+                                <button onClick={() => setActiveTab('scoring')} className={`px-4 py-2 text-sm font-medium rounded-md tab-btn flex items-center gap-2 ${activeTab === 'scoring' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
+                                    <CheckCircle2 className="w-4 h-4" /> Scoring Entry
+                                </button>
+                                <button onClick={() => setActiveTab('comparison')} className={`px-4 py-2 text-sm font-medium rounded-md tab-btn flex items-center gap-2 ${activeTab === 'comparison' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
+                                    <BarChart3 className="w-4 h-4" /> Comparison Results
+                                </button>
+                            </div>
+                        </div>
+
+                        {activeTab === 'scoring' && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4 print:hidden">
+                                    {['A', 'B'].map(id => {
+                                        const t = tests[id];
+                                        const s = id === 'A' ? statsA : statsB;
+                                        const isActive = activeTestId === id;
+                                        return (
+                                            <button key={id} onClick={() => setActiveTestId(id)} className={`relative p-4 rounded-xl border-2 text-left transition-all ${isActive ? 'border-blue-500 bg-blue-50/50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>TEST {id}</span>
+                                                    {isActive && <span className="flex h-3 w-3 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span></span>}
+                                                </div>
+                                                <div className="text-sm font-semibold text-slate-800">{t.condition}</div>
+                                                <div className="text-xs text-slate-500 mb-2">{t.listId} ({t.section === 'first' ? '1st Half' : t.section === 'second' ? '2nd Half' : 'Full'})</div>
+                                                <div className="flex gap-3 text-sm">
+                                                    <span className="font-bold text-slate-700">W: {s.wordPercent}%</span>
+                                                    <span className="font-bold text-slate-700">P: {s.phonemePercent}%</span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 print:hidden">
+                                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Configuration: Test {activeTestId}</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        <div className="col-span-2">
+                                            <label className="block text-xs font-medium text-slate-500 mb-2">Condition</label>
+                                            <div className="flex rounded-lg overflow-hidden border border-slate-200 mb-3">
+                                                {['Unaided', 'Current Tech', 'New Tech'].map(c => (
+                                                    <button key={c} onClick={() => updateActiveTest('condition', c)} className={`flex-1 py-2 text-sm font-medium transition ${activeTest.condition === c ? 'bg-indigo-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>{c}</button>
+                                                ))}
+                                            </div>
+                                            {(activeTest.condition === 'Current Tech' || activeTest.condition === 'New Tech') && (
+                                                <div>
+                                                    <input type="text" value={activeTest.deviceModel || ''} onChange={(e) => updateActiveTest('deviceModel', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter Make/Model..." />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-500 mb-2">Word List</label>
+                                            <select value={activeTest.listId} onChange={(e) => updateActiveTest('listId', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <option value="1A">List 1A</option>
+                                                <option value="2A">List 2A</option>
+                                                <option value="3A">List 3A</option>
+                                                <option value="4A">List 4A</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-500 mb-2">Section</label>
+                                            <select
+                                                value={activeTest.section}
+                                                onChange={(e) => updateActiveTest('section', e.target.value)}
+                                                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                                disabled={activeTestId === 'B' && tests.A.section === 'full'}
+                                            >
+                                                <option value="first">1st Half (1-25)</option>
+                                                <option value="second">2nd Half (26-50)</option>
+                                                <option value="full">Full List (1-50)</option>
+                                            </select>
+                                            {activeTestId === 'B' && tests.A.section === 'full' && (
+                                                <p className="text-[10px] text-amber-600 mt-1">Locked to match Test A (Full List)</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-500 mb-1">SPL (dBC)</label>
+                                            <input type="text" value={activeTest.level} onChange={(e) => updateActiveTest('level', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-500 mb-1">SNR (dB)</label>
+                                            <input type="text" value={activeTest.snr} onChange={(e) => updateActiveTest('snr', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black">
+                                    <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
+                                        <div className="font-bold text-slate-700">Scoring: Test {activeTestId} <span className="font-normal text-slate-500 mx-2">|</span> {activeTest.listId}</div>
+                                        <div className="flex gap-2 print:hidden">
+                                            <button onClick={() => markAll(true)} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium">Mark All</button>
+                                            <button onClick={resetCurrent} className="text-xs px-2 py-1 bg-slate-200 text-slate-600 rounded hover:bg-slate-300 font-medium">Reset</button>
+                                        </div>
+                                    </div>
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 print:hidden">
+                                            <tr>
+                                                <th className="px-4 py-2 w-10">#</th>
+                                                <th className="px-4 py-2">Word</th>
+                                                <th className="px-2 py-2 text-center">I</th>
+                                                <th className="px-2 py-2 text-center">M</th>
+                                                <th className="px-2 py-2 text-center">F</th>
+                                                <th className="px-4 py-2 text-center">Word</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {activeStats.visibleWords.map((word) => {
+                                                const listId = activeTest.listId;
+                                                let isWordCorrect = true;
+                                                word.p.forEach((p, idx) => { if (p !== '-' && !activeTest.scores[`${listId}_${word.i}_${idx}`]) isWordCorrect = false; });
+                                                return (
+                                                    <tr key={word.i} className="hover:bg-slate-50">
+                                                        <td className="px-4 py-2 text-slate-400 font-mono text-xs">{word.i}</td>
+                                                        <td className="px-4 py-2 font-bold text-slate-800">{word.w}</td>
+                                                        {word.p.map((phoneme, pIndex) => {
+                                                            const isCorrect = !!activeTest.scores[`${listId}_${word.i}_${pIndex}`];
+                                                            const isPlaceholder = phoneme === '-';
+                                                            return (
+                                                                <td key={pIndex} className="px-1 py-1 text-center">
+                                                                    {!isPlaceholder ? (
+                                                                        <button onClick={() => togglePhoneme(word.i, pIndex)} className={`w-10 h-8 rounded flex items-center justify-center font-medium text-base border transition-colors ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 print:border-none print:text-black print:font-bold' : 'bg-white border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 hover:bg-red-50'}`}>
+                                                                            <span className="ipa-text">{phoneme}</span>
+                                                                        </button>
+                                                                    ) : <span className="text-slate-300">—</span>}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        <td className="px-4 py-2 text-center print:hidden">
+                                                            {isWordCorrect && <Check className="w-4 h-4 text-emerald-500 mx-auto" />}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {(activeTab === 'comparison' || window.matchMedia('print').matches) && (
+                            <div className={`space-y-6 ${activeTab !== 'comparison' ? 'hidden print:block' : ''}`}>
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black">
+                                    <div className="bg-slate-800 text-white px-6 py-4 flex items-center justify-between print:bg-black print:text-white">
+                                        <h2 className="text-lg font-bold flex items-center gap-2"><BarChart3 className="w-5 h-5" /> Score Comparison</h2>
+                                        <div className="text-right">
+                                            <div className="text-xs opacity-75 font-mono">{testDate} • {patientName}</div>
+                                            <div className="text-[10px] opacity-50 mt-1">Thornton & Raffin (1978) Model</div>
+                                        </div>
+                                    </div>
+                                    <div className="p-6">
+                                        <div className="flex justify-end mb-4 print:hidden">
+                                            <div className="bg-slate-100 p-1 rounded-lg flex items-center gap-2 text-sm">
+                                                <span className="px-2 text-xs font-semibold text-slate-500 uppercase">Confidence Level</span>
+                                                <button onClick={() => setConfidenceLevel(95)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 95 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>95%</button>
+                                                <button onClick={() => setConfidenceLevel(80)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 80 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>80%</button>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-8 mb-8">
+                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black">
+                                                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Test A (Baseline)</div>
+                                                <div className="text-lg font-bold text-slate-900 mb-2">
+                                                    {tests.A.condition}
+                                                    {tests.A.deviceModel && <span className="block text-sm font-normal text-slate-500">{tests.A.deviceModel}</span>}
+                                                </div>
+                                                <div className="text-sm text-slate-600 mb-4 space-y-1">
+                                                    <div>List: {tests.A.listId} ({tests.A.section})</div>
+                                                    <div>Level: {tests.A.level || '--'} dBC</div>
+                                                    <div>SNR: {tests.A.snr || '--'} dB</div>
+                                                </div>
+                                                <div className="space-y-2 border-t border-slate-200 pt-3">
+                                                    <div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsA.wordPercent}%</span></div>
+                                                    <div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsA.phonemePercent}%</span></div>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-center justify-center text-center">
+                                                <div className="mb-2 text-xs font-bold text-slate-400 uppercase">Difference (B - A)</div>
+                                                <div className={`text-3xl font-bold mb-1 ${statsB.wordPercent - statsA.wordPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{statsB.wordPercent - statsA.wordPercent > 0 ? '+' : ''}{statsB.wordPercent - statsA.wordPercent}%</div>
+                                                <div className="text-sm text-slate-500 mb-6">Word Recognition</div>
+                                                <div className={`text-2xl font-bold mb-1 ${statsB.phonemePercent - statsA.phonemePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{statsB.phonemePercent - statsA.phonemePercent > 0 ? '+' : ''}{statsB.phonemePercent - statsA.phonemePercent}%</div>
+                                                <div className="text-sm text-slate-500">Phoneme Recognition</div>
+                                            </div>
+                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black flex flex-col justify-between">
+                                                <div>
+                                                    <div className="text-xs font-bold text-slate-500 uppercase mb-1">Test B (Comparison)</div>
+                                                    <div className="text-lg font-bold text-slate-900 mb-2">
+                                                        {tests.B.condition}
+                                                        {tests.B.deviceModel && <span className="block text-sm font-normal text-slate-500">{tests.B.deviceModel}</span>}
+                                                    </div>
+                                                    <div className="text-sm text-slate-600 mb-4 space-y-1">
+                                                        <div>List: {tests.B.listId} ({tests.B.section})</div>
+                                                        <div>Level: {tests.B.level || '--'} dBC</div>
+                                                        <div>SNR: {tests.B.snr || '--'} dB</div>
+                                                    </div>
+                                                    <div className="space-y-2 border-t border-slate-200 pt-3">
+                                                        <div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsB.wordPercent}%</span></div>
+                                                        <div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsB.phonemePercent}%</span></div>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4 pt-4 border-t border-slate-200">
+                                                    <label className="block text-xs font-bold text-slate-500 mb-2">Listening Effort Rating (New Tech)</label>
+                                                    <div className="flex justify-between text-[10px] text-slate-400 mb-1 px-1">
+                                                        <span>Much Easier</span>
+                                                        <span>No Diff</span>
+                                                        <span>Much Harder</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="10"
+                                                        value={listeningEffort}
+                                                        onChange={(e) => setListeningEffort(parseInt(e.target.value))}
+                                                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                                    />
+                                                    <div className={`text-center text-sm font-bold mt-1 ${getEffortColor(listeningEffort)}`}>{listeningEffort} / 10</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="border border-slate-200 rounded-lg overflow-hidden mb-6">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                                                    <tr>
+                                                        <th className="px-4 py-2 text-left">Metric (N)</th>
+                                                        <th className="px-4 py-2 text-center w-24">Test A</th>
+                                                        <th className="px-4 py-2 text-center w-32 bg-slate-50">Critical Range <span className="text-[10px] text-slate-400 block font-normal">({confidenceLevel}%)</span></th>
+                                                        <th className="px-4 py-2 text-center w-24">Test B</th>
+                                                        <th className="px-4 py-2 text-center w-32">Significant?</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    <tr>
+                                                        <td className="px-4 py-3 font-medium text-slate-800">Word Score <span className="block text-xs text-slate-400 font-normal">N = {statsA.totalWords}</span></td>
+                                                        <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.wordPercent}%</td>
+                                                        <td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td>
+                                                        <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.wordPercent}%</td>
+                                                        <td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="text-slate-400 text-xs">—</span>}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {statsA.totalPhonemes}</span></td>
+                                                        <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.phonemePercent}%</td>
+                                                        <td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{phonemeCriticalLimits.lower}% - {phonemeCriticalLimits.upper}%</td>
+                                                        <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.phonemePercent}%</td>
+                                                        <td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="text-slate-400 text-xs">—</span>}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Clinical Interpretation / Notes</label>
+                                            <textarea className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 h-24" placeholder="Enter notes comparing the two conditions..."></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
