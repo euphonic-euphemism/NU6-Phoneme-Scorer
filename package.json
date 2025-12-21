@@ -1,6 +1,6 @@
 {
   "name": "nu6-phoneme-scorer",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "NU-6 Phoneme Scoring Application with Thornton & Raffin Statistical Comparison",
   "main": "main.js",
   "scripts": {
@@ -14,7 +14,10 @@
     "hearing-test",
     "phoneme"
   ],
-  "author": "Your Name",
+  "author": {
+    "name": "Mark Shaver",
+    "email": "mark.shaver@posteo.ent"
+  },
   "license": "MIT",
   "devDependencies": {
     "electron": "^29.0.0",
@@ -29,11 +32,12 @@
     ],
     "mac": {
       "target": "dmg",
-      "category": "public.app-category.medical"
+      "category": "public.app-category.medical",
+      "icon": "build/icon.icns"
     },
     "win": {
       "target": "nsis",
-      "icon": "icon.ico"
+      "icon": "build/icon.ico"
     },
     "linux": {
       "target": [
@@ -41,7 +45,9 @@
         "deb"
       ],
       "category": "Science",
-      "synopsis": "Audiology Word List Scorer"
+      "synopsis": "Audiology Word List Scorer",
+      "maintainer": "Your Name <your.email@example.com>",
+      "icon": "build/icon.png"
     }
   }
 }
