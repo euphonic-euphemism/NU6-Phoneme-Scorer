@@ -3,6 +3,8 @@ name: Build and Release
 on:
   release:
     types: [published]
+  # Add workflow_dispatch so you can manually trigger it for testing
+  workflow_dispatch:
 
 jobs:
   build:
