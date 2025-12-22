@@ -1,63 +1,57 @@
-name: Build and Release
+name: Build All Packages
 
 on:
-  release:
-    types: [published]
-  # Add workflow_dispatch so you can manually trigger it for testing
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
-    permissions:
-      contents: write
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
+    name: Build ${{ matrix.os-name }}
     runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            os-name: Linux
+            args: --linux deb appimage
+            artifact_name: nu6-scorer-linux
+            artifact_path: dist/*.*
+
+          - os: windows-latest
+            os-name: Windows
+            args: --win nsis
+            artifact_name: nu6-scorer-windows
+            artifact_path: dist/*.exe
+
+          - os: macos-latest
+            os-name: macOS
+            args: --mac dmg
+            artifact_name: nu6-scorer-mac
+            artifact_path: dist/*.dmg
 
     steps:
-      - name: Check out Git repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install Dependencies
         run: npm install
 
-      # Linux Build
-      - name: Build Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run build -- --linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build ${{ matrix.os-name }} Package
+        # env:
+          # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Uncomment if you need to publish to GitHub Releases
+        run: npm run dist -- ${{ matrix.args }}
 
-      # Windows Build
-      - name: Build Windows
-        if: matrix.os == 'windows-latest'
-        run: npm run build -- --win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # macOS Build
-      - name: Build macOS
-        if: matrix.os == 'macos-latest'
-        run: npm run build -- --mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Upload Artifacts to Release
-      - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.AppImage
-            dist/*.deb
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_path }}
+          if-no-files-found: error

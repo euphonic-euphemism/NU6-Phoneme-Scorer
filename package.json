@@ -1,7 +1,7 @@
 {
   "name": "nu6-phoneme-scorer",
   "productName": "NU-6-Phoneme-Scorer",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "NU-6 Phoneme Scoring Application",
   "main": "main.js",
   "homepage": "https://github.com/euphonic-euphemism/NU6-Phoneme-Scorer",
@@ -23,12 +23,22 @@
       "output": "dist"
     },
     "linux": {
-      "target": "deb",
+      "target": [
+        "deb",
+        "AppImage"
+      ],
       "maintainer": "Mark Shaver <mark.shaver@posteo.net>",
       "category": "Science",
       "executableName": "nu6-phoneme-scorer",
       "synopsis": "Phoneme scoring utility for audiology tests",
       "description": "A scoring application for NU-6 word lists with phoneme-level analysis."
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.medical"
+    },
+    "win": {
+      "target": "nsis"
     }
   }
 }
