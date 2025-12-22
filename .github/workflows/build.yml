@@ -9,6 +9,11 @@ jobs:
   build:
     name: Build ${{ matrix.os-name }}
     runs-on: ${{ matrix.os }}
+
+    # PERMISSION FIX: Grant write access to create releases/upload assets
+    permissions:
+      contents: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -40,7 +45,5 @@ jobs:
 
       - name: Build and Publish ${{ matrix.os-name }}
         env:
-          # This token is provided automatically by GitHub Actions
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # --publish always forces electron-builder to upload artifacts to the release
         run: npm run dist -- ${{ matrix.args }} --publish always
