@@ -458,6 +458,7 @@
                             else delete newScores[key];
                         });
                     });
+                    // Mark All counts as interaction, prevent prompting if we fill everything immediately
                     return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores, askedContinue: true } };
                 });
             };
@@ -821,7 +822,17 @@
                                                         <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.wordPercent}%</td>
                                                         <td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td>
                                                         <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.wordPercent}%</td>
-                                                        <td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="text-slate-400 text-xs">—</span>}</td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            {isWordDiffSig ? (
+                                                                <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs">
+                                                                    <Check className="w-3 h-3" /> Yes
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs">
+                                                                    <X className="w-3 h-3" /> No
+                                                                </span>
+                                                            )}
+                                                        </td>
                                                     </tr>
                                                     {(tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') && (
                                                         <tr>
@@ -829,7 +840,17 @@
                                                             <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.phonemePercent}%</td>
                                                             <td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{phonemeCriticalLimits.lower}% - {phonemeCriticalLimits.upper}%</td>
                                                             <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.phonemePercent}%</td>
-                                                            <td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="text-slate-400 text-xs">—</span>}</td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                {isPhonemeDiffSig ? (
+                                                                    <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs">
+                                                                        <Check className="w-3 h-3" /> Yes
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs">
+                                                                        <X className="w-3 h-3" /> No
+                                                                    </span>
+                                                                )}
+                                                            </td>
                                                         </tr>
                                                     )}
                                                 </tbody>

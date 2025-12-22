@@ -10,7 +10,6 @@ jobs:
     name: Build ${{ matrix.os-name }}
     runs-on: ${{ matrix.os }}
 
-    # PERMISSION FIX: Grant write access to create releases/upload assets
     permissions:
       contents: write
 
@@ -21,14 +20,20 @@ jobs:
           - os: ubuntu-latest
             os-name: Linux
             args: --linux deb appimage
+            # Match both .deb and .AppImage
+            upload_pattern: |
+              dist/*.deb
+              dist/*.AppImage
 
           - os: windows-latest
             os-name: Windows
             args: --win nsis
+            upload_pattern: dist/*.exe
 
           - os: macos-latest
             os-name: macOS
             args: --mac dmg
+            upload_pattern: dist/*.dmg
 
     steps:
       - name: Checkout Code
@@ -44,17 +49,17 @@ jobs:
         run: npm install
 
       - name: Build ${{ matrix.os-name }} Package
-        # Removed '--publish always'. We will use a dedicated action to upload.
         run: npm run dist -- ${{ matrix.args }}
+
+      # DEBUG STEP: This lists files so you can check logs if uploads fail
+      - name: List Output Files (Debug)
+        shell: bash
+        run: ls -R dist
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.deb
-            dist/*.AppImage
+          files: ${{ matrix.upload_pattern }}
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
