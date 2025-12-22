@@ -1,53 +1,34 @@
 {
   "name": "nu6-phoneme-scorer",
-  "version": "1.0.2",
-  "description": "NU-6 Phoneme Scoring Application with Thornton & Raffin Statistical Comparison",
+  "productName": "NU-6-Phoneme-Scorer",
+  "version": "1.0.4",
+  "description": "NU-6 Phoneme Scoring Application",
   "main": "main.js",
+  "homepage": "https://github.com/euphonic-euphemism/NU6-Phoneme-Scorer",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
   },
-  "keywords": [
-    "audiology",
-    "nu6",
-    "scoring",
-    "hearing-test",
-    "phoneme"
-  ],
-  "author": {
-    "name": "Mark Shaver",
-    "email": "mark.shaver@posteo.ent"
-  },
-  "license": "MIT",
+  "author": "Mark Shaver <mark.shaver@posteo.net>",
+  "license": "ISC",
   "devDependencies": {
-    "electron": "^29.0.0",
-    "electron-builder": "^24.13.3"
+    "electron": "^28.2.0",
+    "electron-builder": "^24.13.0"
   },
   "build": {
     "appId": "com.audiology.nu6scorer",
-    "productName": "NU-6 Scorer",
-    "files": [
-      "main.js",
-      "nu6_scoring_app.html"
-    ],
-    "mac": {
-      "target": "dmg",
-      "category": "public.app-category.medical",
-      "icon": "build/icon.icns"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico"
+    "productName": "NU-6-Phoneme-Scorer",
+    "directories": {
+      "output": "dist"
     },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
+      "target": "deb",
+      "maintainer": "Mark Shaver <mark.shaver@posteo.net>",
       "category": "Science",
-      "synopsis": "Audiology Word List Scorer",
-      "maintainer": "Your Name <your.email@example.com>",
-      "icon": "build/icon.png"
+      "executableName": "nu6-phoneme-scorer",
+      "synopsis": "Phoneme scoring utility for audiology tests",
+      "description": "A scoring application for NU-6 word lists with phoneme-level analysis."
     }
   }
 }

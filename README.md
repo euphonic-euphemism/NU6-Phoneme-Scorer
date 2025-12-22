@@ -1,69 +1,80 @@
 NU-6 Phoneme Scorer
 
-A desktop application for scoring NU-6 word lists using phonemic scoring. Features standard Thornton & Raffin (1978) statistical comparison tables for validating hearing aid fittings and word recognition performance.
+A standalone, web-based (and Electron-wrappable) application for scoring NU-6 word lists in a clinical audiology setting. This tool offers granular phoneme scoring, whole-word scoring, and statistical comparison between two test conditions.
 
 Features
 
-Phonemic Scoring: Detailed breakdown of errors (Initial/Medial/Final phonemes).
+Standard Lists: Includes NU-6 Lists 1A, 2A, 3A, and 4A with phonemic breakdown.
 
-Dual Test Comparison: Compare "Unaided vs. Aided" or "Current Tech vs. New Tech".
+Scoring Modes:
 
-Statistical Validity: Built-in critical difference tables (95% and 80% confidence intervals) based on Thornton & Raffin (1978).
+Phoneme Scoring: Click individual phonemes (IPA symbols) to mark correct/incorrect.
 
-Listening Effort: Subjective rating scale (0-10) for patient feedback.
+Whole Word Scoring: Simple Correct/Incorrect buttons for standard WRS calculation.
 
-Save/Open: Save patient sessions to local JSON files.
+Comparison Mode:
 
-Print-Ready: Clean layout for printing results to PDF or paper.
+Run two tests side-by-side (e.g., "Unaided" vs "New Tech").
 
-Installation / Building
+Automatic calculation of difference scores.
 
-To build this app yourself from the source code:
+Statistical Significance: Uses the Thornton & Raffin (1978) model to determine if score differences are critical based on the number of items (N) and confidence level (95% or 80%).
 
-Install Node.js: Download from nodejs.org.
+Smart Testing:
 
-Clone the Repo:
+10-Word Quick Test: Automatically prompts to stop after 10 words. If stopped, stats adjust to N=10.
 
-git clone [https://github.com/YOUR_USERNAME/NU6-Phoneme-Scorer.git](https://github.com/YOUR_USERNAME/NU6-Phoneme-Scorer.git)
-cd NU6-Phoneme-Scorer
+Full Lists: Supports standard 25 (half-list) and 50 (full-list) word scoring.
 
+Reporting:
+
+Save results to JSON.
+
+Print / Save as PDF with patient demographics and clinical notes.
+
+Offline Capable: Single-file HTML architecture with embedded React logic.
+
+Installation & Usage
+
+Web Version
+
+Simply open nu6_scoring_app.html in any modern web browser (Chrome, Edge, Firefox, Safari). No installation required.
+
+Desktop App (Linux/Debian)
+
+To build the desktop application using Electron:
 
 Install Dependencies:
 
 npm install
 
 
-Build the App:
+Run Locally:
 
-For your current OS:
-
-npm run build
+npm start
 
 
-Note: To build for all platforms (Mac/Win/Linux) from a single machine, you may need specific configurations or use GitHub Actions.
+Build .deb Package:
 
-Output
+npm run dist
 
-Executables will appear in the dist/ folder:
 
-Windows: NU-6 Scorer Setup 1.0.0.exe
+The output file will be located in the dist/ directory.
 
-Mac: NU-6 Scorer-1.0.0.dmg
+Configuration
 
-Linux: .AppImage and .deb files
+The application uses standard NU-6 ordering by default but includes specific custom orderings for Lists 1A (2nd half), 2A, 3A, and 4A based on clinical PDF references.
 
-Usage
+Tech Stack
 
-Launch the app.
+React: UI Logic (UMD build, no compile step required for dev).
 
-Select Test A configuration (Condition, List, Level).
+Tailwind CSS: Styling.
 
-Score the word list phoneme-by-phoneme.
+Electron: Desktop wrapper for Linux deployment.
 
-Select Test B to score the second condition.
-
-Click the Comparison Results tab to view statistical analysis of the improvement/deficit.
+Electron Builder: For packaging .deb installers.
 
 License
 
-MIT
+ISC
