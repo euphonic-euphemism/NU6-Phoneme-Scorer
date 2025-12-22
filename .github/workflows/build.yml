@@ -1,8 +1,8 @@
-name: Build All Packages
+name: Build and Publish Release Assets
 
 on:
-  push:
-    branches: [ main ]
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
@@ -16,20 +16,14 @@ jobs:
           - os: ubuntu-latest
             os-name: Linux
             args: --linux deb appimage
-            artifact_name: nu6-scorer-linux
-            artifact_path: dist/*.*
 
           - os: windows-latest
             os-name: Windows
             args: --win nsis
-            artifact_name: nu6-scorer-windows
-            artifact_path: dist/*.exe
 
           - os: macos-latest
             os-name: macOS
             args: --mac dmg
-            artifact_name: nu6-scorer-mac
-            artifact_path: dist/*.dmg
 
     steps:
       - name: Checkout Code
@@ -44,14 +38,9 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Build ${{ matrix.os-name }} Package
+      - name: Build and Publish ${{ matrix.os-name }}
         env:
+          # This token is provided automatically by GitHub Actions
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist -- ${{ matrix.args }}
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_path }}
-          if-no-files-found: error
+        # --publish always forces electron-builder to upload artifacts to the release
+        run: npm run dist -- ${{ matrix.args }} --publish always

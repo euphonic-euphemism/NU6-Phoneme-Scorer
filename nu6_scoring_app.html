@@ -300,7 +300,7 @@
                     // Check if any phoneme is scored for this word
                     let hasScore = false;
                     w.p.forEach((_, idx) => {
-                        if (activeTest.scores[`${activeTest.listId}_${w.i}_${idx}`]) hasScore = true;
+                        if (activeTest.scores[`${activeTest.listId}_${w.i}_${idx}`] !== undefined) hasScore = true;
                     });
                     if(hasScore) scoredWordIndices.add(w.i);
                 });
@@ -363,12 +363,84 @@
                 setTests(prev => {
                     const currentScores = { ...prev[activeTestId].scores };
 
+                    // Check if we are toggling off the current state
+                    let allMatch = true;
+                    // For Word Mode, we can check the first phoneme to infer word state, or check all.
+                    // But effectively, if we click "Correct" and it's already fully correct, we want to clear it.
+                    // If we click "Incorrect" and it's already incorrect (which usually means at least one false/undefined, but in word mode usually we set all to false),
+                    // wait, in setWordScore below: isCorrect=false sets "delete keys" in previous logic, wait no.
+                    // In previous implementation:
+                    // isCorrect=true -> all phonemes = true
+                    // isCorrect=false -> all phonemes = undefined (deleted) ??? No, false usually means WRONG.
+                    // Let's redefine:
+                    // Correct Button -> All Phonemes TRUE
+                    // Incorrect Button -> All Phonemes FALSE (explicitly wrong)
+                    // Unscored -> All Phonemes undefined.
+
+                    // Let's check current state:
+                    let currentIsAllCorrect = true;
+                    let currentIsAllIncorrect = true;
+                    let hasAnyScore = false;
+
                     wordData.p.forEach((p, idx) => {
                         if (p !== '-') {
-                            if (isCorrect) currentScores[`${listId}_${wordIndex}_${idx}`] = true;
-                            else delete currentScores[`${listId}_${wordIndex}_${idx}`];
+                            const val = currentScores[`${listId}_${wordIndex}_${idx}`];
+                            if (val !== undefined) hasAnyScore = true;
+                            if (val !== true) currentIsAllCorrect = false;
+                            if (val !== false) currentIsAllIncorrect = false;
                         }
                     });
+
+                    // Logic:
+                    // If user clicked Correct (isCorrect=true) AND currently it is All Correct -> Clear (Unscore)
+                    // If user clicked Incorrect (isCorrect=false) AND currently it is All Incorrect -> Clear (Unscore)
+                    // Otherwise -> Set to isCorrect value.
+
+                    let shouldClear = false;
+                    if (isCorrect && currentIsAllCorrect && hasAnyScore) shouldClear = true;
+                    if (!isCorrect && currentIsAllIncorrect && hasAnyScore) shouldClear = true;
+
+                    wordData.p.forEach((p, idx) => {
+                        if (p !== '-') {
+                            if (shouldClear) {
+                                delete currentScores[`${listId}_${wordIndex}_${idx}`];
+                            } else {
+                                currentScores[`${listId}_${wordIndex}_${idx}`] = isCorrect;
+                            }
+                        }
+                    });
+                    return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } };
+                });
+            };
+
+            const toggleWordCorrect = (wordIndex) => {
+                // Used for Phoneme Mode green check button
+                const listId = activeTest.listId;
+                const wordData = activeStats.visibleWords.find(w => w.i === wordIndex);
+                if (!wordData) return;
+
+                setTests(prev => {
+                    const currentScores = { ...prev[activeTestId].scores };
+
+                    // Check if currently fully correct
+                    let isFullyCorrect = true;
+                    wordData.p.forEach((p, idx) => {
+                        if (p !== '-' && !currentScores[`${listId}_${wordIndex}_${idx}`]) {
+                            isFullyCorrect = false;
+                        }
+                    });
+
+                    // Toggle logic: If fully correct, clear it. Else, mark all correct.
+                    wordData.p.forEach((p, idx) => {
+                        if (p !== '-') {
+                            if (isFullyCorrect) {
+                                delete currentScores[`${listId}_${wordIndex}_${idx}`]; // or set to false? usually clear is safer for 'toggle off'
+                            } else {
+                                currentScores[`${listId}_${wordIndex}_${idx}`] = true;
+                            }
+                        }
+                    });
+
                     return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } };
                 });
             };
@@ -386,7 +458,6 @@
                             else delete newScores[key];
                         });
                     });
-                    // Mark All counts as interaction, prevent prompting if we fill everything immediately
                     return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores, askedContinue: true } };
                 });
             };
@@ -426,21 +497,6 @@
                 };
                 reader.readAsText(file);
                 event.target.value = '';
-            };
-
-            const resetCurrent = () => {
-                if(confirm(`Clear scores for Test ${activeTestId}?`)) {
-                    markAll(false);
-                    // Also reset prompt flags
-                    setTests(prev => ({
-                        ...prev,
-                        [activeTestId]: {
-                            ...prev[activeTestId],
-                            limitTo10: false,
-                            askedContinue: false
-                        }
-                    }));
-                }
             };
 
             const clearAllData = () => {
@@ -573,7 +629,6 @@
                                                 <button onClick={() => updateActiveTest('limitTo10', false)} className="text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 font-medium">Continue to Full List</button>
                                             )}
                                             <button onClick={() => markAll(true)} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium">Mark All</button>
-                                            <button onClick={resetCurrent} className="text-xs px-2 py-1 bg-slate-200 text-slate-600 rounded hover:bg-slate-300 font-medium">Reset</button>
                                         </div>
                                     </div>
                                     <table className="w-full text-left text-sm">
@@ -594,8 +649,16 @@
                                         <tbody className="divide-y divide-slate-100">
                                             {activeStats.visibleWords.map((word) => {
                                                 const listId = activeTest.listId;
-                                                let isWordCorrect = true;
-                                                word.p.forEach((p, idx) => { if (p !== '-' && !activeTest.scores[`${listId}_${word.i}_${idx}`]) isWordCorrect = false; });
+
+                                                const phonemeScores = word.p.map((p, idx) => {
+                                                    if (p === '-') return null;
+                                                    return activeTest.scores[`${listId}_${word.i}_${idx}`];
+                                                }).filter(val => val !== null);
+
+                                                const isWordCorrect = phonemeScores.every(s => s === true);
+                                                const isWordScored = phonemeScores.some(s => s !== undefined);
+                                                const isWordIncorrect = isWordScored && !isWordCorrect;
+                                                const isWordFullyIncorrect = phonemeScores.every(s => s === false); // All explicit false
 
                                                 return (
                                                     <tr key={word.i} className="hover:bg-slate-50">
@@ -618,7 +681,15 @@
                                                                     );
                                                                 })}
                                                                 <td className="px-4 py-2 text-center print:hidden">
-                                                                    {isWordCorrect && <Check className="w-4 h-4 text-emerald-500 mx-auto" />}
+                                                                    <div className="flex items-center justify-center gap-2">
+                                                                        <button
+                                                                            onClick={() => toggleWordCorrect(word.i)}
+                                                                            title={isWordCorrect ? "Clear Word" : "Mark Whole Word Correct"}
+                                                                            className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordCorrect ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200'}`}
+                                                                        >
+                                                                            <Check className="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
                                                                 </td>
                                                             </React.Fragment>
                                                         ) : (
@@ -632,7 +703,7 @@
                                                                     </button>
                                                                     <button
                                                                         onClick={() => setWordScore(word.i, false)}
-                                                                        className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${!isWordCorrect ? 'bg-red-600 text-white border-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600'}`}
+                                                                        className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordFullyIncorrect ? 'bg-red-600 text-white border-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600'}`}
                                                                     >
                                                                         <X className="w-3 h-3" /> Incorrect
                                                                     </button>
