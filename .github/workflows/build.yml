@@ -49,7 +49,8 @@ jobs:
         run: npm install
 
       - name: Build ${{ matrix.os-name }} Package
-        run: npm run dist -- ${{ matrix.args }}
+        # Added '-p never' to stop electron-builder from trying to publish automatically
+        run: npm run dist -- ${{ matrix.args }} -p never
 
       # DEBUG STEP: This lists files so you can check logs if uploads fail
       - name: List Output Files (Debug)
