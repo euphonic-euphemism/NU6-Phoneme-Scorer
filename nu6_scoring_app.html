@@ -12,6 +12,9 @@
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- html2canvas for PNG Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -80,6 +83,9 @@
         const HelpCircle = (props) => (
             <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></IconBase>
         );
+        const Download = (props) => (
+            <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconBase>
+        );
 
         // --- DATA: NU-6 LISTS ---
         const LIST_1A = [
@@ -145,7 +151,7 @@
             }
         };
 
-        const calculateStats = (listId, section, scores) => {
+        const calculateStats = (listId, section, scores, limitTo10 = false) => {
             const allWords = getListData(listId);
             let visibleWords = allWords;
 
@@ -155,6 +161,11 @@
             else if (section === 'second') visibleWords = allWords.slice(25, 50);
             else if (section === 'second_10') visibleWords = allWords.slice(25, 35);
             else if (section === 'full') visibleWords = allWords;
+
+            // Apply 10-word limit if requested
+            if (limitTo10) {
+                visibleWords = visibleWords.slice(0, 10);
+            }
 
             let totalPhonemes = 0;
             let correctPhonemes = 0;
@@ -199,6 +210,7 @@
             const x = Math.round((scorePercent / 100) * n);
             const theta = getTheta(x, n);
             let variance;
+            // Slightly adjusted variance logic for small N based on binomial approximation or keep generalized
             if (n >= 50) {
                 variance = 1 / (n + 0.5);
             } else {
@@ -231,35 +243,61 @@
         // --- Listening Effort Scale Component (Modal) ---
         const ListeningEffortScaleModal = ({ isOpen, onClose }) => {
             if (!isOpen) return null;
+
+            const downloadScale = async () => {
+                const element = document.getElementById('scale-capture-target');
+                if (!element) return;
+                try {
+                    const canvas = await html2canvas(element, { backgroundColor: '#ffffff', scale: 2 });
+                    const data = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.href = data;
+                    link.download = 'listening-effort-scale.png';
+                    link.click();
+                } catch (error) {
+                    console.error("Download failed:", error);
+                    alert("Could not export PNG. Try printing instead.");
+                }
+            };
+
             return (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-6 relative">
-                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                            <X className="w-6 h-6" />
+                    {/* Added max-h and overflow for safety, reduced padding */}
+                    <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-4 relative max-h-[90vh] overflow-y-auto">
+                        <button onClick={onClose} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 no-print">
+                            <X className="w-5 h-5" />
                         </button>
-                        <h3 className="text-xl font-bold text-slate-800 mb-6 text-center">Listening Effort Scale</h3>
-                        <div className="space-y-4">
-                            {[
-                                { val: 0, label: "No Effort", color: "bg-emerald-100 border-emerald-300 text-emerald-800" },
-                                { val: 1, label: "Very Little Effort", color: "bg-emerald-50 border-emerald-200 text-emerald-700" },
-                                { val: 2, label: "Little Effort", color: "bg-green-50 border-green-200 text-green-700" },
-                                { val: 3, label: "Moderate Effort", color: "bg-lime-50 border-lime-200 text-lime-700" },
-                                { val: 4, label: "Considerable Effort", color: "bg-yellow-50 border-yellow-200 text-yellow-700" },
-                                { val: 5, label: "Much Effort", color: "bg-amber-50 border-amber-200 text-amber-700" },
-                                { val: 6, label: "Very Much Effort", color: "bg-orange-50 border-orange-200 text-orange-700" },
-                                { val: 7, label: "Extreme Effort", color: "bg-red-50 border-red-200 text-red-700" },
-                                { val: 8, label: "Maximum Effort", color: "bg-red-100 border-red-300 text-red-800" },
-                                { val: 9, label: "Giving Up", color: "bg-rose-100 border-rose-300 text-rose-800" },
-                                { val: 10, label: "Unable to Ignore Noise", color: "bg-slate-800 border-slate-900 text-white" },
-                            ].map((item) => (
-                                <div key={item.val} className={`flex items-center gap-4 p-2 rounded-lg border ${item.color}`}>
-                                    <span className="font-bold text-lg w-8 text-center">{item.val}</span>
-                                    <span className="font-medium">{item.label}</span>
-                                </div>
-                            ))}
+
+                        <div id="scale-capture-target" className="p-2 bg-white">
+                            {/* Reduced margin-bottom */}
+                            <h3 className="text-lg font-bold text-slate-800 mb-3 text-center">Listening Effort Scale</h3>
+                            {/* Reduced space-y */}
+                            <div className="space-y-1">
+                                {[
+                                    { val: 0, label: "No Effort", color: "bg-emerald-100 border-emerald-300 text-emerald-800" },
+                                    { val: 1, label: "Very Little Effort", color: "bg-emerald-50 border-emerald-200 text-emerald-700" },
+                                    { val: 2, label: "Little Effort", color: "bg-green-50 border-green-200 text-green-700" },
+                                    { val: 3, label: "Moderate Effort", color: "bg-lime-50 border-lime-200 text-lime-700" },
+                                    { val: 4, label: "Considerable Effort", color: "bg-yellow-50 border-yellow-200 text-yellow-700" },
+                                    { val: 5, label: "Much Effort", color: "bg-amber-50 border-amber-200 text-amber-700" },
+                                    { val: 6, label: "Very Much Effort", color: "bg-orange-50 border-orange-200 text-orange-700" },
+                                    { val: 7, label: "Extreme Effort", color: "bg-red-50 border-red-200 text-red-700" },
+                                    { val: 8, label: "Maximum Effort", color: "bg-red-100 border-red-300 text-red-800" },
+                                    { val: 9, label: "Giving Up", color: "bg-rose-100 border-rose-300 text-rose-800" },
+                                    { val: 10, label: "Unable to Ignore Noise", color: "bg-slate-800 border-slate-900 text-white" },
+                                ].map((item) => (
+                                    // Reduced padding, smaller text if needed, reduced gap
+                                    <div key={item.val} className={`flex items-center gap-3 p-1.5 rounded border ${item.color}`}>
+                                        <span className="font-bold text-base w-6 text-center">{item.val}</span>
+                                        <span className="font-medium text-sm">{item.label}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="mt-6 text-center">
-                            <button onClick={onClose} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium">Close</button>
+
+                        <div className="mt-4 text-center flex gap-2 justify-center no-print">
+                            <button onClick={downloadScale} className="px-4 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-sm font-medium flex items-center gap-1"><Download className="w-4 h-4"/> PNG</button>
+                            <button onClick={onClose} className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium">Close</button>
                         </div>
                     </div>
                 </div>
@@ -269,10 +307,11 @@
         // --- MAIN APP ---
         const App = () => {
             const [patientName, setPatientName] = useState('');
+            const [cNumber, setCNumber] = useState('');
             const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
             const [activeTab, setActiveTab] = useState('scoring');
             const [activeTestId, setActiveTestId] = useState('A');
-            const [confidenceLevel, setConfidenceLevel] = useState(95);
+            const [confidenceLevel, setConfidenceLevel] = useState(80); // DEFAULT CHANGED TO 80%
             const [clearConfirm, setClearConfirm] = useState(false);
             const [showScaleModal, setShowScaleModal] = useState(false);
             const fileInputRef = useRef(null);
@@ -280,33 +319,37 @@
             const [tests, setTests] = useState({
                 A: {
                     id: 'A',
-                    listId: '1A',
-                    section: 'first',
+                    listId: '3A', // Updated Default
+                    section: 'second_10', // Updated Default
                     scoringMode: 'phoneme',
                     condition: 'Unaided',
                     deviceModel: '',
                     level: '',
                     snr: '',
-                    effort: 5,
+                    effort: 5, // Default effort
                     scores: {},
+                    limitTo10: false,
+                    askedContinue: false
                 },
                 B: {
                     id: 'B',
-                    listId: '2A',
-                    section: 'first',
+                    listId: '4A', // Updated Default
+                    section: 'second_10', // Updated Default
                     scoringMode: 'phoneme',
                     condition: 'New Tech',
                     deviceModel: '',
                     level: '',
                     snr: '',
-                    effort: 5,
+                    effort: 5, // Default effort
                     scores: {},
+                    limitTo10: false,
+                    askedContinue: false
                 }
             });
 
             const activeTest = tests[activeTestId];
-            const statsA = useMemo(() => calculateStats(tests.A.listId, tests.A.section, tests.A.scores), [tests.A]);
-            const statsB = useMemo(() => calculateStats(tests.B.listId, tests.B.section, tests.B.scores), [tests.B]);
+            const statsA = useMemo(() => calculateStats(tests.A.listId, tests.A.section, tests.A.scores, tests.A.limitTo10), [tests.A]);
+            const statsB = useMemo(() => calculateStats(tests.B.listId, tests.B.section, tests.B.scores, tests.B.limitTo10), [tests.B]);
             const activeStats = activeTestId === 'A' ? statsA : statsB;
 
             const wordCriticalLimits = useMemo(() => {
@@ -321,6 +364,31 @@
 
             const isWordDiffSig = statsB.wordPercent < wordCriticalLimits.lower || statsB.wordPercent > wordCriticalLimits.upper;
             const isPhonemeDiffSig = statsB.phonemePercent < phonemeCriticalLimits.lower || statsB.phonemePercent > phonemeCriticalLimits.upper;
+
+            const getSectionOptions = (testId) => {
+                const options = [
+                    { val: 'first_10', label: '1st Half (First 10)', n: 10 },
+                    { val: 'first', label: '1st Half (1-25)', n: 25 },
+                    { val: 'second_10', label: '2nd Half (First 10)', n: 10 },
+                    { val: 'second', label: '2nd Half (26-50)', n: 25 },
+                    { val: 'full', label: 'Full List (1-50)', n: 50 }
+                ];
+
+                if (testId === 'A') return options;
+
+                // For Test B, filter based on Test A selection
+                const aSection = tests.A.section;
+                const aIsTen = aSection.includes('_10');
+                const aIsHalf = aSection === 'first' || aSection === 'second';
+                const aIsFull = aSection === 'full';
+
+                return options.filter(opt => {
+                    if (aIsTen) return opt.n === 10;
+                    if (aIsHalf) return opt.n === 25;
+                    if (aIsFull) return opt.n === 50;
+                    return true;
+                });
+            };
 
             const updateActiveTest = (field, value) => {
                 setTests(prev => {
@@ -341,8 +409,9 @@
 
                         let bSection = newTests.B.section;
 
+                        // If B is currently incompatible, force it to a compatible default
                         if (isTen) {
-                            if (!bSection.includes('_10')) bSection = 'first_10'; // Default to first 10
+                            if (!bSection.includes('_10')) bSection = 'first_10';
                         } else if (isHalf) {
                             if (bSection !== 'first' && bSection !== 'second') bSection = 'first';
                         } else if (isFull) {
@@ -372,9 +441,22 @@
 
                 setTests(prev => {
                     const currentScores = { ...prev[activeTestId].scores };
-                    let shouldClear = false;
 
-                    // Check current state logic
+                    // Check if we are toggling off the current state
+                    let allMatch = true;
+                    // For Word Mode, we can check the first phoneme to infer word state, or check all.
+                    // But effectively, if we click "Correct" and it's already fully correct, we want to clear it.
+                    // If we click "Incorrect" and it's already incorrect (which usually means at least one false/undefined, but in word mode usually we set all to false),
+                    // wait, in setWordScore below: isCorrect=false sets "delete keys" in previous logic, wait no.
+                    // In previous implementation:
+                    // isCorrect=true -> all phonemes = true
+                    // isCorrect=false -> all phonemes = undefined (deleted) ??? No, false usually means WRONG.
+                    // Let's redefine:
+                    // Correct Button -> All Phonemes TRUE
+                    // Incorrect Button -> All Phonemes FALSE (explicitly wrong)
+                    // Unscored -> All Phonemes undefined.
+
+                    // Let's check current state:
                     let currentIsAllCorrect = true;
                     let currentIsAllIncorrect = true;
                     let hasAnyScore = false;
@@ -388,13 +470,22 @@
                         }
                     });
 
+                    // Logic:
+                    // If user clicked Correct (isCorrect=true) AND currently it is All Correct -> Clear (Unscore)
+                    // If user clicked Incorrect (isCorrect=false) AND currently it is All Incorrect -> Clear (Unscore)
+                    // Otherwise -> Set to isCorrect value.
+
+                    let shouldClear = false;
                     if (isCorrect && currentIsAllCorrect && hasAnyScore) shouldClear = true;
                     if (!isCorrect && currentIsAllIncorrect && hasAnyScore) shouldClear = true;
 
                     wordData.p.forEach((p, idx) => {
                         if (p !== '-') {
-                            if (shouldClear) delete currentScores[`${listId}_${wordIndex}_${idx}`];
-                            else currentScores[`${listId}_${wordIndex}_${idx}`] = isCorrect;
+                            if (shouldClear) {
+                                delete currentScores[`${listId}_${wordIndex}_${idx}`];
+                            } else {
+                                currentScores[`${listId}_${wordIndex}_${idx}`] = isCorrect;
+                            }
                         }
                     });
                     return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } };
@@ -402,23 +493,33 @@
             };
 
             const toggleWordCorrect = (wordIndex) => {
+                // Used for Phoneme Mode green check button
                 const listId = activeTest.listId;
                 const wordData = activeStats.visibleWords.find(w => w.i === wordIndex);
                 if (!wordData) return;
 
                 setTests(prev => {
                     const currentScores = { ...prev[activeTestId].scores };
+
+                    // Check if currently fully correct
                     let isFullyCorrect = true;
                     wordData.p.forEach((p, idx) => {
-                        if (p !== '-' && !currentScores[`${listId}_${wordIndex}_${idx}`]) isFullyCorrect = false;
-                    });
-
-                    wordData.p.forEach((p, idx) => {
-                        if (p !== '-') {
-                            if (isFullyCorrect) delete currentScores[`${listId}_${wordIndex}_${idx}`];
-                            else currentScores[`${listId}_${wordIndex}_${idx}`] = true;
+                        if (p !== '-' && !currentScores[`${listId}_${wordIndex}_${idx}`]) {
+                            isFullyCorrect = false;
                         }
                     });
+
+                    // Toggle logic: If fully correct, clear it. Else, mark all correct.
+                    wordData.p.forEach((p, idx) => {
+                        if (p !== '-') {
+                            if (isFullyCorrect) {
+                                delete currentScores[`${listId}_${wordIndex}_${idx}`]; // or set to false? usually clear is safer for 'toggle off'
+                            } else {
+                                currentScores[`${listId}_${wordIndex}_${idx}`] = true;
+                            }
+                        }
+                    });
+
                     return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } };
                 });
             };
@@ -436,12 +537,13 @@
                             else delete newScores[key];
                         });
                     });
-                    return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores } };
+                    // Mark All counts as interaction, prevent prompting if we fill everything immediately
+                    return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores, askedContinue: true } };
                 });
             };
 
             const handleSave = () => {
-                const data = { patientName, testDate, tests, activeTestId, activeTab, confidenceLevel };
+                const data = { patientName, cNumber, testDate, tests, activeTestId, activeTab, confidenceLevel };
                 const jsonString = JSON.stringify(data, null, 2);
                 const blob = new Blob([jsonString], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
@@ -464,6 +566,7 @@
                         const data = JSON.parse(e.target.result);
                         if (data.tests && data.patientName !== undefined) {
                             setPatientName(data.patientName);
+                            if(data.cNumber !== undefined) setCNumber(data.cNumber);
                             setTestDate(data.testDate);
                             setTests(data.tests);
                             setActiveTestId(data.activeTestId || 'A');
@@ -479,10 +582,11 @@
             const clearAllData = () => {
                 if (clearConfirm) {
                     setPatientName('');
+                    setCNumber('');
                     setTestDate(new Date().toISOString().split('T')[0]);
                     setTests({
-                        A: { id: 'A', listId: '1A', section: 'first', scoringMode: 'phoneme', condition: 'Unaided', deviceModel: '', level: '', snr: '', effort: 5, scores: {} },
-                        B: { id: 'B', listId: '2A', section: 'first', scoringMode: 'phoneme', condition: 'New Tech', deviceModel: '', level: '', snr: '', effort: 5, scores: {} }
+                        A: { id: 'A', listId: '3A', section: 'second_10', scoringMode: 'phoneme', condition: 'Unaided', deviceModel: '', level: '', snr: '', effort: 5, scores: {}, limitTo10: false, askedContinue: false },
+                        B: { id: 'B', listId: '4A', section: 'second_10', scoringMode: 'phoneme', condition: 'New Tech', deviceModel: '', level: '', snr: '', effort: 5, scores: {}, limitTo10: false, askedContinue: false }
                     });
                     setActiveTestId('A');
                     setActiveTab('scoring');
@@ -493,33 +597,8 @@
                 }
             };
 
-            // Options helper for Section dropdown
-            const getSectionOptions = (testId) => {
-                const options = [
-                    { val: 'first_10', label: '1st Half (First 10)', n: 10 },
-                    { val: 'first', label: '1st Half (1-25)', n: 25 },
-                    { val: 'second_10', label: '2nd Half (First 10)', n: 10 },
-                    { val: 'second', label: '2nd Half (26-50)', n: 25 },
-                    { val: 'full', label: 'Full List (1-50)', n: 50 }
-                ];
-
-                if (testId === 'A') return options;
-
-                // For Test B, filter based on Test A selection
-                const aSection = tests.A.section;
-                const aIsTen = aSection.includes('_10');
-                const aIsHalf = aSection === 'first' || aSection === 'second';
-                const aIsFull = aSection === 'full';
-
-                return options.filter(opt => {
-                    if (aIsTen) return opt.n === 10;
-                    if (aIsHalf) return opt.n === 25;
-                    if (aIsFull) return opt.n === 50;
-                    return true;
-                });
-            };
-
             const getEffortColor = (val) => { if (val <= 4) return 'text-emerald-600'; if (val >= 6) return 'text-red-600'; return 'text-blue-600'; };
+
             const effortDelta = tests.B.effort - tests.A.effort;
 
             return (
@@ -543,10 +622,26 @@
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pb-6 border-b border-slate-100">
-                                <div><label className="block text-xs font-medium text-slate-500 mb-1">Patient Name</label><input type="text" value={patientName} onChange={(e) => setPatientName(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Enter name..." /></div>
-                                <div><label className="block text-xs font-medium text-slate-500 mb-1">Test Date</label><input type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
-                                <div className="flex items-end"><div className="bg-slate-50 p-2 rounded-lg text-xs text-slate-600 border border-slate-200 w-full"><strong>Comparison Mode Active:</strong> Toggle between Test A and Test B below to input scores, then view the Comparison tab.</div></div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pb-6 border-b border-slate-100">
+                                <div className="md:col-span-1 space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-500 mb-1">Patient Name</label>
+                                        <input type="text" value={patientName} onChange={(e) => setPatientName(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Enter name..." />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-500 mb-1">ID</label>
+                                        <input type="text" value={cNumber} onChange={(e) => setCNumber(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Patient ID" />
+                                    </div>
+                                </div>
+                                <div className="md:col-span-1">
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Test Date</label>
+                                    <input type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+                                </div>
+                                <div className="flex items-start md:col-span-1">
+                                    <div className="bg-slate-50 p-3 rounded-lg text-xs text-slate-600 border border-slate-200 w-full h-full">
+                                        <strong>Comparison Mode Active:</strong> Toggle between Test A and Test B below to input scores, then view the Comparison tab.
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit">
@@ -631,19 +726,29 @@
                                             <label className="block text-xs font-medium text-slate-500 mb-1 mt-auto">SNR (dB)</label>
                                             <input type="text" value={activeTest.snr} onChange={(e) => updateActiveTest('snr', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mb-4" />
 
-                                            <label className="block text-xs font-medium text-slate-500 mb-1">Listening Effort (0-10)</label>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="range"
-                                                    min="0"
-                                                    max="10"
-                                                    value={activeTest.effort}
-                                                    onChange={(e) => updateActiveTest('effort', parseInt(e.target.value))}
-                                                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                                                />
-                                                <span className="font-bold w-6 text-center">{activeTest.effort}</span>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className="block text-xs font-medium text-slate-500">Listening Effort (0-10)</label>
+                                                <button onClick={() => setShowScaleModal(true)} className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"><HelpCircle className="w-3 h-3" /> View Scale</button>
                                             </div>
-                                            <button onClick={() => setShowScaleModal(true)} className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 mt-1"><HelpCircle className="w-3 h-3" /> View Scale</button>
+
+                                            <div className="flex gap-2 items-center">
+                                                <div className="flex-1">
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="10"
+                                                        value={activeTest.effort}
+                                                        onChange={(e) => updateActiveTest('effort', parseInt(e.target.value))}
+                                                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 block"
+                                                    />
+                                                    <div className="flex justify-between text-[10px] text-slate-400 mt-1 px-1">
+                                                        <span>0</span>
+                                                        <span>5</span>
+                                                        <span>10</span>
+                                                    </div>
+                                                </div>
+                                                <span className="font-bold w-6 text-center text-sm mb-4">{activeTest.effort}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -652,8 +757,12 @@
                                     <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
                                         <div className="font-bold text-slate-700 flex items-center gap-2">
                                             Scoring: Test {activeTestId} <span className="font-normal text-slate-500 mx-1">|</span> {activeTest.listId}
+                                            {activeTest.limitTo10 && <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full border border-orange-200 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Limited to 10 Words</span>}
                                         </div>
                                         <div className="flex gap-2 print:hidden">
+                                            {activeTest.limitTo10 && (
+                                                <button onClick={() => updateActiveTest('limitTo10', false)} className="text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 font-medium">Continue to Full List</button>
+                                            )}
                                             <button onClick={() => markAll(true)} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium">Mark All</button>
                                         </div>
                                     </div>
@@ -741,6 +850,11 @@
                                             })}
                                         </tbody>
                                     </table>
+                                    {activeTest.limitTo10 && (
+                                        <div className="bg-slate-50 border-t border-slate-200 p-4 text-center text-xs text-slate-500 italic">
+                                            Test stopped at 10 words. Words 11+ are excluded from scoring.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -751,7 +865,7 @@
                                     <div className="bg-slate-800 text-white px-6 py-4 flex items-center justify-between print:bg-black print:text-white">
                                         <h2 className="text-lg font-bold flex items-center gap-2"><BarChart3 className="w-5 h-5" /> Score Comparison</h2>
                                         <div className="text-right">
-                                            <div className="text-xs opacity-75 font-mono">{testDate} • {patientName}</div>
+                                            <div className="text-xs opacity-75 font-mono">{testDate} • {patientName} • #{cNumber}</div>
                                             <div className="text-[10px] opacity-50 mt-1">Thornton & Raffin (1978) Model</div>
                                         </div>
                                     </div>
