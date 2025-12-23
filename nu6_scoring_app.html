@@ -77,6 +77,9 @@
         const AlertCircle = (props) => (
             <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconBase>
         );
+        const HelpCircle = (props) => (
+            <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></IconBase>
+        );
 
         // --- DATA: NU-6 LISTS ---
         const LIST_1A = [
@@ -142,16 +145,16 @@
             }
         };
 
-        const calculateStats = (listId, section, scores, limitTo10 = false) => {
+        const calculateStats = (listId, section, scores) => {
             const allWords = getListData(listId);
             let visibleWords = allWords;
-            if (section === 'first') visibleWords = allWords.slice(0, 25);
-            else if (section === 'second') visibleWords = allWords.slice(25, 50);
 
-            // Apply 10-word limit if requested
-            if (limitTo10) {
-                visibleWords = visibleWords.slice(0, 10);
-            }
+            // Section Logic
+            if (section === 'first') visibleWords = allWords.slice(0, 25);
+            else if (section === 'first_10') visibleWords = allWords.slice(0, 10);
+            else if (section === 'second') visibleWords = allWords.slice(25, 50);
+            else if (section === 'second_10') visibleWords = allWords.slice(25, 35);
+            else if (section === 'full') visibleWords = allWords;
 
             let totalPhonemes = 0;
             let correctPhonemes = 0;
@@ -196,7 +199,6 @@
             const x = Math.round((scorePercent / 100) * n);
             const theta = getTheta(x, n);
             let variance;
-            // Slightly adjusted variance logic for small N based on binomial approximation or keep generalized
             if (n >= 50) {
                 variance = 1 / (n + 0.5);
             } else {
@@ -226,6 +228,44 @@
             return { lower: lowerLimit, upper: upperLimit };
         };
 
+        // --- Listening Effort Scale Component (Modal) ---
+        const ListeningEffortScaleModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-6 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                            <X className="w-6 h-6" />
+                        </button>
+                        <h3 className="text-xl font-bold text-slate-800 mb-6 text-center">Listening Effort Scale</h3>
+                        <div className="space-y-4">
+                            {[
+                                { val: 0, label: "No Effort", color: "bg-emerald-100 border-emerald-300 text-emerald-800" },
+                                { val: 1, label: "Very Little Effort", color: "bg-emerald-50 border-emerald-200 text-emerald-700" },
+                                { val: 2, label: "Little Effort", color: "bg-green-50 border-green-200 text-green-700" },
+                                { val: 3, label: "Moderate Effort", color: "bg-lime-50 border-lime-200 text-lime-700" },
+                                { val: 4, label: "Considerable Effort", color: "bg-yellow-50 border-yellow-200 text-yellow-700" },
+                                { val: 5, label: "Much Effort", color: "bg-amber-50 border-amber-200 text-amber-700" },
+                                { val: 6, label: "Very Much Effort", color: "bg-orange-50 border-orange-200 text-orange-700" },
+                                { val: 7, label: "Extreme Effort", color: "bg-red-50 border-red-200 text-red-700" },
+                                { val: 8, label: "Maximum Effort", color: "bg-red-100 border-red-300 text-red-800" },
+                                { val: 9, label: "Giving Up", color: "bg-rose-100 border-rose-300 text-rose-800" },
+                                { val: 10, label: "Unable to Ignore Noise", color: "bg-slate-800 border-slate-900 text-white" },
+                            ].map((item) => (
+                                <div key={item.val} className={`flex items-center gap-4 p-2 rounded-lg border ${item.color}`}>
+                                    <span className="font-bold text-lg w-8 text-center">{item.val}</span>
+                                    <span className="font-medium">{item.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-6 text-center">
+                            <button onClick={onClose} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium">Close</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         // --- MAIN APP ---
         const App = () => {
             const [patientName, setPatientName] = useState('');
@@ -234,7 +274,7 @@
             const [activeTestId, setActiveTestId] = useState('A');
             const [confidenceLevel, setConfidenceLevel] = useState(95);
             const [clearConfirm, setClearConfirm] = useState(false);
-            const [listeningEffort, setListeningEffort] = useState(5);
+            const [showScaleModal, setShowScaleModal] = useState(false);
             const fileInputRef = useRef(null);
 
             const [tests, setTests] = useState({
@@ -247,9 +287,8 @@
                     deviceModel: '',
                     level: '',
                     snr: '',
+                    effort: 5,
                     scores: {},
-                    limitTo10: false,
-                    askedContinue: false
                 },
                 B: {
                     id: 'B',
@@ -260,15 +299,14 @@
                     deviceModel: '',
                     level: '',
                     snr: '',
+                    effort: 5,
                     scores: {},
-                    limitTo10: false,
-                    askedContinue: false
                 }
             });
 
             const activeTest = tests[activeTestId];
-            const statsA = useMemo(() => calculateStats(tests.A.listId, tests.A.section, tests.A.scores, tests.A.limitTo10), [tests.A]);
-            const statsB = useMemo(() => calculateStats(tests.B.listId, tests.B.section, tests.B.scores, tests.B.limitTo10), [tests.B]);
+            const statsA = useMemo(() => calculateStats(tests.A.listId, tests.A.section, tests.A.scores), [tests.A]);
+            const statsB = useMemo(() => calculateStats(tests.B.listId, tests.B.section, tests.B.scores), [tests.B]);
             const activeStats = activeTestId === 'A' ? statsA : statsB;
 
             const wordCriticalLimits = useMemo(() => {
@@ -284,51 +322,6 @@
             const isWordDiffSig = statsB.wordPercent < wordCriticalLimits.lower || statsB.wordPercent > wordCriticalLimits.upper;
             const isPhonemeDiffSig = statsB.phonemePercent < phonemeCriticalLimits.lower || statsB.phonemePercent > phonemeCriticalLimits.upper;
 
-            // --- 10 Word Prompt Logic ---
-            useEffect(() => {
-                // If already limited or already asked, do nothing
-                if (activeTest.limitTo10 || activeTest.askedContinue) return;
-
-                const fullList = getListData(activeTest.listId);
-                let rangeWords = fullList;
-                if (activeTest.section === 'first') rangeWords = fullList.slice(0, 25);
-                else if (activeTest.section === 'second') rangeWords = fullList.slice(25, 50);
-
-                // Count how many unique words in the current visible range have *any* score entry
-                const scoredWordIndices = new Set();
-                rangeWords.forEach(w => {
-                    // Check if any phoneme is scored for this word
-                    let hasScore = false;
-                    w.p.forEach((_, idx) => {
-                        if (activeTest.scores[`${activeTest.listId}_${w.i}_${idx}`] !== undefined) hasScore = true;
-                    });
-                    if(hasScore) scoredWordIndices.add(w.i);
-                });
-
-                if (scoredWordIndices.size === 10) {
-                    // Need a slight delay so the UI updates the 10th score checkmark before alert blocks
-                    setTimeout(() => {
-                        // Double check state hasn't changed during timeout
-                        setTests(prev => {
-                            const currentTest = prev[activeTestId];
-                            if(currentTest.askedContinue) return prev; // already asked
-
-                            const wantsToContinue = confirm(`10 words scored for Test ${activeTestId}. Do you want to continue testing?\n\n• OK: Continue to full list\n• Cancel: Stop here (N=10)`);
-
-                            return {
-                                ...prev,
-                                [activeTestId]: {
-                                    ...currentTest,
-                                    askedContinue: true,
-                                    limitTo10: !wantsToContinue
-                                }
-                            };
-                        });
-                    }, 100);
-                }
-            }, [activeTest.scores, activeTest.listId, activeTest.section, activeTestId]);
-
-
             const updateActiveTest = (field, value) => {
                 setTests(prev => {
                     const newTests = {
@@ -338,9 +331,26 @@
                             [field]: value
                         }
                     };
-                    if (activeTestId === 'A' && field === 'section' && value === 'full') {
-                        newTests.B.section = 'full';
+
+                    // Logic to enforce matching sections for comparison
+                    if (activeTestId === 'A' && field === 'section') {
+                        // If A changes, B must match the TYPE (length)
+                        const isTen = value.includes('_10');
+                        const isHalf = value === 'first' || value === 'second';
+                        const isFull = value === 'full';
+
+                        let bSection = newTests.B.section;
+
+                        if (isTen) {
+                            if (!bSection.includes('_10')) bSection = 'first_10'; // Default to first 10
+                        } else if (isHalf) {
+                            if (bSection !== 'first' && bSection !== 'second') bSection = 'first';
+                        } else if (isFull) {
+                            bSection = 'full';
+                        }
+                        newTests.B.section = bSection;
                     }
+
                     return newTests;
                 });
             };
@@ -362,22 +372,9 @@
 
                 setTests(prev => {
                     const currentScores = { ...prev[activeTestId].scores };
+                    let shouldClear = false;
 
-                    // Check if we are toggling off the current state
-                    let allMatch = true;
-                    // For Word Mode, we can check the first phoneme to infer word state, or check all.
-                    // But effectively, if we click "Correct" and it's already fully correct, we want to clear it.
-                    // If we click "Incorrect" and it's already incorrect (which usually means at least one false/undefined, but in word mode usually we set all to false),
-                    // wait, in setWordScore below: isCorrect=false sets "delete keys" in previous logic, wait no.
-                    // In previous implementation:
-                    // isCorrect=true -> all phonemes = true
-                    // isCorrect=false -> all phonemes = undefined (deleted) ??? No, false usually means WRONG.
-                    // Let's redefine:
-                    // Correct Button -> All Phonemes TRUE
-                    // Incorrect Button -> All Phonemes FALSE (explicitly wrong)
-                    // Unscored -> All Phonemes undefined.
-
-                    // Let's check current state:
+                    // Check current state logic
                     let currentIsAllCorrect = true;
                     let currentIsAllIncorrect = true;
                     let hasAnyScore = false;
@@ -391,22 +388,13 @@
                         }
                     });
 
-                    // Logic:
-                    // If user clicked Correct (isCorrect=true) AND currently it is All Correct -> Clear (Unscore)
-                    // If user clicked Incorrect (isCorrect=false) AND currently it is All Incorrect -> Clear (Unscore)
-                    // Otherwise -> Set to isCorrect value.
-
-                    let shouldClear = false;
                     if (isCorrect && currentIsAllCorrect && hasAnyScore) shouldClear = true;
                     if (!isCorrect && currentIsAllIncorrect && hasAnyScore) shouldClear = true;
 
                     wordData.p.forEach((p, idx) => {
                         if (p !== '-') {
-                            if (shouldClear) {
-                                delete currentScores[`${listId}_${wordIndex}_${idx}`];
-                            } else {
-                                currentScores[`${listId}_${wordIndex}_${idx}`] = isCorrect;
-                            }
+                            if (shouldClear) delete currentScores[`${listId}_${wordIndex}_${idx}`];
+                            else currentScores[`${listId}_${wordIndex}_${idx}`] = isCorrect;
                         }
                     });
                     return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } };
@@ -414,33 +402,23 @@
             };
 
             const toggleWordCorrect = (wordIndex) => {
-                // Used for Phoneme Mode green check button
                 const listId = activeTest.listId;
                 const wordData = activeStats.visibleWords.find(w => w.i === wordIndex);
                 if (!wordData) return;
 
                 setTests(prev => {
                     const currentScores = { ...prev[activeTestId].scores };
-
-                    // Check if currently fully correct
                     let isFullyCorrect = true;
                     wordData.p.forEach((p, idx) => {
-                        if (p !== '-' && !currentScores[`${listId}_${wordIndex}_${idx}`]) {
-                            isFullyCorrect = false;
-                        }
+                        if (p !== '-' && !currentScores[`${listId}_${wordIndex}_${idx}`]) isFullyCorrect = false;
                     });
 
-                    // Toggle logic: If fully correct, clear it. Else, mark all correct.
                     wordData.p.forEach((p, idx) => {
                         if (p !== '-') {
-                            if (isFullyCorrect) {
-                                delete currentScores[`${listId}_${wordIndex}_${idx}`]; // or set to false? usually clear is safer for 'toggle off'
-                            } else {
-                                currentScores[`${listId}_${wordIndex}_${idx}`] = true;
-                            }
+                            if (isFullyCorrect) delete currentScores[`${listId}_${wordIndex}_${idx}`];
+                            else currentScores[`${listId}_${wordIndex}_${idx}`] = true;
                         }
                     });
-
                     return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } };
                 });
             };
@@ -458,13 +436,12 @@
                             else delete newScores[key];
                         });
                     });
-                    // Mark All counts as interaction, prevent prompting if we fill everything immediately
-                    return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores, askedContinue: true } };
+                    return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores } };
                 });
             };
 
             const handleSave = () => {
-                const data = { patientName, testDate, tests, activeTestId, activeTab, confidenceLevel, listeningEffort };
+                const data = { patientName, testDate, tests, activeTestId, activeTab, confidenceLevel };
                 const jsonString = JSON.stringify(data, null, 2);
                 const blob = new Blob([jsonString], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
@@ -492,7 +469,6 @@
                             setActiveTestId(data.activeTestId || 'A');
                             setActiveTab(data.activeTab || 'scoring');
                             if(data.confidenceLevel) setConfidenceLevel(data.confidenceLevel);
-                            if(data.listeningEffort !== undefined) setListeningEffort(data.listeningEffort);
                         } else { alert("Invalid file format"); }
                     } catch (err) { console.error(err); alert("Error reading file"); }
                 };
@@ -505,12 +481,11 @@
                     setPatientName('');
                     setTestDate(new Date().toISOString().split('T')[0]);
                     setTests({
-                        A: { id: 'A', listId: '1A', section: 'first', scoringMode: 'phoneme', condition: 'Unaided', deviceModel: '', level: '', snr: '', scores: {}, limitTo10: false, askedContinue: false },
-                        B: { id: 'B', listId: '2A', section: 'first', scoringMode: 'phoneme', condition: 'New Tech', deviceModel: '', level: '', snr: '', scores: {}, limitTo10: false, askedContinue: false }
+                        A: { id: 'A', listId: '1A', section: 'first', scoringMode: 'phoneme', condition: 'Unaided', deviceModel: '', level: '', snr: '', effort: 5, scores: {} },
+                        B: { id: 'B', listId: '2A', section: 'first', scoringMode: 'phoneme', condition: 'New Tech', deviceModel: '', level: '', snr: '', effort: 5, scores: {} }
                     });
                     setActiveTestId('A');
                     setActiveTab('scoring');
-                    setListeningEffort(5);
                     setClearConfirm(false);
                 } else {
                     setClearConfirm(true);
@@ -518,10 +493,38 @@
                 }
             };
 
+            // Options helper for Section dropdown
+            const getSectionOptions = (testId) => {
+                const options = [
+                    { val: 'first_10', label: '1st Half (First 10)', n: 10 },
+                    { val: 'first', label: '1st Half (1-25)', n: 25 },
+                    { val: 'second_10', label: '2nd Half (First 10)', n: 10 },
+                    { val: 'second', label: '2nd Half (26-50)', n: 25 },
+                    { val: 'full', label: 'Full List (1-50)', n: 50 }
+                ];
+
+                if (testId === 'A') return options;
+
+                // For Test B, filter based on Test A selection
+                const aSection = tests.A.section;
+                const aIsTen = aSection.includes('_10');
+                const aIsHalf = aSection === 'first' || aSection === 'second';
+                const aIsFull = aSection === 'full';
+
+                return options.filter(opt => {
+                    if (aIsTen) return opt.n === 10;
+                    if (aIsHalf) return opt.n === 25;
+                    if (aIsFull) return opt.n === 50;
+                    return true;
+                });
+            };
+
             const getEffortColor = (val) => { if (val <= 4) return 'text-emerald-600'; if (val >= 6) return 'text-red-600'; return 'text-blue-600'; };
+            const effortDelta = tests.B.effort - tests.A.effort;
 
             return (
                 <div className="min-h-screen bg-slate-100 p-4 md:p-8 print:p-0 print:bg-white">
+                    <ListeningEffortScaleModal isOpen={showScaleModal} onClose={() => setShowScaleModal(false)} />
                     <div className="max-w-5xl mx-auto space-y-6">
                         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 print:hidden">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -566,8 +569,13 @@
                                                     {isActive && <span className="flex h-3 w-3 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span></span>}
                                                 </div>
                                                 <div className="text-sm font-semibold text-slate-800">{t.condition}</div>
-                                                <div className="text-xs text-slate-500 mb-2">{t.listId} ({t.section === 'first' ? '1st Half' : t.section === 'second' ? '2nd Half' : 'Full'})</div>
-                                                {t.limitTo10 && <div className="text-[10px] font-bold text-orange-600 uppercase mb-2">⚠ Limited to 10 Words</div>}
+                                                <div className="text-xs text-slate-500 mb-2">{t.listId}
+                                                    {t.section === 'first' && ' (1st Half)'}
+                                                    {t.section === 'second' && ' (2nd Half)'}
+                                                    {t.section === 'full' && ' (Full)'}
+                                                    {t.section === 'first_10' && ' (1st Half - 10 Words)'}
+                                                    {t.section === 'second_10' && ' (2nd Half - 10 Words)'}
+                                                </div>
                                                 <div className="flex gap-3 text-sm">
                                                     <span className="font-bold text-slate-700">W: {s.wordPercent}%</span>
                                                     {t.scoringMode === 'phoneme' && <span className="font-bold text-slate-700">P: {s.phonemePercent}%</span>}
@@ -607,15 +615,36 @@
                                         </div>
                                         <div>
                                             <label className="block text-xs font-medium text-slate-500 mb-2">Section</label>
-                                            <select value={activeTest.section} onChange={(e) => updateActiveTest('section', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-400" disabled={activeTestId === 'B' && tests.A.section === 'full'}>
-                                                <option value="first">1st Half (1-25)</option>
-                                                <option value="second">2nd Half (26-50)</option>
-                                                <option value="full">Full List (1-50)</option>
+                                            <select
+                                                value={activeTest.section}
+                                                onChange={(e) => updateActiveTest('section', e.target.value)}
+                                                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                {getSectionOptions(activeTestId).map(opt => (
+                                                    <option key={opt.val} value={opt.val}>{opt.label}</option>
+                                                ))}
                                             </select>
                                             <label className="block text-xs font-medium text-slate-500 mb-1 mt-4">SPL (dBC)</label>
                                             <input type="text" value={activeTest.level} onChange={(e) => updateActiveTest('level', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
                                         </div>
-                                        <div><label className="block text-xs font-medium text-slate-500 mb-1 mt-auto pt-8">SNR (dB)</label><input type="text" value={activeTest.snr} onChange={(e) => updateActiveTest('snr', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-500 mb-1 mt-auto">SNR (dB)</label>
+                                            <input type="text" value={activeTest.snr} onChange={(e) => updateActiveTest('snr', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm mb-4" />
+
+                                            <label className="block text-xs font-medium text-slate-500 mb-1">Listening Effort (0-10)</label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max="10"
+                                                    value={activeTest.effort}
+                                                    onChange={(e) => updateActiveTest('effort', parseInt(e.target.value))}
+                                                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                                />
+                                                <span className="font-bold w-6 text-center">{activeTest.effort}</span>
+                                            </div>
+                                            <button onClick={() => setShowScaleModal(true)} className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 mt-1"><HelpCircle className="w-3 h-3" /> View Scale</button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -623,12 +652,8 @@
                                     <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
                                         <div className="font-bold text-slate-700 flex items-center gap-2">
                                             Scoring: Test {activeTestId} <span className="font-normal text-slate-500 mx-1">|</span> {activeTest.listId}
-                                            {activeTest.limitTo10 && <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full border border-orange-200 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Limited to 10 Words</span>}
                                         </div>
                                         <div className="flex gap-2 print:hidden">
-                                            {activeTest.limitTo10 && (
-                                                <button onClick={() => updateActiveTest('limitTo10', false)} className="text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 font-medium">Continue to Full List</button>
-                                            )}
                                             <button onClick={() => markAll(true)} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium">Mark All</button>
                                         </div>
                                     </div>
@@ -716,11 +741,6 @@
                                             })}
                                         </tbody>
                                     </table>
-                                    {activeTest.limitTo10 && (
-                                        <div className="bg-slate-50 border-t border-slate-200 p-4 text-center text-xs text-slate-500 italic">
-                                            Test stopped at 10 words. Words 11+ are excluded from scoring.
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         )}
@@ -751,9 +771,16 @@
                                                     {tests.A.deviceModel && <span className="block text-sm font-normal text-slate-500">{tests.A.deviceModel}</span>}
                                                 </div>
                                                 <div className="text-sm text-slate-600 mb-4 space-y-1">
-                                                    <div>List: {tests.A.listId} ({tests.A.limitTo10 ? '10 Words' : tests.A.section})</div>
+                                                    <div>List: {tests.A.listId}
+                                                        {tests.A.section === 'first' && ' (1st Half)'}
+                                                        {tests.A.section === 'second' && ' (2nd Half)'}
+                                                        {tests.A.section === 'full' && ' (Full)'}
+                                                        {tests.A.section === 'first_10' && ' (1st Half - 10 Words)'}
+                                                        {tests.A.section === 'second_10' && ' (2nd Half - 10 Words)'}
+                                                    </div>
                                                     <div>Level: {tests.A.level || '--'} dBC</div>
                                                     <div>SNR: {tests.A.snr || '--'} dB</div>
+                                                    <div className="flex items-center gap-2 mt-1"><span className="text-xs uppercase font-bold text-slate-400">Effort:</span> <span className={`font-bold ${getEffortColor(tests.A.effort)}`}>{tests.A.effort}/10</span></div>
                                                 </div>
                                                 <div className="space-y-2 border-t border-slate-200 pt-3">
                                                     <div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsA.wordPercent}%</span></div>
@@ -770,9 +797,14 @@
                                                 {(tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') ? (
                                                     <React.Fragment>
                                                         <div className={`text-2xl font-bold mb-1 ${statsB.phonemePercent - statsA.phonemePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{statsB.phonemePercent - statsA.phonemePercent > 0 ? '+' : ''}{statsB.phonemePercent - statsA.phonemePercent}%</div>
-                                                        <div className="text-sm text-slate-500">Phoneme Recognition</div>
+                                                        <div className="text-sm text-slate-500 mb-6">Phoneme Recognition</div>
                                                     </React.Fragment>
-                                                ) : <div className="text-xs text-slate-400 italic">Phoneme diff unavailable</div>}
+                                                ) : <div className="text-xs text-slate-400 italic mb-6">Phoneme diff unavailable</div>}
+
+                                                <div className={`text-xl font-bold mb-1 ${effortDelta < 0 ? 'text-emerald-600' : effortDelta > 0 ? 'text-red-600' : 'text-slate-600'}`}>
+                                                    {effortDelta > 0 ? '+' : ''}{effortDelta}
+                                                </div>
+                                                <div className="text-sm text-slate-500">Effort Delta</div>
                                             </div>
                                             <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black flex flex-col justify-between">
                                                 <div>
@@ -782,9 +814,16 @@
                                                         {tests.B.deviceModel && <span className="block text-sm font-normal text-slate-500">{tests.B.deviceModel}</span>}
                                                     </div>
                                                     <div className="text-sm text-slate-600 mb-4 space-y-1">
-                                                        <div>List: {tests.B.listId} ({tests.B.limitTo10 ? '10 Words' : tests.B.section})</div>
+                                                        <div>List: {tests.B.listId}
+                                                            {tests.B.section === 'first' && ' (1st Half)'}
+                                                            {tests.B.section === 'second' && ' (2nd Half)'}
+                                                            {tests.B.section === 'full' && ' (Full)'}
+                                                            {tests.B.section === 'first_10' && ' (1st Half - 10 Words)'}
+                                                            {tests.B.section === 'second_10' && ' (2nd Half - 10 Words)'}
+                                                        </div>
                                                         <div>Level: {tests.B.level || '--'} dBC</div>
                                                         <div>SNR: {tests.B.snr || '--'} dB</div>
+                                                        <div className="flex items-center gap-2 mt-1"><span className="text-xs uppercase font-bold text-slate-400">Effort:</span> <span className={`font-bold ${getEffortColor(tests.B.effort)}`}>{tests.B.effort}/10</span></div>
                                                     </div>
                                                     <div className="space-y-2 border-t border-slate-200 pt-3">
                                                         <div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsB.wordPercent}%</span></div>
@@ -792,16 +831,6 @@
                                                             <div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsB.phonemePercent}%</span></div>
                                                         )}
                                                     </div>
-                                                </div>
-                                                <div className="mt-4 pt-4 border-t border-slate-200">
-                                                    <label className="block text-xs font-bold text-slate-500 mb-2">Listening Effort Rating (New Tech)</label>
-                                                    <div className="flex justify-between text-[10px] text-slate-400 mb-1 px-1">
-                                                        <span>Much Easier</span>
-                                                        <span>No Diff</span>
-                                                        <span>Much Harder</span>
-                                                    </div>
-                                                    <input type="range" min="0" max="10" value={listeningEffort} onChange={(e) => setListeningEffort(parseInt(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
-                                                    <div className={`text-center text-sm font-bold mt-1 ${getEffortColor(listeningEffort)}`}>{listeningEffort} / 10</div>
                                                 </div>
                                             </div>
                                         </div>
