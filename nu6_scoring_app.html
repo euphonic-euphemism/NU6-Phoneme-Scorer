@@ -40,7 +40,7 @@
     <script>
         // --- LOCAL INDEXEDDB CONFIGURATION (NO CLOUD) ---
         const DB_NAME = 'NU6_Audiology_DB';
-        const DB_VERSION = 1;
+        const DB_VERSION = 2; // Bumped version to ensure schema integrity
         const STORE_NAME = 'patient_tests';
 
         const dbPromise = new Promise((resolve, reject) => {
@@ -64,14 +64,26 @@
                 return new Promise((resolve, reject) => {
                     const transaction = db.transaction([STORE_NAME], "readwrite");
                     const store = transaction.objectStore(STORE_NAME);
+
+                    // Robust ID generation
+                    let recordId = data.id;
+                    if (!recordId) {
+                        recordId = Date.now().toString();
+                    }
+
+                    // Create clean record, ensuring ID is present and valid
                     const record = {
-                        id: data.id || Date.now().toString(),
-                        timestamp: new Date().toISOString(),
-                        ...data
+                        ...data,
+                        id: String(recordId), // Force string ID
+                        timestamp: new Date().toISOString()
                     };
+
                     const request = store.put(record);
                     request.onsuccess = () => resolve(record.id);
-                    request.onerror = () => reject(request.error);
+                    request.onerror = (e) => {
+                        console.error("IDB Save Error:", e.target.error);
+                        reject(e.target.error);
+                    };
                 });
             },
             getAllTests: async () => {
@@ -81,6 +93,7 @@
                     const store = transaction.objectStore(STORE_NAME);
                     const request = store.getAll();
                     request.onsuccess = () => {
+                        // Sort by date descending
                         const sorted = request.result.sort((a, b) => new Date(b.testDate) - new Date(a.testDate));
                         resolve(sorted);
                     };
@@ -99,6 +112,7 @@
             },
             getPatientHistory: async (cNumber) => {
                 const allTests = await LocalDB.getAllTests();
+                // Filter by cNumber and sort by date ascending for the graph
                 return allTests
                     .filter(t => t.cNumber && t.cNumber.toLowerCase() === cNumber.toLowerCase())
                     .sort((a, b) => new Date(a.testDate) - new Date(b.testDate));
@@ -142,14 +156,21 @@
         const Activity = (props) => ( <IconBase {...props}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></IconBase> );
 
         // --- PHONEME CLASSIFICATION DATA ---
+        // Updated to ensure exact matches with word list data
         const PHONEME_MAP = {
+            // Fricatives
             "f": "Fricative", "v": "Fricative", "θ": "Fricative", "ð": "Fricative",
             "s": "Fricative", "z": "Fricative", "ʃ": "Fricative", "ʒ": "Fricative",
             "h": "Fricative",
+            // Affricates
             "tʃ": "Affricate", "dʒ": "Affricate",
+            // Stops
             "p": "Stop", "b": "Stop", "t": "Stop", "d": "Stop", "k": "Stop", "g": "Stop",
+            // Nasals
             "m": "Nasal", "n": "Nasal", "ŋ": "Nasal",
-            "l": "Liquid", "r": "Liquid", "w": "Glide", "j": "Glide",
+            // Liquids/Glides (Grouped)
+            "l": "Liquid/Glide", "r": "Liquid/Glide", "w": "Liquid/Glide", "j": "Liquid/Glide",
+            // Vowels
             "i": "Vowel", "ɪ": "Vowel", "eɪ": "Vowel", "ɛ": "Vowel", "æ": "Vowel",
             "u": "Vowel", "ʊ": "Vowel", "oʊ": "Vowel", "ɔ": "Vowel", "ɑ": "Vowel",
             "ʌ": "Vowel", "ɝ": "Vowel", "aɪ": "Vowel", "ɔɪ": "Vowel", "aʊ": "Vowel",
@@ -158,7 +179,7 @@
 
         const PHONEME_GROUPS = {
             "High Frequency (Fricatives, Affricates, Stops)": ["Fricative", "Affricate", "Stop"],
-            "Low Frequency (Nasals, Liquids, Glides, Vowels)": ["Nasal", "Liquid", "Glide", "Vowel"]
+            "Low Frequency (Nasals, Liquids/Glides, Vowels)": ["Nasal", "Liquid/Glide", "Vowel"]
         };
 
         // --- DATA: NU-6 LISTS ---
@@ -314,47 +335,141 @@
             return { lower: lowerLimit, upper: upperLimit };
         };
 
+        // --- CHART GENERATION HELPERS ---
+        function calculateMarginOfError(scorePercentage, n, zScore) {
+            const p = scorePercentage / 100.0;
+            const standardError = Math.sqrt((p * (1 - p)) / n);
+            return zScore * standardError * 100;
+        }
+
+        function generateData(n, zScore) {
+            const data = [];
+            for (let score = 0; score <= 100; score += 2) {
+                const moe = calculateMarginOfError(score, n, zScore);
+                data.push({x: score, y: moe});
+            }
+            return data;
+        }
+
         // --- COMPONENTS ---
+
+        // NEW: Phoneme Frequency Modal
+        const PhonemeFrequencyModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                            <X className="w-6 h-6" />
+                        </button>
+                        <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <Activity className="w-5 h-5 text-blue-600" /> Phoneme Frequency Guide
+                        </h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left border-collapse">
+                                <thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-4 py-2 border-r border-slate-200">Class</th>
+                                        <th className="px-4 py-2 border-r border-slate-200">Examples</th>
+                                        <th className="px-4 py-2">Critical Frequency Range</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    <tr className="hover:bg-slate-50">
+                                        <td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Vowels</td>
+                                        <td className="px-4 py-2 text-slate-600 border-r border-slate-200">/i, u, a/</td>
+                                        <td className="px-4 py-2 text-slate-800">
+                                            <strong>Low/Mid</strong> (F1: 250-1000 Hz, F2: 800-2500 Hz)
+                                        </td>
+                                    </tr>
+                                    <tr className="hover:bg-slate-50 bg-slate-50/50">
+                                        <td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Nasals</td>
+                                        <td className="px-4 py-2 text-slate-600 border-r border-slate-200">/m, n, ŋ/</td>
+                                        <td className="px-4 py-2 text-slate-800">
+                                            <strong>Low</strong> (~250-500 Hz Murmur)
+                                        </td>
+                                    </tr>
+                                    <tr className="hover:bg-slate-50">
+                                        <td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Liquids/Glides</td>
+                                        <td className="px-4 py-2 text-slate-600 border-r border-slate-200">/l, r, w, j/</td>
+                                        <td className="px-4 py-2 text-slate-800">
+                                            <strong>Low/Mid</strong> (Formant transitions 500-2000 Hz)
+                                        </td>
+                                    </tr>
+                                    <tr className="hover:bg-slate-50 bg-slate-50/50">
+                                        <td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Stops</td>
+                                        <td className="px-4 py-2 text-slate-600 border-r border-slate-200">/p, t, k, b, d, g/</td>
+                                        <td className="px-4 py-2 text-slate-800">
+                                            <strong>Mid/High</strong> (Burst energy 1500 - 4000+ Hz)
+                                        </td>
+                                    </tr>
+                                    <tr className="hover:bg-slate-50">
+                                        <td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Fricatives</td>
+                                        <td className="px-4 py-2 text-slate-600 border-r border-slate-200">/f, s, ʃ, θ/</td>
+                                        <td className="px-4 py-2 text-slate-800">
+                                            <strong>High</strong> (Turbulence 2500 - 8000+ Hz)
+                                        </td>
+                                    </tr>
+                                    <tr className="hover:bg-slate-50 bg-slate-50/50">
+                                        <td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Affricates</td>
+                                        <td className="px-4 py-2 text-slate-600 border-r border-slate-200">/tʃ, dʒ/</td>
+                                        <td className="px-4 py-2 text-slate-800">
+                                            <strong>Mid/High</strong> (Wide range 2000 - 8000 Hz)
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="mt-4 text-center">
+                            <button onClick={onClose} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">Close</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
         // Diagnostics Panel (Automated Error Analysis)
         const DiagnosticsPanel = ({ stats, scores, listId }) => {
+            const chartRef = useRef(null);
+            const canvasRef = useRef(null);
+            const [showInfo, setShowInfo] = useState(false);
+
             const breakdown = useMemo(() => {
                 const groups = {
                     "High Frequency (Fricatives, Affricates, Stops)": { total: 0, missed: 0, types: ["Fricative", "Affricate", "Stop"] },
-                    "Low Frequency (Nasals, Liquids, Glides, Vowels)": { total: 0, missed: 0, types: ["Nasal", "Liquid", "Glide", "Vowel"] }
+                    "Low Frequency (Nasals, Liquids/Glides, Vowels)": { total: 0, missed: 0, types: ["Nasal", "Liquid/Glide", "Vowel"] }
                 };
 
-                // Detailed counters for each specific type
+                // Detailed counters for each specific type.
+                // Consolidated Liquid/Glide to match map.
                 const details = {
                     Fricative: { total: 0, missed: 0 },
                     Affricate: { total: 0, missed: 0 },
                     Stop: { total: 0, missed: 0 },
                     Nasal: { total: 0, missed: 0 },
-                    Liquid: { total: 0, missed: 0 },
-                    Glide: { total: 0, missed: 0 },
+                    "Liquid/Glide": { total: 0, missed: 0 },
                     Vowel: { total: 0, missed: 0 }
                 };
 
                 stats.visibleWords.forEach(word => {
                     word.p.forEach((p, idx) => {
                         if (p === '-') return;
-                        const type = PHONEME_MAP[p]; // Get type from IPA map
+                        // Use trim() to avoid whitespace issues
+                        const type = PHONEME_MAP[p.trim()];
                         const isCorrect = scores[`${listId}_${word.i}_${idx}`];
 
-                        if (type) {
+                        if (type && details[type]) {
                             // Update Detailed Counters
-                            if(details[type]) {
-                                details[type].total++;
-                                if (!isCorrect) details[type].missed++;
-                            }
+                            details[type].total++;
+                            if (!isCorrect) details[type].missed++;
 
                             // Update High/Low Group Counters
                             if (groups["High Frequency (Fricatives, Affricates, Stops)"].types.includes(type)) {
                                 groups["High Frequency (Fricatives, Affricates, Stops)"].total++;
                                 if (!isCorrect) groups["High Frequency (Fricatives, Affricates, Stops)"].missed++;
-                            } else if (groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].types.includes(type)) {
-                                groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].total++;
-                                if (!isCorrect) groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].missed++;
+                            } else if (groups["Low Frequency (Nasals, Liquids/Glides, Vowels)"].types.includes(type)) {
+                                groups["Low Frequency (Nasals, Liquids/Glides, Vowels)"].total++;
+                                if (!isCorrect) groups["Low Frequency (Nasals, Liquids/Glides, Vowels)"].missed++;
                             }
                         }
                     });
@@ -363,15 +478,70 @@
                 return { groups, details };
             }, [stats, scores, listId]);
 
+            // Chart Effect
+            useEffect(() => {
+                if (!canvasRef.current) return;
+
+                const ctx = canvasRef.current.getContext('2d');
+                if (chartRef.current) {
+                    chartRef.current.destroy();
+                }
+
+                const labels = Object.keys(breakdown.details).filter(k => breakdown.details[k].total > 0);
+                const data = labels.map(k => {
+                    const d = breakdown.details[k];
+                    return Math.round((d.missed / d.total) * 100);
+                });
+
+                chartRef.current = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '% Errors',
+                            data: data,
+                            backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                            borderColor: 'rgb(239, 68, 68)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: true, text: 'Error Rate by Category' }
+                        },
+                        scales: {
+                            x: { beginAtZero: true, max: 100, title: { display: true, text: '% Missed' } }
+                        }
+                    }
+                });
+
+                return () => { if (chartRef.current) chartRef.current.destroy(); };
+            }, [breakdown]);
+
             return (
                 <div className="bg-slate-50 border-t border-slate-200 p-4">
-                    <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-blue-600" /> Automated Error Pattern Analysis
-                    </h4>
+                    <PhonemeFrequencyModal isOpen={showInfo} onClose={() => setShowInfo(false)} />
+                    <div className="flex items-center gap-2 mb-3">
+                        <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-blue-600" /> Automated Error Pattern Analysis
+                        </h4>
+                        <button onClick={() => setShowInfo(true)} className="text-slate-400 hover:text-blue-600 transition-colors" title="View Phoneme Frequency Guide">
+                            <HelpCircle className="w-4 h-4" />
+                        </button>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* High vs Low Frequency Summary */}
                         <div className="space-y-3">
+                             {/* Chart */}
+                            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm h-56 relative">
+                                <canvas ref={canvasRef}></canvas>
+                            </div>
+
                             {Object.entries(breakdown.groups).map(([name, data]) => {
                                 const percent = data.total > 0 ? Math.round((data.missed / data.total) * 100) : 0;
                                 return (
@@ -736,16 +906,12 @@
                 if (chartRef.current) chartRef.current.destroy();
 
                 const labels = historyData.map(t => t.testDate);
-
-                // Helper to get stats object from saved test
                 const getStats = (testObj) => {
                      return calculateStats(testObj.listId, testObj.section, testObj.scores, testObj.limitTo10);
                 };
 
-                // Prepare Data Arrays
                 const wrsA = historyData.map(r => getStats(r.tests.A).wordPercent);
                 const prsA = historyData.map(r => getStats(r.tests.A).phonemePercent);
-
                 const wrsB = historyData.map(r => getStats(r.tests.B).wordPercent);
                 const prsB = historyData.map(r => getStats(r.tests.B).phonemePercent);
 
@@ -870,6 +1036,7 @@
             const [showPhonemeModal, setShowPhonemeModal] = useState(false); // New State
             const [showLoadModal, setShowLoadModal] = useState(false);
             const [currentTestId, setCurrentTestId] = useState(null); // Track loaded test ID
+            const fileInputRef = useRef(null);
 
             const [tests, setTests] = useState({
                 A: {
@@ -1173,6 +1340,8 @@
                     alert("Failed to export database.");
                 }
             };
+
+            const handleOpenClick = () => fileInputRef.current.click();
 
             const clearAllData = () => {
                 if (clearConfirm) {
