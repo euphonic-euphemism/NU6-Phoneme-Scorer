@@ -15,6 +15,9 @@
     <!-- html2canvas for PNG Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
+    <!-- Chart.js for Critical Difference Graph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -34,8 +37,75 @@
 <body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
 
+    <script>
+        // --- LOCAL INDEXEDDB CONFIGURATION (NO CLOUD) ---
+        const DB_NAME = 'NU6_Audiology_DB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'patient_tests';
+
+        const dbPromise = new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onerror = (event) => reject("Database error: " + event.target.errorCode);
+            request.onsuccess = (event) => resolve(event.target.result);
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    const objectStore = db.createObjectStore(STORE_NAME, { keyPath: "id" });
+                    objectStore.createIndex("patientName", "patientName", { unique: false });
+                    objectStore.createIndex("cNumber", "cNumber", { unique: false });
+                    objectStore.createIndex("testDate", "testDate", { unique: false });
+                }
+            };
+        });
+
+        const LocalDB = {
+            saveTest: async (data) => {
+                const db = await dbPromise;
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], "readwrite");
+                    const store = transaction.objectStore(STORE_NAME);
+                    const record = {
+                        id: Date.now().toString(), // Simple unique ID based on timestamp
+                        timestamp: new Date().toISOString(),
+                        ...data
+                    };
+                    const request = store.add(record);
+                    request.onsuccess = () => resolve(record.id);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            getAllTests: async () => {
+                const db = await dbPromise;
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], "readonly");
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.getAll();
+                    request.onsuccess = () => {
+                        // Sort by date descending in JS since IndexedDB sorting is basic
+                        const sorted = request.result.sort((a, b) => new Date(b.testDate) - new Date(a.testDate));
+                        resolve(sorted);
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            deleteTest: async (id) => {
+                const db = await dbPromise;
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], "readwrite");
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.delete(id);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+        };
+
+        window.localDB = LocalDB;
+    </script>
+
     <script type="text/babel">
         const { useState, useMemo, useEffect, useRef } = React;
+        const localDB = window.localDB;
 
         // --- INLINE ICONS ---
         const IconBase = ({ children, className, ...props }) => (
@@ -44,48 +114,26 @@
             </svg>
         );
 
-        const Calculator = (props) => (
-            <IconBase {...props}><rect width="16" height="20" x="4" y="2" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></IconBase>
-        );
-        const Save = (props) => (
-            <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconBase>
-        );
-        const FolderOpen = (props) => (
-            <IconBase {...props}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></IconBase>
-        );
-        const Trash2 = (props) => (
-            <IconBase {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase>
-        );
-        const CheckCircle2 = (props) => (
-            <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></IconBase>
-        );
-        const RotateCcw = (props) => (
-            <IconBase {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></IconBase>
-        );
-        const Check = (props) => (
-            <IconBase {...props}><polyline points="20 6 9 17 4 12"/></IconBase>
-        );
-        const X = (props) => (
-            <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>
-        );
-        const BarChart3 = (props) => (
-            <IconBase {...props}><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></IconBase>
-        );
-        const ListChecks = (props) => (
-            <IconBase {...props}><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></IconBase>
-        );
-        const WholeWord = (props) => (
-            <IconBase {...props}><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></IconBase>
-        );
-        const AlertCircle = (props) => (
-            <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconBase>
-        );
-        const HelpCircle = (props) => (
-            <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></IconBase>
-        );
-        const Download = (props) => (
-            <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconBase>
-        );
+        const Calculator = (props) => ( <IconBase {...props}><rect width="16" height="20" x="4" y="2" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></IconBase> );
+        const Save = (props) => ( <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconBase> );
+        const FolderOpen = (props) => ( <IconBase {...props}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></IconBase> );
+        const Trash2 = (props) => ( <IconBase {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase> );
+        const CheckCircle2 = (props) => ( <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></IconBase> );
+        const RotateCcw = (props) => ( <IconBase {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></IconBase> );
+        const Check = (props) => ( <IconBase {...props}><polyline points="20 6 9 17 4 12"/></IconBase> );
+        const X = (props) => ( <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase> );
+        const BarChart3 = (props) => ( <IconBase {...props}><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></IconBase> );
+        const ListChecks = (props) => ( <IconBase {...props}><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></IconBase> );
+        const WholeWord = (props) => ( <IconBase {...props}><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></IconBase> );
+        const AlertCircle = (props) => ( <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconBase> );
+        const HelpCircle = (props) => ( <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></IconBase> );
+        const Download = (props) => ( <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconBase> );
+        const TrendingUp = (props) => ( <IconBase {...props}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></IconBase> );
+        const Cloud = (props) => ( <IconBase {...props}><path d="M17.5 19c0-1.7-1.3-3-3-3h-11a4 4 0 1 1 0-8c0 2.5 2 5 4 5 4-4 4-9 8-9 2.8 0 5 2.2 5 5 0 2 0 4-1 4"/></IconBase> );
+        const Search = (props) => ( <IconBase {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></IconBase> );
+        const Loader = (props) => ( <IconBase {...props} className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></IconBase> );
+        const Database = (props) => ( <IconBase {...props}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></IconBase> );
+        const FileUp = (props) => ( <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></IconBase> );
 
         // --- DATA: NU-6 LISTS ---
         const LIST_1A = [
@@ -240,6 +288,169 @@
             return { lower: lowerLimit, upper: upperLimit };
         };
 
+        // --- CHART GENERATION HELPERS ---
+        function calculateMarginOfError(scorePercentage, n, zScore) {
+            const p = scorePercentage / 100.0;
+            const standardError = Math.sqrt((p * (1 - p)) / n);
+            return zScore * standardError * 100;
+        }
+
+        function generateData(n, zScore) {
+            const data = [];
+            for (let score = 0; score <= 100; score += 2) {
+                const moe = calculateMarginOfError(score, n, zScore);
+                data.push({x: score, y: moe});
+            }
+            return data;
+        }
+
+        // --- CRITICAL DIFFERENCE CHART MODAL ---
+        const CriticalDifferenceModal = ({ isOpen, onClose, confidenceLevel }) => {
+            const chartRef = useRef(null);
+            const canvasRef = useRef(null);
+
+            useEffect(() => {
+                if (!isOpen || !canvasRef.current) return;
+
+                const zScore = confidenceLevel === 95 ? 1.96 : 1.2816;
+                const ctx = canvasRef.current.getContext('2d');
+
+                // Destroy old chart if exists
+                if (chartRef.current) {
+                    chartRef.current.destroy();
+                }
+
+                // Generate datasets
+                const data10 = generateData(10, zScore);
+                const data25 = generateData(25, zScore);
+                const data30 = generateData(30, zScore);
+                const data50 = generateData(50, zScore);
+                const data75 = generateData(75, zScore);
+                const data150 = generateData(150, zScore);
+
+                chartRef.current = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [
+                            // Word datasets (Dashed)
+                            {
+                                label: 'N = 10 (Words)',
+                                data: data10,
+                                borderColor: '#9467bd', // Purple
+                                borderDash: [5, 5],
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0.4
+                            },
+                            {
+                                label: 'N = 25 (Words)',
+                                data: data25,
+                                borderColor: '#d62728', // Red
+                                borderDash: [5, 5],
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0.4
+                            },
+                            {
+                                label: 'N = 50 (Words)',
+                                data: data50,
+                                borderColor: '#ff7f0e', // Orange
+                                borderDash: [5, 5],
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0.4
+                            },
+                             // Phoneme datasets (Solid)
+                             {
+                                label: 'N = 30 (Phonemes)',
+                                data: data30,
+                                borderColor: '#17becf', // Teal
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0.4
+                            },
+                             {
+                                label: 'N = 75 (Phonemes)',
+                                data: data75,
+                                borderColor: '#2ca02c', // Green
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0.4
+                            },
+                            {
+                                label: 'N = 150 (Phonemes)',
+                                data: data150,
+                                borderColor: '#1f77b4', // Blue
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0.4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            title: { display: true, text: `Critical Difference Ranges (${confidenceLevel}% Confidence)` },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.dataset.label + ': ±' + context.parsed.y.toFixed(1) + '%';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                title: { display: true, text: 'Score (%)' },
+                                min: 0,
+                                max: 100
+                            },
+                            y: {
+                                title: { display: true, text: 'Margin of Error (+/- %)' },
+                                min: 0,
+                                suggestedMax: 30
+                            }
+                        }
+                    }
+                });
+
+                return () => {
+                    if (chartRef.current) chartRef.current.destroy();
+                };
+            }, [isOpen, confidenceLevel]);
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl p-6 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                            <X className="w-6 h-6" />
+                        </button>
+                        <div className="h-[500px] w-full">
+                            <canvas ref={canvasRef}></canvas>
+                        </div>
+                         <div className="mt-4 text-center">
+                            <button onClick={onClose} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium">Close</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+
         // --- Listening Effort Scale Component (Modal) ---
         const ListeningEffortScaleModal = ({ isOpen, onClose }) => {
             if (!isOpen) return null;
@@ -304,6 +515,97 @@
             );
         };
 
+        // --- NEW: Phoneme Disclaimer Modal ---
+        const PhonemeDisclaimerModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                            <X className="w-5 h-5" />
+                        </button>
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4 text-blue-600">
+                                <AlertCircle className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-800 mb-2">Phoneme Scoring Note</h3>
+                            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                                Phoneme scores are typically about <strong>20% better</strong> than whole word scores. You may want to use a <strong>lower (more difficult) SNR</strong> to avoid ceiling effects.
+                            </p>
+                            <button onClick={onClose} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium w-full transition-colors">
+                                Got it
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const LoadTestModal = ({ isOpen, onClose, onLoad }) => {
+            const [tests, setTestsList] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [search, setSearch] = useState("");
+
+            useEffect(() => {
+                if(!isOpen) return;
+                setLoading(true);
+                localDB.getAllTests().then(data => {
+                    setTestsList(data);
+                    setLoading(false);
+                }).catch(err => {
+                    console.error("Error fetching local tests:", err);
+                    setLoading(false);
+                });
+            }, [isOpen]);
+
+            const handleDelete = async (testId, e) => {
+                e.stopPropagation();
+                if(confirm("Are you sure you want to delete this test? This cannot be undone.")) {
+                    try {
+                        await localDB.deleteTest(testId);
+                        // Refresh list
+                        const updated = await localDB.getAllTests();
+                        setTestsList(updated);
+                    } catch(err) { console.error("Error deleting:", err); alert("Delete failed"); }
+                }
+            };
+
+            const filtered = tests.filter(t =>
+                (t.patientName || "").toLowerCase().includes(search.toLowerCase()) ||
+                (t.cNumber || "").toLowerCase().includes(search.toLowerCase())
+            );
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 relative flex flex-col max-h-[80vh]">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
+                        <h3 className="text-xl font-bold text-slate-800 mb-4">Load Patient History (Local)</h3>
+
+                        <div className="relative mb-4">
+                            <Search className="absolute left-3 top-2.5 text-slate-400 w-5 h-5" />
+                            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by Name or ID..." className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                            {loading ? <div className="text-center py-8 text-slate-500"><Loader className="w-8 h-8 mx-auto mb-2 text-blue-600"/>Loading records...</div> :
+                             filtered.length === 0 ? <div className="text-center py-8 text-slate-500 italic">No matching records found in local database.</div> :
+                             filtered.map(test => (
+                                <div key={test.id} onClick={() => { onLoad(test); onClose(); }} className="p-3 border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-blue-300 cursor-pointer transition group flex justify-between items-center">
+                                    <div>
+                                        <div className="font-bold text-slate-800">{test.patientName} <span className="text-slate-400 font-normal">#{test.cNumber}</span></div>
+                                        <div className="text-xs text-slate-500">{test.testDate} • {test.tests.A.condition} vs {test.tests.B.condition}</div>
+                                    </div>
+                                    <button onClick={(e) => handleDelete(test.id, e)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         // --- MAIN APP ---
         const App = () => {
             const [patientName, setPatientName] = useState('');
@@ -314,33 +616,36 @@
             const [confidenceLevel, setConfidenceLevel] = useState(80); // DEFAULT CHANGED TO 80%
             const [clearConfirm, setClearConfirm] = useState(false);
             const [showScaleModal, setShowScaleModal] = useState(false);
+            const [showChartModal, setShowChartModal] = useState(false);
+            const [showPhonemeModal, setShowPhonemeModal] = useState(false); // New State
+            const [showLoadModal, setShowLoadModal] = useState(false);
             const fileInputRef = useRef(null);
 
             const [tests, setTests] = useState({
                 A: {
                     id: 'A',
-                    listId: '3A', // Updated Default
-                    section: 'second_10', // Updated Default
-                    scoringMode: 'phoneme',
+                    listId: '3A',
+                    section: 'second_10',
+                    scoringMode: 'word', // Updated Default
                     condition: 'Unaided',
                     deviceModel: '',
                     level: '',
                     snr: '',
-                    effort: 5, // Default effort
+                    effort: 5,
                     scores: {},
                     limitTo10: false,
                     askedContinue: false
                 },
                 B: {
                     id: 'B',
-                    listId: '4A', // Updated Default
-                    section: 'second_10', // Updated Default
-                    scoringMode: 'phoneme',
+                    listId: '4A',
+                    section: 'second_10',
+                    scoringMode: 'word', // Updated Default
                     condition: 'New Tech',
                     deviceModel: '',
                     level: '',
                     snr: '',
-                    effort: 5, // Default effort
+                    effort: 5,
                     scores: {},
                     limitTo10: false,
                     askedContinue: false
@@ -391,6 +696,12 @@
             };
 
             const updateActiveTest = (field, value) => {
+
+                // Trigger Phoneme Disclaimer
+                if (field === 'scoringMode' && value === 'phoneme') {
+                    setShowPhonemeModal(true);
+                }
+
                 setTests(prev => {
                     const newTests = {
                         ...prev,
@@ -418,6 +729,17 @@
                             bSection = 'full';
                         }
                         newTests.B.section = bSection;
+                    }
+
+                    // Enforce matching Scoring Mode across both tests
+                    if (field === 'scoringMode') {
+                        newTests.A.scoringMode = value;
+                        newTests.B.scoringMode = value;
+                    }
+
+                    // Sync SPL and SNR from Test A to Test B
+                    if (activeTestId === 'A' && (field === 'level' || field === 'snr')) {
+                        newTests.B[field] = value;
                     }
 
                     return newTests;
@@ -542,20 +864,28 @@
                 });
             };
 
-            const handleSave = () => {
+            const handleSave = async () => {
+                if (!patientName.trim()) { alert("Please enter a Patient Name."); return; }
                 const data = { patientName, cNumber, testDate, tests, activeTestId, activeTab, confidenceLevel };
-                const jsonString = JSON.stringify(data, null, 2);
-                const blob = new Blob([jsonString], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `NU6_${patientName.replace(/\s+/g, '_')}_${testDate}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                try {
+                    await localDB.saveTest(data);
+                    alert("Test saved to Local Database successfully!");
+                } catch(e) {
+                    console.error("Save error", e); alert("Failed to save to local database.");
+                }
             };
 
-            const handleOpenClick = () => fileInputRef.current.click();
+            const handleLoadTest = (loadedData) => {
+                if (loadedData) {
+                    setPatientName(loadedData.patientName || '');
+                    setCNumber(loadedData.cNumber || '');
+                    setTestDate(loadedData.testDate || new Date().toISOString().split('T')[0]);
+                    setTests(loadedData.tests);
+                    setActiveTestId(loadedData.activeTestId || 'A');
+                    setActiveTab(loadedData.activeTab || 'scoring');
+                    if(loadedData.confidenceLevel) setConfidenceLevel(loadedData.confidenceLevel);
+                }
+            };
 
             const handleFileChange = (event) => {
                 const file = event.target.files[0];
@@ -579,14 +909,16 @@
                 event.target.value = '';
             };
 
+            const handleOpenClick = () => fileInputRef.current.click();
+
             const clearAllData = () => {
                 if (clearConfirm) {
                     setPatientName('');
                     setCNumber('');
                     setTestDate(new Date().toISOString().split('T')[0]);
                     setTests({
-                        A: { id: 'A', listId: '3A', section: 'second_10', scoringMode: 'phoneme', condition: 'Unaided', deviceModel: '', level: '', snr: '', effort: 5, scores: {}, limitTo10: false, askedContinue: false },
-                        B: { id: 'B', listId: '4A', section: 'second_10', scoringMode: 'phoneme', condition: 'New Tech', deviceModel: '', level: '', snr: '', effort: 5, scores: {}, limitTo10: false, askedContinue: false }
+                        A: { id: 'A', listId: '3A', section: 'second_10', scoringMode: 'word', condition: 'Unaided', deviceModel: '', level: '', snr: '', effort: 5, scores: {}, limitTo10: false, askedContinue: false },
+                        B: { id: 'B', listId: '4A', section: 'second_10', scoringMode: 'word', condition: 'New Tech', deviceModel: '', level: '', snr: '', effort: 5, scores: {}, limitTo10: false, askedContinue: false }
                     });
                     setActiveTestId('A');
                     setActiveTab('scoring');
@@ -604,6 +936,10 @@
             return (
                 <div className="min-h-screen bg-slate-100 p-4 md:p-8 print:p-0 print:bg-white">
                     <ListeningEffortScaleModal isOpen={showScaleModal} onClose={() => setShowScaleModal(false)} />
+                    <CriticalDifferenceModal isOpen={showChartModal} onClose={() => setShowChartModal(false)} confidenceLevel={confidenceLevel} />
+                    <PhonemeDisclaimerModal isOpen={showPhonemeModal} onClose={() => setShowPhonemeModal(false)} />
+                    <LoadTestModal isOpen={showLoadModal} onClose={() => setShowLoadModal(false)} onLoad={handleLoadTest} />
+
                     <div className="max-w-5xl mx-auto space-y-6">
                         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 print:hidden">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -616,14 +952,17 @@
                                 </div>
                                 <div className="flex flex-wrap gap-2 justify-end">
                                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                                    <button onClick={handleOpenClick} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><FolderOpen className="w-4 h-4" /> Open</button>
-                                    <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"><Save className="w-4 h-4" /> Save</button>
-                                    <button onClick={clearAllData} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium ${clearConfirm ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}><Trash2 className="w-4 h-4" /> {clearConfirm ? "Confirm?" : "Clear All"}</button>
+                                    <button onClick={handleOpenClick} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><FolderOpen className="w-4 h-4" /> Open JSON</button>
+                                    <button onClick={() => setShowLoadModal(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><Database className="w-4 h-4" /> Load Patient</button>
+                                    <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"><Save className="w-4 h-4" /> Save (Local)</button>
+                                    <button onClick={clearAllData} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium ${clearConfirm ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}><Trash2 className="w-4 h-4" /> {clearConfirm ? "Confirm?" : "New Test"}</button>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pb-6 border-b border-slate-100">
-                                <div className="md:col-span-1 space-y-4">
+                            {/* Patient Information Section - Full Width */}
+                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-6">
+                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Patient Information</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                     <div>
                                         <label className="block text-xs font-medium text-slate-500 mb-1">Patient Name</label>
                                         <input type="text" value={patientName} onChange={(e) => setPatientName(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Enter name..." />
@@ -632,14 +971,14 @@
                                         <label className="block text-xs font-medium text-slate-500 mb-1">ID</label>
                                         <input type="text" value={cNumber} onChange={(e) => setCNumber(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Patient ID" />
                                     </div>
-                                </div>
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Test Date</label>
-                                    <input type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
-                                </div>
-                                <div className="flex items-start md:col-span-1">
-                                    <div className="bg-slate-50 p-3 rounded-lg text-xs text-slate-600 border border-slate-200 w-full h-full">
-                                        <strong>Comparison Mode Active:</strong> Toggle between Test A and Test B below to input scores, then view the Comparison tab.
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-500 mb-1">Test Date</label>
+                                        <input type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+                                    </div>
+                                    <div className="flex items-end">
+                                        <div className="bg-white p-3 rounded-lg text-xs text-slate-600 border border-slate-200 w-full h-[42px] flex items-center justify-center text-center leading-tight">
+                                            Comparison Mode Active
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -681,7 +1020,6 @@
                                 </div>
 
                                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 print:hidden">
-                                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Configuration: Test {activeTestId}</h3>
                                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                                         {/* Left Side: Condition & Scoring Mode (Span 5) */}
@@ -689,7 +1027,7 @@
                                             <div>
                                                 <label className="block text-xs font-medium text-slate-500 mb-2">Condition</label>
                                                 <div className="flex rounded-lg overflow-hidden border border-slate-200 mb-3">
-                                                    {['Unaided', 'Current Tech', 'New Tech'].map(c => (
+                                                    {(activeTestId === 'A' ? ['Unaided', 'Current Tech'] : ['Current Tech', 'New Tech']).map(c => (
                                                         <button key={c} onClick={() => updateActiveTest('condition', c)} className={`flex-1 py-2 text-sm font-medium transition ${activeTest.condition === c ? 'bg-indigo-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>{c}</button>
                                                     ))}
                                                 </div>
@@ -893,6 +1231,7 @@
                                                 <span className="px-2 text-xs font-semibold text-slate-500 uppercase">Confidence Level</span>
                                                 <button onClick={() => setConfidenceLevel(95)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 95 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>95%</button>
                                                 <button onClick={() => setConfidenceLevel(80)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 80 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>80%</button>
+                                                <button onClick={() => setShowChartModal(true)} className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> View Chart</button>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-3 gap-8 mb-8">
@@ -999,18 +1338,11 @@
                                                         <tr>
                                                             <td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {statsA.totalPhonemes}</span></td>
                                                             <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.phonemePercent}%</td>
-                                                            <td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{phonemeCriticalLimits.lower}% - {phonemeCriticalLimits.upper}%</td>
+                                                            {/* Phoneme significance is N/A due to lack of independence between phonemes */}
+                                                            <td className="px-4 py-3 text-center text-slate-400 bg-slate-50 text-xs font-mono">—</td>
                                                             <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.phonemePercent}%</td>
                                                             <td className="px-4 py-3 text-center">
-                                                                {isPhonemeDiffSig ? (
-                                                                    <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs">
-                                                                        <Check className="w-3 h-3" /> Yes
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs">
-                                                                        <X className="w-3 h-3" /> No
-                                                                    </span>
-                                                                )}
+                                                                <span className="text-slate-400 text-xs italic" title="Statistical significance not calculated for phonemes due to item interdependence">N/A</span>
                                                             </td>
                                                         </tr>
                                                     )}
