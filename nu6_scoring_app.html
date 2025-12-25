@@ -17,7 +17,6 @@
 
     <!-- Chart.js for Critical Difference Graph -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Chart.js Date Adapter (if needed, but we'll use strings for simplicity) -->
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -66,11 +65,11 @@
                     const transaction = db.transaction([STORE_NAME], "readwrite");
                     const store = transaction.objectStore(STORE_NAME);
                     const record = {
-                        id: Date.now().toString(), // Simple unique ID based on timestamp
+                        id: data.id || Date.now().toString(),
                         timestamp: new Date().toISOString(),
                         ...data
                     };
-                    const request = store.add(record);
+                    const request = store.put(record);
                     request.onsuccess = () => resolve(record.id);
                     request.onerror = () => reject(request.error);
                 });
@@ -82,7 +81,6 @@
                     const store = transaction.objectStore(STORE_NAME);
                     const request = store.getAll();
                     request.onsuccess = () => {
-                        // Sort by date descending in JS since IndexedDB sorting is basic
                         const sorted = request.result.sort((a, b) => new Date(b.testDate) - new Date(a.testDate));
                         resolve(sorted);
                     };
@@ -101,7 +99,6 @@
             },
             getPatientHistory: async (cNumber) => {
                 const allTests = await LocalDB.getAllTests();
-                // Filter by cNumber and sort by date ascending for the graph
                 return allTests
                     .filter(t => t.cNumber && t.cNumber.toLowerCase() === cNumber.toLowerCase())
                     .sort((a, b) => new Date(a.testDate) - new Date(b.testDate));
@@ -137,12 +134,32 @@
         const HelpCircle = (props) => ( <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></IconBase> );
         const Download = (props) => ( <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconBase> );
         const TrendingUp = (props) => ( <IconBase {...props}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></IconBase> );
-        const Cloud = (props) => ( <IconBase {...props}><path d="M17.5 19c0-1.7-1.3-3-3-3h-11a4 4 0 1 1 0-8c0 2.5 2 5 4 5 4-4 4-9 8-9 2.8 0 5 2.2 5 5 0 2 0 4-1 4"/></IconBase> );
         const Search = (props) => ( <IconBase {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></IconBase> );
         const Loader = (props) => ( <IconBase {...props} className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></IconBase> );
         const Database = (props) => ( <IconBase {...props}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></IconBase> );
         const FileUp = (props) => ( <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></IconBase> );
         const HistoryIcon = (props) => ( <IconBase {...props}><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></IconBase> );
+        const Activity = (props) => ( <IconBase {...props}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></IconBase> );
+
+        // --- PHONEME CLASSIFICATION DATA ---
+        const PHONEME_MAP = {
+            "f": "Fricative", "v": "Fricative", "θ": "Fricative", "ð": "Fricative",
+            "s": "Fricative", "z": "Fricative", "ʃ": "Fricative", "ʒ": "Fricative",
+            "h": "Fricative",
+            "tʃ": "Affricate", "dʒ": "Affricate",
+            "p": "Stop", "b": "Stop", "t": "Stop", "d": "Stop", "k": "Stop", "g": "Stop",
+            "m": "Nasal", "n": "Nasal", "ŋ": "Nasal",
+            "l": "Liquid", "r": "Liquid", "w": "Glide", "j": "Glide",
+            "i": "Vowel", "ɪ": "Vowel", "eɪ": "Vowel", "ɛ": "Vowel", "æ": "Vowel",
+            "u": "Vowel", "ʊ": "Vowel", "oʊ": "Vowel", "ɔ": "Vowel", "ɑ": "Vowel",
+            "ʌ": "Vowel", "ɝ": "Vowel", "aɪ": "Vowel", "ɔɪ": "Vowel", "aʊ": "Vowel",
+            "ə": "Vowel", "ɚ": "Vowel"
+        };
+
+        const PHONEME_GROUPS = {
+            "High Frequency (Fricatives, Affricates, Stops)": ["Fricative", "Affricate", "Stop"],
+            "Low Frequency (Nasals, Liquids, Glides, Vowels)": ["Nasal", "Liquid", "Glide", "Vowel"]
+        };
 
         // --- DATA: NU-6 LISTS ---
         const LIST_1A = [
@@ -297,23 +314,104 @@
             return { lower: lowerLimit, upper: upperLimit };
         };
 
-        // --- CHART GENERATION HELPERS ---
-        function calculateMarginOfError(scorePercentage, n, zScore) {
-            const p = scorePercentage / 100.0;
-            const standardError = Math.sqrt((p * (1 - p)) / n);
-            return zScore * standardError * 100;
-        }
+        // --- COMPONENTS ---
 
-        function generateData(n, zScore) {
-            const data = [];
-            for (let score = 0; score <= 100; score += 2) {
-                const moe = calculateMarginOfError(score, n, zScore);
-                data.push({x: score, y: moe});
-            }
-            return data;
-        }
+        // Diagnostics Panel (Automated Error Analysis)
+        const DiagnosticsPanel = ({ stats, scores, listId }) => {
+            const breakdown = useMemo(() => {
+                const groups = {
+                    "High Frequency (Fricatives, Affricates, Stops)": { total: 0, missed: 0, types: ["Fricative", "Affricate", "Stop"] },
+                    "Low Frequency (Nasals, Liquids, Glides, Vowels)": { total: 0, missed: 0, types: ["Nasal", "Liquid", "Glide", "Vowel"] }
+                };
 
-        // --- CRITICAL DIFFERENCE CHART MODAL ---
+                // Detailed counters for each specific type
+                const details = {
+                    Fricative: { total: 0, missed: 0 },
+                    Affricate: { total: 0, missed: 0 },
+                    Stop: { total: 0, missed: 0 },
+                    Nasal: { total: 0, missed: 0 },
+                    Liquid: { total: 0, missed: 0 },
+                    Glide: { total: 0, missed: 0 },
+                    Vowel: { total: 0, missed: 0 }
+                };
+
+                stats.visibleWords.forEach(word => {
+                    word.p.forEach((p, idx) => {
+                        if (p === '-') return;
+                        const type = PHONEME_MAP[p]; // Get type from IPA map
+                        const isCorrect = scores[`${listId}_${word.i}_${idx}`];
+
+                        if (type) {
+                            // Update Detailed Counters
+                            if(details[type]) {
+                                details[type].total++;
+                                if (!isCorrect) details[type].missed++;
+                            }
+
+                            // Update High/Low Group Counters
+                            if (groups["High Frequency (Fricatives, Affricates, Stops)"].types.includes(type)) {
+                                groups["High Frequency (Fricatives, Affricates, Stops)"].total++;
+                                if (!isCorrect) groups["High Frequency (Fricatives, Affricates, Stops)"].missed++;
+                            } else if (groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].types.includes(type)) {
+                                groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].total++;
+                                if (!isCorrect) groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].missed++;
+                            }
+                        }
+                    });
+                });
+
+                return { groups, details };
+            }, [stats, scores, listId]);
+
+            return (
+                <div className="bg-slate-50 border-t border-slate-200 p-4">
+                    <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-blue-600" /> Automated Error Pattern Analysis
+                    </h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* High vs Low Frequency Summary */}
+                        <div className="space-y-3">
+                            {Object.entries(breakdown.groups).map(([name, data]) => {
+                                const percent = data.total > 0 ? Math.round((data.missed / data.total) * 100) : 0;
+                                return (
+                                    <div key={name} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">{name}</span>
+                                            <span className={`text-xs font-bold ${percent > 30 ? 'text-red-600' : 'text-slate-500'}`}>{percent}% Missed</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-2 mb-1">
+                                            <div className={`h-2 rounded-full ${percent > 50 ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 text-right">{data.missed} / {data.total} phonemes</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Detailed Type Breakdown */}
+                        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                            <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3 border-b border-slate-100 pb-2">Detailed Breakdown</h5>
+                            <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                                {Object.entries(breakdown.details).map(([type, data]) => {
+                                    if(data.total === 0) return null; // Hide categories not present in list
+                                    const pct = Math.round((data.missed / data.total) * 100);
+                                    return (
+                                        <div key={type} className="flex justify-between items-center text-xs">
+                                            <span className="text-slate-600">{type}</span>
+                                            <span className={`font-mono ${pct > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+                                                {data.missed}/{data.total} ({pct}%)
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const CriticalDifferenceModal = ({ isOpen, onClose, confidenceLevel }) => {
             const chartRef = useRef(null);
             const canvasRef = useRef(null);
@@ -550,124 +648,6 @@
             );
         };
 
-        // --- PATIENT HISTORY CHART ---
-        const HistoryChart = ({ cNumber }) => {
-            const canvasRef = useRef(null);
-            const chartRef = useRef(null);
-            const [historyData, setHistoryData] = useState([]);
-            const [loading, setLoading] = useState(false);
-
-            useEffect(() => {
-                if (!cNumber) return;
-                setLoading(true);
-                localDB.getPatientHistory(cNumber).then(data => {
-                    setHistoryData(data);
-                    setLoading(false);
-                });
-            }, [cNumber]);
-
-            useEffect(() => {
-                if (!canvasRef.current || historyData.length === 0) return;
-
-                const ctx = canvasRef.current.getContext('2d');
-                if (chartRef.current) chartRef.current.destroy();
-
-                const labels = historyData.map(t => t.testDate);
-                // Extract Test A and Test B WRS. Note: Assuming standard naming, or just plotting whatever is there.
-                // Since conditions might change (Unaided vs Aided), we might want to plot based on condition name?
-                // For simplicity, let's plot "Test A (Unaided/Current)" and "Test B (Current/New)" as Series 1 and 2.
-                // Or better: Group by Condition Name if possible.
-                // Simple approach: Series 1 = Test A WRS, Series 2 = Test B WRS.
-                // Note: calculateStats logic needs to be run on saved data to get scores if not saved explicitly.
-                // Actually, saved data stores 'tests' object which has scores. We need to re-calculate stats or store stats.
-                // The current save logic stores 'tests' state. We need to calculate percentages.
-
-                // Helper to calc percent from saved test object
-                const getWRS = (testObj, listId, section, scores) => {
-                     // We need the calculateStats logic here, but it relies on 'LIST_1A' etc constants which are available in scope.
-                     const result = calculateStats(listId, section, scores, testObj.limitTo10); // Assuming limitTo10 is saved
-                     return result.wordPercent;
-                };
-
-                const dataA = historyData.map(record => getWRS(record.tests.A, record.tests.A.listId, record.tests.A.section, record.tests.A.scores));
-                const dataB = historyData.map(record => getWRS(record.tests.B, record.tests.B.listId, record.tests.B.section, record.tests.B.scores));
-
-                chartRef.current = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                label: 'Test A (Baseline)',
-                                data: dataA,
-                                borderColor: '#2563eb', // Blue-600
-                                backgroundColor: '#2563eb',
-                                tension: 0.1
-                            },
-                            {
-                                label: 'Test B (Comparison)',
-                                data: dataB,
-                                borderColor: '#9333ea', // Purple-600
-                                backgroundColor: '#9333ea',
-                                tension: 0.1
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Word Recognition Score (%)' } }
-                        }
-                    }
-                });
-
-                return () => { if (chartRef.current) chartRef.current.destroy(); };
-            }, [historyData]);
-
-            if (!cNumber) return <div className="text-center text-slate-400 py-10">Enter Patient ID to view history.</div>;
-            if (loading) return <div className="text-center text-slate-500 py-10"><Loader className="w-8 h-8 mx-auto mb-2 text-blue-600"/>Loading history...</div>;
-            if (historyData.length === 0) return <div className="text-center text-slate-400 py-10">No history found for ID: {cNumber}</div>;
-
-            return (
-                <div className="space-y-6">
-                    <div className="bg-white p-4 rounded-lg border border-slate-200 h-[300px]">
-                        <canvas ref={canvasRef}></canvas>
-                    </div>
-                    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                                <tr>
-                                    <th className="px-4 py-2">Date</th>
-                                    <th className="px-4 py-2">Test A</th>
-                                    <th className="px-4 py-2">Score A</th>
-                                    <th className="px-4 py-2">Test B</th>
-                                    <th className="px-4 py-2">Score B</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {historyData.map((record, idx) => {
-                                     // Re-calc stats for table display
-                                    const statsA = calculateStats(record.tests.A.listId, record.tests.A.section, record.tests.A.scores, record.tests.A.limitTo10);
-                                    const statsB = calculateStats(record.tests.B.listId, record.tests.B.section, record.tests.B.scores, record.tests.B.limitTo10);
-                                    return (
-                                        <tr key={record.id || idx} className="hover:bg-slate-50">
-                                            <td className="px-4 py-2">{record.testDate}</td>
-                                            <td className="px-4 py-2 text-slate-600">{record.tests.A.condition}</td>
-                                            <td className="px-4 py-2 font-bold text-blue-600">{statsA.wordPercent}%</td>
-                                            <td className="px-4 py-2 text-slate-600">{record.tests.B.condition}</td>
-                                            <td className="px-4 py-2 font-bold text-purple-600">{statsB.wordPercent}%</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            );
-        };
-
-
         const LoadTestModal = ({ isOpen, onClose, onLoad }) => {
             const [tests, setTestsList] = useState([]);
             const [loading, setLoading] = useState(true);
@@ -733,6 +713,149 @@
             );
         };
 
+        // --- PATIENT HISTORY CHART ---
+        const HistoryChart = ({ cNumber }) => {
+            const canvasRef = useRef(null);
+            const chartRef = useRef(null);
+            const [historyData, setHistoryData] = useState([]);
+            const [loading, setLoading] = useState(false);
+
+            useEffect(() => {
+                if (!cNumber) return;
+                setLoading(true);
+                localDB.getPatientHistory(cNumber).then(data => {
+                    setHistoryData(data);
+                    setLoading(false);
+                });
+            }, [cNumber]);
+
+            useEffect(() => {
+                if (!canvasRef.current || historyData.length === 0) return;
+
+                const ctx = canvasRef.current.getContext('2d');
+                if (chartRef.current) chartRef.current.destroy();
+
+                const labels = historyData.map(t => t.testDate);
+
+                // Helper to get stats object from saved test
+                const getStats = (testObj) => {
+                     return calculateStats(testObj.listId, testObj.section, testObj.scores, testObj.limitTo10);
+                };
+
+                // Prepare Data Arrays
+                const wrsA = historyData.map(r => getStats(r.tests.A).wordPercent);
+                const prsA = historyData.map(r => getStats(r.tests.A).phonemePercent);
+
+                const wrsB = historyData.map(r => getStats(r.tests.B).wordPercent);
+                const prsB = historyData.map(r => getStats(r.tests.B).phonemePercent);
+
+                chartRef.current = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Test A Word',
+                                data: wrsA,
+                                borderColor: '#2563eb', // Blue-600 (Solid)
+                                backgroundColor: '#2563eb',
+                                tension: 0.1,
+                                pointStyle: 'circle'
+                            },
+                            {
+                                label: 'Test A Phoneme',
+                                data: prsA,
+                                borderColor: '#60a5fa', // Blue-400 (Lighter)
+                                backgroundColor: '#60a5fa',
+                                borderDash: [5, 5], // Dashed
+                                tension: 0.1,
+                                pointStyle: 'rectRot',
+                                pointRadius: 4
+                            },
+                            {
+                                label: 'Test B Word',
+                                data: wrsB,
+                                borderColor: '#9333ea', // Purple-600 (Solid)
+                                backgroundColor: '#9333ea',
+                                tension: 0.1,
+                                pointStyle: 'circle'
+                            },
+                            {
+                                label: 'Test B Phoneme',
+                                data: prsB,
+                                borderColor: '#c084fc', // Purple-400 (Lighter)
+                                backgroundColor: '#c084fc',
+                                borderDash: [5, 5], // Dashed
+                                tension: 0.1,
+                                pointStyle: 'rectRot',
+                                pointRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Score (%)' } }
+                        },
+                        plugins: {
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        }
+                    }
+                });
+
+                return () => { if (chartRef.current) chartRef.current.destroy(); };
+            }, [historyData]);
+
+            if (!cNumber) return <div className="text-center text-slate-400 py-10">Enter Patient ID to view history.</div>;
+            if (loading) return <div className="text-center text-slate-500 py-10"><Loader className="w-8 h-8 mx-auto mb-2 text-blue-600"/>Loading history...</div>;
+            if (historyData.length === 0) return <div className="text-center text-slate-400 py-10">No history found for ID: {cNumber}</div>;
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white p-4 rounded-lg border border-slate-200 h-[300px]">
+                        <canvas ref={canvasRef}></canvas>
+                    </div>
+                    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                                <tr>
+                                    <th className="px-4 py-2">Date</th>
+                                    <th className="px-4 py-2">Test A</th>
+                                    <th className="px-4 py-2">Word A</th>
+                                    <th className="px-4 py-2 text-blue-400">Phon A</th>
+                                    <th className="px-4 py-2 border-l border-slate-100">Test B</th>
+                                    <th className="px-4 py-2">Word B</th>
+                                    <th className="px-4 py-2 text-purple-400">Phon B</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {historyData.map((record, idx) => {
+                                    const statsA = calculateStats(record.tests.A.listId, record.tests.A.section, record.tests.A.scores, record.tests.A.limitTo10);
+                                    const statsB = calculateStats(record.tests.B.listId, record.tests.B.section, record.tests.B.scores, record.tests.B.limitTo10);
+                                    return (
+                                        <tr key={record.id || idx} className="hover:bg-slate-50">
+                                            <td className="px-4 py-2">{record.testDate}</td>
+                                            <td className="px-4 py-2 text-slate-600">{record.tests.A.condition}</td>
+                                            <td className="px-4 py-2 font-bold text-blue-600">{statsA.wordPercent}%</td>
+                                            <td className="px-4 py-2 font-medium text-blue-400">{statsA.phonemePercent}%</td>
+
+                                            <td className="px-4 py-2 text-slate-600 border-l border-slate-100">{record.tests.B.condition}</td>
+                                            <td className="px-4 py-2 font-bold text-purple-600">{statsB.wordPercent}%</td>
+                                            <td className="px-4 py-2 font-medium text-purple-400">{statsB.phonemePercent}%</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
         // --- MAIN APP ---
         const App = () => {
             const [patientName, setPatientName] = useState('');
@@ -746,7 +869,7 @@
             const [showChartModal, setShowChartModal] = useState(false);
             const [showPhonemeModal, setShowPhonemeModal] = useState(false); // New State
             const [showLoadModal, setShowLoadModal] = useState(false);
-            const fileInputRef = useRef(null);
+            const [currentTestId, setCurrentTestId] = useState(null); // Track loaded test ID
 
             const [tests, setTests] = useState({
                 A: {
@@ -993,9 +1116,13 @@
 
             const handleSave = async () => {
                 if (!patientName.trim()) { alert("Please enter a Patient Name."); return; }
-                const data = { patientName, cNumber, testDate, tests, activeTestId, activeTab, confidenceLevel };
+                const data = {
+                    id: currentTestId, // Pass current ID if available for update
+                    patientName, cNumber, testDate, tests, activeTestId, activeTab, confidenceLevel
+                };
                 try {
-                    await localDB.saveTest(data);
+                    const savedId = await localDB.saveTest(data);
+                    setCurrentTestId(savedId);
                     alert("Test saved to Local Database successfully!");
                 } catch(e) {
                     console.error("Save error", e); alert("Failed to save to local database.");
@@ -1004,6 +1131,7 @@
 
             const handleLoadTest = (loadedData) => {
                 if (loadedData) {
+                    setCurrentTestId(loadedData.id);
                     setPatientName(loadedData.patientName || '');
                     setCNumber(loadedData.cNumber || '');
                     setTestDate(loadedData.testDate || new Date().toISOString().split('T')[0]);
@@ -1014,26 +1142,18 @@
                 }
             };
 
-            const handleFileChange = (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (e) => {
+            const handleDeleteCurrentRecord = async () => {
+                if (!currentTestId) return;
+                if (confirm("Are you sure you want to delete this record from the database?")) {
                     try {
-                        const data = JSON.parse(e.target.result);
-                        if (data.tests && data.patientName !== undefined) {
-                            setPatientName(data.patientName);
-                            if(data.cNumber !== undefined) setCNumber(data.cNumber);
-                            setTestDate(data.testDate);
-                            setTests(data.tests);
-                            setActiveTestId(data.activeTestId || 'A');
-                            setActiveTab(data.activeTab || 'scoring');
-                            if(data.confidenceLevel) setConfidenceLevel(data.confidenceLevel);
-                        } else { alert("Invalid file format"); }
-                    } catch (err) { console.error(err); alert("Error reading file"); }
-                };
-                reader.readAsText(file);
-                event.target.value = '';
+                        await localDB.deleteTest(currentTestId);
+                        alert("Record deleted.");
+                        clearAllData(); // Reset UI since the record is gone
+                    } catch (e) {
+                        console.error(e);
+                        alert("Failed to delete record.");
+                    }
+                }
             };
 
             const handleExportDB = async () => {
@@ -1054,10 +1174,9 @@
                 }
             };
 
-            const handleOpenClick = () => fileInputRef.current.click();
-
             const clearAllData = () => {
                 if (clearConfirm) {
+                    setCurrentTestId(null);
                     setPatientName('');
                     setCNumber('');
                     setTestDate(new Date().toISOString().split('T')[0]);
@@ -1096,12 +1215,13 @@
                                     <p className="text-slate-500 text-sm">Comparison Mode & Multi-list Support</p>
                                 </div>
                                 <div className="flex flex-wrap gap-2 justify-end">
-                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                                    <button onClick={handleOpenClick} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><FolderOpen className="w-4 h-4" /> Open JSON</button>
                                     <button onClick={() => setShowLoadModal(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><Database className="w-4 h-4" /> Load Patient</button>
                                     <button onClick={handleExportDB} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><Download className="w-4 h-4" /> Export DB</button>
                                     <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"><Save className="w-4 h-4" /> Save (Local)</button>
-                                    <button onClick={clearAllData} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium ${clearConfirm ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}><Trash2 className="w-4 h-4" /> {clearConfirm ? "Confirm?" : "New Test"}</button>
+                                    {currentTestId && (
+                                        <button onClick={handleDeleteCurrentRecord} className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition text-sm font-medium"><Trash2 className="w-4 h-4" /> Delete</button>
+                                    )}
+                                    <button onClick={clearAllData} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium ${clearConfirm ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}><RotateCcw className="w-4 h-4" /> {clearConfirm ? "Confirm?" : "New Test"}</button>
                                 </div>
                             </div>
 
@@ -1255,6 +1375,10 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                {activeTest.scoringMode === 'phoneme' && (
+                                    <DiagnosticsPanel stats={activeStats} scores={activeTest.scores} listId={activeTest.listId} />
+                                )}
 
                                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black">
                                     <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
