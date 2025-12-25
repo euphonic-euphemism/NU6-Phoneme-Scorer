@@ -1485,11 +1485,18 @@
                                                         <tr>
                                                             <td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {statsA.totalPhonemes}</span></td>
                                                             <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.phonemePercent}%</td>
-                                                            {/* Phoneme significance is N/A due to lack of independence between phonemes */}
-                                                            <td className="px-4 py-3 text-center text-slate-400 bg-slate-50 text-xs font-mono">—</td>
+                                                            <td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{phonemeCriticalLimits.lower}% - {phonemeCriticalLimits.upper}%</td>
                                                             <td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.phonemePercent}%</td>
                                                             <td className="px-4 py-3 text-center">
-                                                                <span className="text-slate-400 text-xs italic" title="Statistical significance not calculated for phonemes due to item interdependence">N/A</span>
+                                                                {isPhonemeDiffSig ? (
+                                                                    <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs">
+                                                                        <Check className="w-3 h-3" /> Yes
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs">
+                                                                        <X className="w-3 h-3" /> No
+                                                                    </span>
+                                                                )}
                                                             </td>
                                                         </tr>
                                                     )}
