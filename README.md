@@ -1,44 +1,52 @@
-NU-6 Phoneme Scorer
+NU-6 Word and Phoneme Scorer
 
-A standalone, web-based (and Electron-wrappable) application for scoring NU-6 word lists in a clinical audiology setting. This tool offers granular phoneme scoring, whole-word scoring, and statistical comparison between two test conditions.
+A standalone, secure, web-based application for scoring NU-6 word lists in clinical audiology settings. This tool offers granular phoneme scoring, whole-word scoring, and statistical comparison between two test conditions using gold-standard simulation data.
 
 Features
 
-Standard Lists: Includes NU-6 Lists 1A, 2A, 3A, and 4A with phonemic breakdown.
+Standardized Lists
 
-Scoring Modes:
+Includes NU-6 Lists 1A, 2A, 3A, and 4A with full phonemic breakdowns and IPA notation.
 
-Phoneme Scoring: Click individual phonemes (IPA symbols) to mark correct/incorrect.
+Advanced Scoring Modes
 
-Whole Word Scoring: Simple Correct/Incorrect buttons for standard WRS calculation.
+Granular Phoneme Scoring: Mark individual phonemes as correct or incorrect. Automatically identifies error patterns by phoneme class (Fricatives, Nasals, Vowels, etc.).
 
-Comparison Mode:
+Whole Word Scoring: Rapid scoring via "Correct" or "Incorrect" toggles for standard Word Recognition Score (WRS) calculation.
 
-Run two tests side-by-side (e.g., "Unaided" vs "New Tech").
+Statistical Veracity
 
-Automatic calculation of difference scores.
+Monte Carlo Simulation Models: Replaces the legacy Thornton & Raffin (1978) mathematical approximations with more accurate critical difference tables derived via Pairwise Monte Carlo simulations.
 
-Statistical Significance: Uses the Thornton & Raffin (1978) model to determine if score differences are critical based on the number of items (N) and confidence level (95% or 80%).
+Comprehensive Lookup Tables: In-app access to 80% and 95% Confidence Interval tables for all supported list lengths (N=10, 25, 50 words; N=30, 75, 150 phonemes).
 
-Smart Testing:
+Significance Detection: Real-time calculation of whether the difference between two test conditions (e.g., Aided vs. Unaided) is statistically significant.
 
-10-Word Quick Test: Automatically prompts to stop after 10 words. If stopped, stats adjust to N=10.
+Security & Privacy
 
-Full Lists: Supports standard 25 (half-list) and 50 (full-list) word scoring.
+Local Encryption: All patient data is stored locally in the browser's IndexedDB, protected by AES-GCM 256-bit encryption.
 
-Reporting:
+Zero-Knowledge Architecture: Decryption keys are derived from user passwords using PBKDF2; data never leaves the local machine.
 
-Save results to JSON.
+Clinical Workflow Tools
 
-Print / Save as PDF with patient demographics and clinical notes.
+Comparison Mode: Evaluate "Condition A" against "Condition B" side-by-side.
 
-Offline Capable: Single-file HTML architecture with embedded React logic.
+Comparative Ease of Listening Scale: Quantify subjective patient feedback on a 0-10 scale when objective scores are within critical limits.
+
+Longitudinal History: Track a patient’s performance over time with automated trend graphing.
+
+Reporting & Integration
+
+Professional PDF Export: Generate formatted clinical reports including clinic branding, patient demographics, and automated statistical interpretations.
+
+Data Portability: Export local databases to JSON or FHIR Bundle format for potential EHR integration.
 
 Installation & Usage
 
 Web Version
 
-Simply open nu6_scoring_app.html in any modern web browser (Chrome, Edge, Firefox, Safari). No installation required.
+Simply open nu6_scoring_app.html in any modern web browser (Chrome, Edge, Firefox, Safari). The app is entirely self-contained and functions offline once loaded.
 
 Desktop App (Linux/Debian)
 
@@ -54,26 +62,24 @@ Run Locally:
 npm start
 
 
-Build .deb Package:
+Build Installer:
 
 npm run dist
 
 
-The output file will be located in the dist/ directory.
-
-Configuration
-
-The application uses standard NU-6 ordering by default but includes specific custom orderings for Lists 1A (2nd half), 2A, 3A, and 4A based on clinical PDF references.
-
 Tech Stack
 
-React: UI Logic (UMD build, no compile step required for dev).
+React: UI logic and state management.
 
-Tailwind CSS: Styling.
+Tailwind CSS: Modern, responsive styling.
 
-Electron: Desktop wrapper for Linux deployment.
+Web Crypto API: PBKDF2 key derivation and AES-GCM encryption.
 
-Electron Builder: For packaging .deb installers.
+IndexedDB: Persistent, secure local storage.
+
+Chart.js: Historical trend analysis and visualization.
+
+jsPDF: Professional document generation.
 
 License
 
