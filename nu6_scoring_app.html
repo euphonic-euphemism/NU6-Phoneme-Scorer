@@ -199,6 +199,27 @@
                     tx.onerror = (e) => reject(e.target.error);
                 });
             },
+
+            // Delete all tests (preserve clinic_settings)
+            deleteAllTests: async () => {
+                if (!window.SecureDB.sessionPassword) throw new Error("Database locked");
+                const db = await dbPromise;
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction([STORE_NAME], "readwrite");
+                    const store = tx.objectStore(STORE_NAME);
+                    const req = store.getAllKeys();
+                    req.onsuccess = () => {
+                        const keys = req.result || [];
+                        keys.forEach(k => {
+                            if (k === 'clinic_settings') return;
+                            store.delete(k);
+                        });
+                    };
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = (e) => reject(e.target.error);
+                });
+            },
+
             saveSettings: async (settings) => {
                 if (!window.SecureDB.sessionPassword) throw new Error("Database locked");
                 const encryptedData = await CryptoService.encryptData(settings, window.SecureDB.sessionPassword);
@@ -228,7 +249,14 @@
             },
             getPatientHistory: async (cNumber) => {
                 const allTests = await window.SecureDB.getAllTests();
-                return allTests.filter(t => t.cNumber && t.cNumber.toLowerCase() === cNumber.toLowerCase());
+                const history = allTests.filter(t => t.cNumber && t.cNumber.toLowerCase() === cNumber.toLowerCase());
+                // Sort chronologically: oldest dates first (left) → newest dates last (right)
+                history.sort((a, b) => {
+                    const da = a && a.testDate ? new Date(a.testDate) : new Date(0);
+                    const db = b && b.testDate ? new Date(b.testDate) : new Date(0);
+                    return da - db;
+                });
+                return history;
             }
         };
     </script>
@@ -275,6 +303,249 @@
         const LIST_4A = [ { i: 1, w: "PASS", p: ["p", "æ", "s"] }, { i: 2, w: "DOLL", p: ["d", "ɑ", "l"] }, { i: 3, w: "BACK", p: ["b", "æ", "k"] }, { i: 4, w: "RED", p: ["r", "ɛ", "d"] }, { i: 5, w: "WASH", p: ["w", "ɔ", "ʃ"] }, { i: 6, w: "SOUR", p: ["s", "aʊ", "r"] }, { i: 7, w: "BONE", p: ["b", "oʊ", "n"] }, { i: 8, w: "GET", p: ["g", "ɛ", "t"] }, { i: 9, w: "WHEAT", p: ["w", "i", "t"] }, { i: 10, w: "THUMB", p: ["θ", "ʌ", "m"] }, { i: 11, w: "SALE", p: ["s", "eɪ", "l"] }, { i: 12, w: "YEARN", p: ["j", "ɝ", "n"] }, { i: 13, w: "WIFE", p: ["w", "aɪ", "f"] }, { i: 14, w: "SUCH", p: ["s", "ʌ", "tʃ"] }, { i: 15, w: "NEAT", p: ["n", "i", "t"] }, { i: 16, w: "PEG", p: ["p", "ɛ", "g"] }, { i: 17, w: "MOB", p: ["m", "ɑ", "b"] }, { i: 18, w: "GAS", p: ["g", "æ", "s"] }, { i: 19, w: "CHECK", p: ["tʃ", "ɛ", "k"] }, { i: 20, w: "JOIN", p: ["dʒ", "ɔɪ", "n"] }, { i: 21, w: "LEASE", p: ["l", "i", "s"] }, { i: 22, w: "LONG", p: ["l", "ɔ", "ŋ"] }, { i: 23, w: "CHAIN", p: ["tʃ", "eɪ", "n"] }, { i: 24, w: "KILL", p: ["k", "ɪ", "l"] }, { i: 25, w: "HOLE", p: ["h", "oʊ", "l"] }, { i: 26, w: "LEAN", p: ["l", "i", "n"] }, { i: 27, w: "TAPE", p: ["t", "eɪ", "p"] }, { i: 28, w: "TIRE", p: ["t", "aɪ", "r"] }, { i: 29, w: "DIP", p: ["d", "ɪ", "p"] }, { i: 30, w: "ROSE", p: ["r", "oʊ", "z"] }, { i: 31, w: "CAME", p: ["k", "eɪ", "m"] }, { i: 32, w: "FIT", p: ["f", "ɪ", "t"] }, { i: 33, w: "MAKE", p: ["m", "eɪ", "k"] }, { i: 34, w: "VOTE", p: ["v", "oʊ", "t"] }, { i: 35, w: "JUDGE", p: ["dʒ", "ʌ", "dʒ"] }, { i: 36, w: "FOOD", p: ["f", "u", "d"] }, { i: 37, w: "RIPE", p: ["r", "aɪ", "p"] }, { i: 38, w: "HAVE", p: ["h", "æ", "v"] }, { i: 39, w: "ROUGH", p: ["r", "ʌ", "f"] }, { i: 40, w: "KICK", p: ["k", "ɪ", "k"] }, { i: 41, w: "LOSE", p: ["l", "u", "z"] }, { i: 42, w: "NEAR", p: ["n", "i", "r"] }, { i: 43, w: "PERCH", p: ["p", "ɝ", "tʃ"] }, { i: 44, w: "SHIRT", p: ["ʃ", "ɝ", "t"] }, { i: 45, w: "BATH", p: ["b", "æ", "θ"] }, { i: 46, w: "TIME", p: ["t", "aɪ", "m"] }, { i: 47, w: "HALL", p: ["h", "ɔ", "l"] }, { i: 48, w: "MOOD", p: ["m", "u", "d"] }, { i: 49, w: "DOG", p: ["d", "ɔ", "g"] }, { i: 50, w: "SHOULD", p: ["ʃ", "ʊ", "d"] } ];
 
         // --- PAIRWISE MONTE CARLO WORD TABLES (N=10,25,50 | 80%,95%) ---
+
+        // --- Simulated DB for quick import/testing (generated 100 longitudinal records) ---
+        const SIMULATED_DB = (() => {
+            const records = [];
+            const firstNames = ['Alex','Chris','Sam','Taylor','Jordan','Morgan','Casey','Jamie','Riley','Avery','Dakota','Peyton','Quinn','Cameron','Robin','Skyler','Reese','Rowan','Elliot','Blake'];
+            const lastNames = ['Johnson','Smith','Brown','Lee','Garcia','Martinez','Davis','Miller','Wilson','Moore','Taylor','Anderson','Thomas','Jackson','White','Harris','Martin','Thompson','Young','King'];
+            let seed = 123456;
+            const rand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+            const randInt = (min, max) => Math.floor(rand() * (max - min + 1)) + min;
+            const lists = ['1A','2A','3A','4A'];
+            const NUM_RECORDS = 100;
+            const PATIENTS = 20; // approximate number of unique patients for longitudinal data
+
+            // Track last date per patient so repeated records are clustered (more longitudinal)
+            const patientLastDaysAgo = new Array(PATIENTS).fill(null);
+            const patientBaselinePercent = new Array(PATIENTS).fill(null); // baseline word % per patient (phoneme ~20% lower)
+            const patientPrevModeA = new Array(PATIENTS).fill(null);
+            const patientPrevModeB = new Array(PATIENTS).fill(null);
+
+            for (let i = 0; i < NUM_RECORDS; i++) {
+                // Bias patient selection so some patients have more longitudinal records
+                let patientIndex;
+                if (rand() < 0.7) {
+                    // more repeats in a smaller subgroup
+                    const subgroup = Math.max(3, Math.floor(PATIENTS / 3));
+                    patientIndex = randInt(0, subgroup - 1);
+                } else {
+                    patientIndex = randInt(0, PATIENTS - 1);
+                }
+
+                const patientName = `${firstNames[patientIndex % firstNames.length]} ${lastNames[patientIndex % lastNames.length]}`;
+                const cNumber = `SIM-${String(patientIndex + 1).padStart(3, '0')}`;
+
+                // Cluster dates for the same patient so longitudinal records are near each other
+                let daysAgo;
+                if (patientLastDaysAgo[patientIndex] === null) {
+                    daysAgo = randInt(0, 365);
+                } else {
+                    daysAgo = Math.max(0, Math.min(365, patientLastDaysAgo[patientIndex] + randInt(-30, 30)));
+                }
+                patientLastDaysAgo[patientIndex] = daysAgo;
+                const testDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+                // Establish or reuse a patient baseline to keep longitudinal results orderly
+                if (patientBaselinePercent[patientIndex] === null) {
+                    // Baselines concentrated in a mid-range (less variance overall)
+                    patientBaselinePercent[patientIndex] = randInt(45, 75);
+                } else {
+                    // small drift over time to avoid cyclic extremes
+                    patientBaselinePercent[patientIndex] = Math.max(10, Math.min(95, patientBaselinePercent[patientIndex] + randInt(-2, 2)));
+                }
+                const baseline = patientBaselinePercent[patientIndex];
+
+                // Randomize scoringMode per test but bias to keep mode same across longitudinal tests
+                let scoringModeA = (patientPrevModeA[patientIndex] && rand() < 0.7) ? patientPrevModeA[patientIndex] : (rand() < 0.5 ? 'phoneme' : 'word');
+                let scoringModeB = (patientPrevModeB[patientIndex] && rand() < 0.7) ? patientPrevModeB[patientIndex] : (rand() < 0.5 ? 'phoneme' : 'word');
+                patientPrevModeA[patientIndex] = scoringModeA;
+                patientPrevModeB[patientIndex] = scoringModeB;
+
+                const listA = lists[randInt(0, lists.length - 1)];
+                const listB = lists[randInt(0, lists.length - 1)];
+
+                // Enforce condition constraints:
+                // Test A must be one of ['Unaided', 'Current Tech']
+                // Test B must be one of ['Current Tech', 'New Tech']
+                const condAOptions = ['Unaided', 'Current Tech'];
+                const condBOptions = ['Current Tech', 'New Tech'];
+                let condA = condAOptions[randInt(0, condAOptions.length - 1)];
+                let condB = condBOptions[randInt(0, condBOptions.length - 1)];
+                // Avoid both being 'Current Tech' — prefer making Test B 'New Tech' if conflict
+                if (condA === condB) {
+                    condB = 'New Tech';
+                }
+
+                // Shared level and noise (SNR) between A and B
+                const level = `${randInt(50,80)} dB`;
+                const SNR_OPTIONS = [5, 10, 15];
+                const snrValue = `${SNR_OPTIONS[randInt(0, SNR_OPTIONS.length - 1)]} dB SNR`;
+
+                // Lightweight in-generator stats calcuator (word% / phoneme%) so we can enforce relationships
+                const computeStatsLocal = (listId, section, scores, limitTo10 = false) => {
+                    const allWords = listId === '1A' ? LIST_1A : listId === '2A' ? LIST_2A : listId === '3A' ? LIST_3A : LIST_4A;
+                    let visibleWords = allWords;
+                    if (section === 'first') visibleWords = allWords.slice(0, 25);
+                    else if (section === 'first_10') visibleWords = allWords.slice(0, 10);
+                    else if (section === 'second') visibleWords = allWords.slice(25, 50);
+                    else if (section === 'second_10') visibleWords = allWords.slice(25, 35);
+                    else if (section === 'full') visibleWords = allWords;
+                    if (limitTo10) visibleWords = visibleWords.slice(0, 10);
+                    let totalPhonemes = 0; let correctPhonemes = 0; let correctWords = 0; let totalWords = visibleWords.length;
+                    visibleWords.forEach(word => {
+                        let wordCorrectCount = 0; let wordPhonemeCount = 0;
+                        word.p.forEach((phoneme, pIndex) => {
+                            if (phoneme === '-') return;
+                            wordPhonemeCount++; totalPhonemes++;
+                            const key = `${listId}_${word.i}_${pIndex}`;
+                            if (scores[key]) { correctPhonemes++; wordCorrectCount++; }
+                        });
+                        if (wordCorrectCount === wordPhonemeCount && wordPhonemeCount > 0) { correctWords++; }
+                    });
+                    return {
+                        totalPhonemes, correctPhonemes, phonemePercent: totalPhonemes === 0 ? 0 : Math.round((correctPhonemes / totalPhonemes) * 100),
+                        correctWords, totalWords, wordPercent: totalWords === 0 ? 0 : Math.round((correctWords / totalWords) * 100)
+                    };
+                };
+
+                // Helper to generate realistic score maps used by calculateStats()
+                // Accept a percentBase representing the approximate WORD % for the test (phoneme will be ~20% lower)
+                const genScoresFor = (listId, section, scoringMode, limitTo10, percentBase) => {
+                    const allWords = listId === '1A' ? LIST_1A : listId === '2A' ? LIST_2A : listId === '3A' ? LIST_3A : LIST_4A;
+                    let visibleWords = allWords;
+                    if (section === 'first') visibleWords = allWords.slice(0, 25);
+                    else if (section === 'first_10') visibleWords = allWords.slice(0, 10);
+                    else if (section === 'second') visibleWords = allWords.slice(25, 50);
+                    else if (section === 'second_10') visibleWords = allWords.slice(25, 35);
+                    else if (section === 'full') visibleWords = allWords;
+                    if (limitTo10) visibleWords = visibleWords.slice(0, 10);
+
+                    const scores = {};
+
+                    if (scoringMode === 'word') {
+                        // Use provided percentBase with small perturbation for per-test noise
+                        let percent = percentBase + randInt(-3, 3);
+                        percent = Math.max(0, Math.min(100, percent));
+                        const correctWords = Math.round(visibleWords.length * (percent / 100));
+                        const chosen = new Set();
+                        while (chosen.size < correctWords && chosen.size < visibleWords.length) {
+                            chosen.add(randInt(0, visibleWords.length - 1));
+                        }
+                        chosen.forEach(idx => {
+                            const w = visibleWords[idx];
+                            w.p.forEach((ph, pIdx) => { if (ph !== '-') scores[`${listId}_${w.i}_${pIdx}`] = true; });
+                        });
+                    } else {
+                        // Phoneme scoring: roughly 20% lower than word base with small perturbation
+                        const phonemeKeys = [];
+                        visibleWords.forEach(w => w.p.forEach((ph, pIdx) => { if (ph !== '-') phonemeKeys.push(`${listId}_${w.i}_${pIdx}`); }));
+                        if (phonemeKeys.length > 0) {
+                            let percent = (percentBase - 20) + randInt(-3, 3);
+                            percent = Math.max(0, Math.min(100, percent));
+                            const correctCount = Math.round(phonemeKeys.length * (percent / 100));
+                            const chosen = new Set();
+                            while (chosen.size < correctCount && chosen.size < phonemeKeys.length) {
+                                chosen.add(phonemeKeys[randInt(0, phonemeKeys.length - 1)]);
+                            }
+                            chosen.forEach(k => scores[k] = true);
+                        }
+                    }
+
+                    // Ensure there is at least one scored item
+                    if (Object.keys(scores).length === 0) {
+                        // Force one phoneme correct
+                        const fallbackWord = visibleWords[0];
+                        if (fallbackWord && fallbackWord.p) {
+                            for (let pIdx = 0; pIdx < fallbackWord.p.length; pIdx++) {
+                                if (fallbackWord.p[pIdx] !== '-') { scores[`${listId}_${fallbackWord.i}_${pIdx}`] = true; break; }
+                            }
+                        }
+                    }
+
+                    return scores;
+                };
+
+                const limitA = rand() < 0.25;
+                const limitB = rand() < 0.25;
+
+                // Create condition-aware percent baselines so New Tech >= Current Tech >= Unaided (usually)
+                const unaidedBase = Math.max(0, Math.min(100, baseline + randInt(-5, 5)));
+                const currentBase = Math.max(0, Math.min(100, unaidedBase + randInt(0, 7)));
+                const newBase = Math.max(0, Math.min(100, Math.max(currentBase, unaidedBase) + randInt(0, 7)));
+
+                const percentBaseA = condA === 'Unaided' ? unaidedBase : (condA === 'Current Tech' ? currentBase : newBase);
+                const percentBaseB = condB === 'Unaided' ? unaidedBase : (condB === 'Current Tech' ? currentBase : newBase);
+
+                // Slight per-test generation then validate and adjust if needed
+                let scoresA = genScoresFor(listA, 'second_10', scoringModeA, limitA, percentBaseA);
+                let scoresB = genScoresFor(listB, 'second_10', scoringModeB, limitB, percentBaseB);
+
+                // Compute quick stats to validate ordering constraints
+                let statsA = computeStatsLocal(listA, 'second_10', scoresA, limitA);
+                let statsB = computeStatsLocal(listB, 'second_10', scoresB, limitB);
+
+                // If New Tech should generally be equal or better than other conditions, enforce it
+                if (condB === 'New Tech') {
+                    // If B is much worse (word% at least 10 points lower), try regenerating B a few times with boosted base
+                    let attempts = 0;
+                    while (statsB.wordPercent + 10 < statsA.wordPercent && attempts < 6) {
+                        attempts++;
+                        // bump the base so New Tech improves relative to A
+                        const boost = Math.max(5, Math.round((statsA.wordPercent - statsB.wordPercent) / 2));
+                        const newBase = Math.min(100, Math.max(percentBaseB, percentBaseA + boost + randInt(0, 4)));
+                        scoresB = genScoresFor(listB, 'second_10', scoringModeB, limitB, newBase);
+                        statsB = computeStatsLocal(listB, 'second_10', scoresB, limitB);
+                    }
+                }
+
+                // If scoring modes cause extreme inversion (phoneme>word or huge swings), make small adjustments
+                if (statsA.wordPercent < statsA.phonemePercent) {
+                    // try to nudge A by regenerating with slightly higher base
+                    const newBaseA = Math.min(100, percentBaseA + 5);
+                    scoresA = genScoresFor(listA, 'second_10', scoringModeA, limitA, newBaseA);
+                    statsA = computeStatsLocal(listA, 'second_10', scoresA, limitA);
+                }
+                if (statsB.wordPercent < statsB.phonemePercent) {
+                    const newBaseB = Math.min(100, percentBaseB + 5);
+                    scoresB = genScoresFor(listB, 'second_10', scoringModeB, limitB, newBaseB);
+                    statsB = computeStatsLocal(listB, 'second_10', scoresB, limitB);
+                }
+
+                // Ensure phoneme presence mirrored between Test A and Test B
+                const hasPhonemeA = Object.keys(scoresA).length > 0;
+                const hasPhonemeB = Object.keys(scoresB).length > 0;
+                if (hasPhonemeA && !hasPhonemeB) {
+                    // regenerate B as phoneme-scored so both have phoneme-level entries
+                    scoresB = genScoresFor(listB, 'second_10', 'phoneme', limitB, percentBaseB);
+                    statsB = computeStatsLocal(listB, 'second_10', scoresB, limitB);
+                } else if (hasPhonemeB && !hasPhonemeA) {
+                    scoresA = genScoresFor(listA, 'second_10', 'phoneme', limitA, percentBaseA);
+                    statsA = computeStatsLocal(listA, 'second_10', scoresA, limitA);
+                }
+
+                // Set comparativeEase based on observed word performance (scaled and clamped 0-10)
+                let comparativeEase = Math.round((statsB.wordPercent - statsA.wordPercent) / 10) + 5;
+                if (comparativeEase < 0) comparativeEase = 0; if (comparativeEase > 10) comparativeEase = 10;
+
+                records.push({
+                    id: `sim-${String(i + 1).padStart(3, '0')}`,
+                    patientName,
+                    cNumber,
+                    testDate,
+                    notes: `Simulated record ${i + 1} for ${patientName}`,
+                    activeTestId: rand() < 0.5 ? 'A' : 'B',
+                    activeTab: rand() < 0.5 ? 'comparison' : 'scoring',
+                    confidenceLevel: rand() < 0.5 ? 95 : 80,
+                    tests: {
+                        A: { id: 'A', listId: listA, section: 'second_10', scoringMode: scoringModeA, condition: condA, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, scores: scoresA, limitTo10: limitA, askedContinue: false },
+                        B: { id: 'B', listId: listB, section: 'second_10', scoringMode: scoringModeB, condition: condB, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, scores: scoresB, limitTo10: limitB, askedContinue: false },
+                        comparativeEase: comparativeEase
+                    }
+                });
+            }
+            return records;
+        })();
         const WORD_TABLES = {
             "80": {
                 "10": {
@@ -840,6 +1111,8 @@
                 });
             }, [isOpen]);
 
+        // ImportPreviewModal moved to top-level
+
             const handleDelete = async (testId, e) => {
                 e.stopPropagation();
                 if(confirm("Are you sure you want to delete this test? This cannot be undone.")) {
@@ -887,6 +1160,53 @@
             );
         };
 
+        // Import Preview Modal (top-level)
+        const ImportPreviewModal = ({ isOpen, onClose, fileName, records, invalidCount, onImportOverwrite, onImportAppend, onImportSkip, onImportUseSelected, defaultMode }) => {
+            if (!isOpen) return null;
+            const sample = (records || []).slice(0,5);
+            const modeLabels = { append: 'Append', skip: 'Skip duplicates', overwrite: 'Overwrite' };
+            const selectedLabel = modeLabels[defaultMode] || 'Append';
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 relative max-h-[80vh] overflow-y-auto">
+                        <button onClick={() => { onClose(); if (fileInputRef && fileInputRef.current) fileInputRef.current.value = ''; }} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">Import Preview</h3>
+                        <div className="text-sm text-slate-500 mb-4">File: <span className="font-mono">{fileName}</span></div>
+                        <div className="mb-4">
+                            <div className="text-sm">Total records: <span className="font-bold">{records?.length || 0}</span></div>
+                            <div className="text-sm">Invalid records detected: <span className="font-bold">{invalidCount}</span></div>
+                        </div>
+
+                        <div className="mb-3 text-xs text-slate-500">Import options: <span className="font-medium">Append</span> (import as new records), <span className="font-medium">Skip duplicates</span> (ignore records with same ID), or <span className="font-medium">Overwrite</span> (replace existing records by ID). The <span className="font-medium">selected</span> mode before opening this modal is shown below.</div>
+
+                        <div className="mb-4">
+                            <div className="text-sm font-bold text-slate-600 mb-1">Selected mode</div>
+                            <div className="text-sm text-slate-700 mb-2">{selectedLabel}</div>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                            <div className="text-sm font-bold text-slate-600 mb-2">Sample entries</div>
+                            {(sample.length === 0) ? <div className="text-sm text-slate-500 italic">No sample entries available.</div> : sample.map((r, idx) => (
+                                <div key={idx} className="p-2 border rounded bg-slate-50">
+                                    <div className="font-bold text-slate-800">{r.patientName || '(No name)'} <span className="text-slate-400 font-normal">#{r.cNumber || '—'}</span></div>
+                                    <div className="text-xs text-slate-500">{r.testDate || '—'} • {r.tests?.A?.listId || '—'}</div>
+                                    <div className="text-xs text-slate-500 mt-1">Notes: {r.notes || '—'}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-2 justify-end">
+                            <button onClick={() => { onImportAppend(); }} className="px-4 py-2 bg-slate-100 rounded text-slate-700">Import (Append as New IDs)</button>
+                            <button onClick={() => { onImportSkip(); }} className="px-4 py-2 bg-yellow-100 rounded text-yellow-800">Import (Skip duplicates)</button>
+                            <button onClick={() => { onImportOverwrite(); }} className="px-4 py-2 bg-blue-600 rounded text-white">Import (Overwrite by ID)</button>
+                            <button onClick={() => onImportUseSelected()} className="px-4 py-2 bg-green-600 rounded text-white">Import (Use Selected: {selectedLabel})</button>
+                            <button onClick={() => { onClose(); if (fileInputRef && fileInputRef.current) fileInputRef.current.value = ''; }} className="px-4 py-2 bg-white border rounded">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const HistoryChart = ({ cNumber }) => {
             const canvasRef = useRef(null);
             const chartRef = useRef(null);
@@ -908,7 +1228,14 @@
                 const ctx = canvasRef.current.getContext('2d');
                 if (chartRef.current) chartRef.current.destroy();
 
-                const labels = historyData.map(t => t.testDate);
+                // Ensure chronological order (oldest → newest)
+                const sortedHistory = [...historyData].sort((a,b) => {
+                    const da = a && a.testDate ? new Date(a.testDate) : new Date(0);
+                    const db = b && b.testDate ? new Date(b.testDate) : new Date(0);
+                    return da - db;
+                });
+                const labels = sortedHistory.map(t => t.testDate);
+
                 const getWRS = (testObj, listId, section, scores) => {
                      const result = calculateStats(listId, section, scores, testObj.limitTo10);
                      return result.wordPercent;
@@ -919,10 +1246,10 @@
                     return result.phonemePercent;
                };
 
-                const wrsA = historyData.map(r => getWRS(r.tests.A, r.tests.A.listId, r.tests.A.section, r.tests.A.scores));
-                const prsA = historyData.map(r => getPRS(r.tests.A, r.tests.A.listId, r.tests.A.section, r.tests.A.scores));
-                const wrsB = historyData.map(r => getWRS(r.tests.B, r.tests.B.listId, r.tests.B.section, r.tests.B.scores));
-                const prsB = historyData.map(r => getPRS(r.tests.B, r.tests.B.listId, r.tests.B.section, r.tests.B.scores));
+                const wrsA = sortedHistory.map(r => getWRS(r.tests.A, r.tests.A.listId, r.tests.A.section, r.tests.A.scores));
+                const prsA = sortedHistory.map(r => getPRS(r.tests.A, r.tests.A.listId, r.tests.A.section, r.tests.A.scores));
+                const wrsB = sortedHistory.map(r => getWRS(r.tests.B, r.tests.B.listId, r.tests.B.section, r.tests.B.scores));
+                const prsB = sortedHistory.map(r => getPRS(r.tests.B, r.tests.B.listId, r.tests.B.section, r.tests.B.scores));
 
                 chartRef.current = new Chart(ctx, {
                     type: 'line',
@@ -992,6 +1319,9 @@
             return (
                 <div className="space-y-6">
                     <div className="bg-white p-4 rounded-lg border border-slate-200 h-[300px]">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="text-xs text-slate-500">Dates: <span className="font-medium text-slate-700">Old → New</span> <span className="text-[10px] text-slate-400 ml-2">(left → right)</span></div>
+                        </div>
                         <canvas ref={canvasRef}></canvas>
                     </div>
                     <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
@@ -1180,6 +1510,16 @@
             }, [isLocked]);
 
             const fileInputRef = useRef(null);
+            const [importModePick, setImportModePick] = useState('append');
+            const [showImportPreviewModal, setShowImportPreviewModal] = useState(false);
+            const [importPreviewRecords, setImportPreviewRecords] = useState([]);
+            const [importPreviewFileName, setImportPreviewFileName] = useState('');
+            const [importPreviewInvalidCount, setImportPreviewInvalidCount] = useState(0);
+            const [showImportSourceModal, setShowImportSourceModal] = useState(false);
+
+            const [showDeleteDbModal, setShowDeleteDbModal] = useState(false);
+            const [deleteDbConfirmText, setDeleteDbConfirmText] = useState('');
+
 
             const [tests, setTests] = useState({
                 A: { id: 'A', listId: '3A', section: 'second_10', scoringMode: 'word', condition: 'Unaided', deviceModel: '', level: '', snr: '', scores: {}, limitTo10: false, askedContinue: false },
@@ -1226,11 +1566,187 @@
                 setClearConfirm(false);
             };
 
-            const handleSave = async () => { if (!patientName.trim()) { alert("Please enter a Patient Name."); return; } const data = { id: currentTestId, patientName, cNumber, testDate, tests, activeTestId, activeTab, confidenceLevel }; try { const savedId = await window.SecureDB.saveTest(data); setCurrentTestId(savedId); alert("Test encrypted and saved to local database successfully!"); } catch(e) { console.error("Save error", e); alert("Failed to save to local database."); } };
+            const handleSave = async () => {
+                if (!patientName.trim()) { alert("Please enter a Patient Name."); return; }
+                if (!testDate) { alert("Please set a Test Date before saving."); return; }
+                const data = { id: currentTestId, patientName, cNumber, testDate, tests, activeTestId, activeTab, confidenceLevel };
+                try {
+                    try {
+                        const savedId = await window.SecureDB.saveTest(data);
+                        setCurrentTestId(savedId);
+                        alert("Test encrypted and saved to local database successfully!");
+                    } catch (e) {
+                        if (e && e.code === 'DUPLICATE_DATE') {
+                            // Prompt user to overwrite existing same-date record
+                            if (confirm('A different test exists for this patient on the same date. Overwrite it?')) {
+                                const savedId = await window.SecureDB.saveTest(data, { overwriteExistingSameDate: true });
+                                setCurrentTestId(savedId);
+                                alert('Existing record overwritten and saved successfully.');
+                            } else {
+                                // User cancelled - do nothing
+                                return;
+                            }
+                        } else {
+                            throw e;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Save error', e);
+                    alert('Failed to save to local database. ' + (e && e.message ? e.message : ''));
+                }
+            };
             const handleLoadTest = (loadedData) => { if (loadedData) { setCurrentTestId(loadedData.id); setPatientName(loadedData.patientName || ''); setCNumber(loadedData.cNumber || ''); setTestDate(loadedData.testDate || new Date().toISOString().split('T')[0]); setTests(loadedData.tests); setActiveTestId(loadedData.activeTestId || 'A'); setActiveTab(loadedData.activeTab || 'scoring'); if(loadedData.confidenceLevel) setConfidenceLevel(loadedData.confidenceLevel); } };
             const handleDeleteCurrentRecord = async () => { if (!currentTestId) return; if (confirm("Are you sure you want to delete this record from the database?")) { try { await window.SecureDB.deleteTest(currentTestId); alert("Record deleted."); resetForm(); } catch (e) { console.error(e); alert("Failed to delete record."); } } };
+
+            const handleDeleteAllDb = async () => {
+                if (!confirm('This will permanently remove ALL patient records from the local database but will preserve clinic settings. Continue?')) return;
+                try {
+                    await window.SecureDB.deleteAllTests();
+                    alert('Database cleared. Clinic settings preserved.');
+                    resetForm();
+                } catch (e) {
+                    console.error('Failed to delete database:', e);
+                    alert('Failed to delete database.');
+                }
+            };
             const handleExportDB = async () => { try { const allData = await window.SecureDB.getAllTests(); if(!confirm("Warning: This will export unencrypted patient data to a JSON file. Ensure you save this file to a secure location.")) return; const jsonString = JSON.stringify(allData, null, 2); const blob = new Blob([jsonString], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `NU6_Database_Export_DECRYPTED_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); } catch (err) { console.error("Export failed:", err); alert("Failed to export database."); } };
-            const handleExportFHIR = async () => { try { const allData = await window.SecureDB.getAllTests(); if(!confirm("Warning: This will export unencrypted patient data to a FHIR Bundle. Ensure you save this file to a secure location.")) return; const fhirBundle = { resourceType: "Bundle", type: "collection", entry: allData.map(record => ({ resource: { resourceType: "Observation", status: "final", code: { coding: [{ system: "http://loinc.org", code: "52023-9", display: "Speech discrimination Score" }] }, subject: { display: `${record.patientName} (ID: ${record.cNumber})` }, effectiveDateTime: new Date(record.testDate).toISOString(), valueQuantity: { value: calculateStats(record.tests.A.listId, record.tests.A.section, record.tests.A.scores, record.tests.A.limitTo10).wordPercent, unit: "%", system: "http://unitsofmeasure.org", code: "%" }, method: { text: `Condition: ${record.tests.A.condition}, List: ${record.tests.A.listId}` } } })) }; const jsonString = JSON.stringify(fhirBundle, null, 2); const blob = new Blob([jsonString], { type: "application/json+fhir" }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `NU6_FHIR_Export_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); } catch (err) { console.error("FHIR Export failed:", err); alert("Failed to export FHIR bundle."); } };
+
+            // Import DB: open source selection (simulated or upload)
+            const handleImportDB = () => {
+                setShowImportSourceModal(true);
+            };
+
+            // Choose to use simulated DB
+            const handleUseSimulatedDB = () => {
+                setImportPreviewRecords(SIMULATED_DB);
+                setImportPreviewFileName('SIMULATED_DB.json');
+                const invalidCount = SIMULATED_DB.filter(r => !r || !r.patientName || !r.testDate || !r.tests).length;
+                setImportPreviewInvalidCount(invalidCount);
+                setShowImportSourceModal(false);
+                setShowImportPreviewModal(true);
+            };
+
+            // Choose to upload a file
+            const handleUseFileUpload = () => {
+                setShowImportSourceModal(false);
+                if (fileInputRef && fileInputRef.current) fileInputRef.current.click();
+            };
+
+            // Handle the selected JSON file and show import preview
+            const handleImportFile = async (e) => {
+                const file = e?.target?.files?.[0];
+                if (!file) return;
+                try {
+                    const text = await file.text();
+                    let parsed = JSON.parse(text);
+                    let records = [];
+                    if (Array.isArray(parsed)) {
+                        records = parsed;
+                    } else if (parsed && parsed.entry && Array.isArray(parsed.entry)) {
+                        // If some other bundle shape (e.g., FHIR-like), attempt to extract resources
+                        records = parsed.entry.map(en => en.resource || en);
+                    } else if (parsed && parsed.tests) {
+                        records = [parsed];
+                    } else {
+                        alert("Invalid JSON format. Expected an array of test records exported from this app.");
+                        if (e && e.target) e.target.value = '';
+                        return;
+                    }
+
+                    if (records.length === 0) {
+                        alert("No records found in file.");
+                        if (e && e.target) e.target.value = '';
+                        return;
+                    }
+
+                    const invalidCount = records.filter(r => !r || !r.patientName || !r.testDate || !r.tests).length;
+
+                    // Set preview state and open modal
+                    setImportPreviewRecords(records);
+                    setImportPreviewFileName(file.name);
+                    setImportPreviewInvalidCount(invalidCount);
+                    setShowImportPreviewModal(true);
+
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to parse file: ' + (err && err.message ? err.message : err));
+                    if (e && e.target) e.target.value = '';
+                }
+            };
+
+            // Perform the actual import (called by modal confirm actions)
+            const importRecords = async (mode) => {
+                // mode: 'overwrite' | 'append' | 'skip'
+                setShowImportPreviewModal(false);
+                const records = importPreviewRecords || [];
+                let imported = 0; let errors = 0; let skipped = 0;
+
+                // Build existing maps for IDs and patient|date
+                let existingIds = new Set();
+                let existingByPatientDate = new Map();
+                try {
+                    const existing = await window.SecureDB.getAllTests();
+                    existingIds = new Set(existing.map(r => r.id));
+                    for (const r of existing) {
+                        const key = `${r.cNumber || r.patientName}||${r.testDate}`;
+                        if (!existingByPatientDate.has(key)) existingByPatientDate.set(key, r.id);
+                    }
+                } catch (e) { console.error('Failed to fetch existing records for import checks', e); }
+
+                for (const rec of records) {
+                    try {
+                        // Skip duplicates by ID when mode=skip
+                        if (mode === 'skip' && rec && rec.id && existingIds.has(rec.id)) {
+                            skipped++;
+                            continue;
+                        }
+
+                        // Determine patient-date key if possible
+                        const recKey = `${rec.cNumber || rec.patientName}||${rec.testDate}`;
+
+                        if (mode === 'append') {
+                            // Do not append if same patient/date already exists
+                            if (existingByPatientDate.has(recKey)) { skipped++; continue; }
+                            const toSave = { ...rec };
+                            delete toSave.id; // create new id
+                            // default save will block same-date duplicates, but we pre-checked
+                            await window.SecureDB.saveTest(toSave);
+                            imported++;
+                        } else if (mode === 'overwrite') {
+                            // Overwrite by ID if present, else overwrite any same patient/date
+                            if (rec.id && existingIds.has(rec.id)) {
+                                await window.SecureDB.saveTest(rec); // will overwrite because same id
+                                imported++;
+                            } else if (existingByPatientDate.has(recKey)) {
+                                // delete existing by patient/date and save incoming record (preserve its id)
+                                const existingId = existingByPatientDate.get(recKey);
+                                try { await window.SecureDB.deleteTest(existingId); } catch (e) { console.warn('Failed to delete existing by date', e); }
+                                await window.SecureDB.saveTest(rec);
+                                imported++;
+                            } else {
+                                // no match - just save
+                                await window.SecureDB.saveTest(rec);
+                                imported++;
+                            }
+                        } else {
+                            // fallback - treat as append
+                            const toSave = { ...rec };
+                            delete toSave.id;
+                            await window.SecureDB.saveTest(toSave);
+                            imported++;
+                        }
+                    } catch (err) {
+                        console.error('Import failed for record', rec, err);
+                        errors++;
+                    }
+                }
+                if (fileInputRef && fileInputRef.current) fileInputRef.current.value = '';
+                setImportPreviewRecords([]);
+                setImportPreviewFileName('');
+                setImportPreviewInvalidCount(0);
+                alert(`Import complete. ${imported} records imported, ${skipped} skipped, ${errors} errors.`);
+            };
+
             const handleOpenClick = () => fileInputRef.current.click(); // Unused
             const clearAllData = () => { if (clearConfirm) { resetForm(); } else { setClearConfirm(true); setTimeout(() => setClearConfirm(false), 3000); } };
 
@@ -1273,8 +1789,8 @@
                     startY: 50,
                     head: [['Test', 'Condition', 'List', 'Level', 'SNR', 'Word Score', 'Phoneme Score']],
                     body: [
-                        ['Test A', formatCondition(tests.A), tests.A.listId, `${tests.A.level || '--'} dB`, `${tests.A.snr || '--'} dB`, `${statsA.wordPercent}%`, `${statsA.phonemePercent}%`],
-                        ['Test B', formatCondition(tests.B), tests.B.listId, `${tests.B.level || '--'} dB`, `${tests.B.snr || '--'} dB`, `${statsB.wordPercent}%`, `${statsB.phonemePercent}%`]
+                        ['Test A', formatCondition(tests.A), tests.A.listId, `${tests.A.level || '--'}`, `${tests.A.snr || '--'}`, `${statsA.wordPercent}%`, `${statsA.phonemePercent}%`],
+                        ['Test B', formatCondition(tests.B), tests.B.listId, `${tests.B.level || '--'}`, `${tests.B.snr || '--'}`, `${statsB.wordPercent}%`, `${statsB.phonemePercent}%`]
                     ],
                     theme: 'striped',
                     headStyles: { fillColor: [66, 135, 245] }
@@ -1301,8 +1817,18 @@
                 // Add Comparative Ease if applicable
                 if (!isWordDiffSig && !(tests.A.scoringMode === 'phoneme' && isPhonemeDiffSig)) {
                     finalY += 5;
-                    doc.text(`Comparative Ease of Listening Rating: ${tests.comparativeEase}/10`, 20, finalY);
-                    finalY += 4;
+                    const ratingText = `Comparative Ease of Listening Rating: ${tests.comparativeEase}/10`;
+                    doc.text(ratingText, 20, finalY);
+
+                    // Ease delta relative to neutral (5) — moved to next line with label, smaller font
+                    const easeDelta = tests.comparativeEase - 5;
+                    const deltaText = `${easeDelta > 0 ? ('+' + easeDelta) : easeDelta}`;
+                    finalY += 5;
+                    doc.setFontSize(9);
+                    doc.text(`Ease of Listening Delta: ${deltaText}`, 20, finalY);
+                    doc.setFontSize(10);
+
+                    finalY += 6;
                     let easeDesc = "No Difference";
                     if (tests.comparativeEase > 5) easeDesc = "New condition is Easier";
                     if (tests.comparativeEase < 5) easeDesc = "New condition is Harder";
@@ -1341,6 +1867,42 @@
                     <LoadTestModal isOpen={showLoadModal} onClose={() => setShowLoadModal(false)} onLoad={handleLoadTest} />
                     <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} initialSettings={clinicSettings} onSave={handleSaveSettings} />
                     <ComparativeEaseScaleModal isOpen={showComparativeScaleModal} onClose={() => setShowComparativeScaleModal(false)} />
+                    <ImportPreviewModal isOpen={showImportPreviewModal} onClose={() => setShowImportPreviewModal(false)} fileName={importPreviewFileName} records={importPreviewRecords} invalidCount={importPreviewInvalidCount} onImportOverwrite={() => importRecords('overwrite')} onImportAppend={() => importRecords('append')} onImportSkip={() => importRecords('skip')} onImportUseSelected={() => importRecords(importModePick)} defaultMode={importModePick} />
+
+                    {/* Delete DB Warning Modal */}
+                    {showDeleteDbModal && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
+                                <button onClick={() => { setShowDeleteDbModal(false); setDeleteDbConfirmText(''); }} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                                <h3 className="text-lg font-bold text-slate-800 mb-2">Danger: Delete Local Database</h3>
+                                <p className="text-sm text-slate-600 mb-4">This action will permanently delete <strong>all patient records</strong> from the local database. Clinic settings will be preserved. This cannot be undone.</p>
+                                <div className="mb-4">
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Type <span className="font-mono">DELETE</span> to confirm</label>
+                                    <input type="text" value={deleteDbConfirmText} onChange={(e) => setDeleteDbConfirmText(e.target.value)} placeholder="Type DELETE to confirm" className="w-full px-3 py-2 border border-slate-300 rounded" />
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                    <button onClick={() => { setShowDeleteDbModal(false); setDeleteDbConfirmText(''); }} className="px-4 py-2 bg-white border rounded">Cancel</button>
+                                    <button onClick={async () => { if (deleteDbConfirmText === 'DELETE') { setShowDeleteDbModal(false); setDeleteDbConfirmText(''); try { await window.SecureDB.deleteAllTests(); alert('Database cleared. Clinic settings preserved.'); resetForm(); } catch (e) { console.error(e); alert('Failed to delete database.'); } } else { alert('Please type DELETE to confirm.'); } }} className="px-4 py-2 bg-red-600 text-white rounded">Delete Database</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Import Source Modal: choose simulated DB or upload file */}
+                    {showImportSourceModal && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6 relative">
+                                <button onClick={() => setShowImportSourceModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                                <h3 className="text-lg font-bold text-slate-800 mb-3">Import Source</h3>
+                                <p className="text-sm text-slate-600 mb-4">Choose a source to import records from.</p>
+                                <div className="space-y-3">
+                                    <button onClick={handleUseSimulatedDB} className="w-full px-4 py-2 bg-slate-100 rounded text-slate-800">Use Simulated DB (100 records, longitudinal)</button>
+                                    <button onClick={handleUseFileUpload} className="w-full px-4 py-2 bg-white border rounded text-slate-800">Upload JSON File</button>
+                                </div>
+                                <div className="mt-4 text-xs text-slate-500">Tip: choose <strong>Skip duplicates</strong> mode if you are re-importing the same exported file to avoid duplicates.</div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="max-w-5xl mx-auto space-y-6">
                         {/* Header Controls */}
@@ -1355,15 +1917,23 @@
                                 </div>
                                 <div className="flex flex-wrap gap-2 justify-end">
                                     <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition text-sm font-medium"><SettingsIcon className="w-4 h-4"/></button>
-                                    <button onClick={() => setShowLoadModal(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><Database className="w-4 h-4" /> Load Patient</button>
+                                    {/* Delete DB (moved up) */}
+                                    <button onClick={() => setShowDeleteDbModal(true)} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium bg-red-50 text-red-700 hover:bg-red-200`}><Trash2 className="w-4 h-4" /> Delete DB</button>
                                     <button onClick={handleExportDB} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><Download className="w-4 h-4" /> Export DB (JSON)</button>
-                                    <button onClick={handleExportFHIR} className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium"><Flame className="w-4 h-4" /> Export FHIR</button>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={handleImportDB} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-sm font-medium"><FileUp className="w-4 h-4" /> Import DB (JSON)</button>
+                                    </div>
+                                    <input type="file" accept=".json,application/json" ref={fileInputRef} style={{display:'none'}} onChange={handleImportFile} />
+                                    <button onClick={() => setShowLoadModal(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><Database className="w-4 h-4" /> Load Patient</button>
+
                                     <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm font-medium"><FileText className="w-4 h-4" /> PDF Report</button>
                                     <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"><Save className="w-4 h-4" /> Save (Local)</button>
                                     {currentTestId && (
                                         <button onClick={handleDeleteCurrentRecord} className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition text-sm font-medium"><Trash2 className="w-4 h-4" /> Delete</button>
                                     )}
-                                    <button onClick={clearAllData} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium ${clearConfirm ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}><RotateCcw className="w-4 h-4" /> {clearConfirm ? "Confirm?" : "New Test"}</button>
+
+                                    {/* New Test - make green */}
+                                    <button onClick={clearAllData} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium ${clearConfirm ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}><RotateCcw className="w-4 h-4" /> {clearConfirm ? "Confirm?" : "New Test"}</button>
                                 </div>
                             </div>
 
@@ -1413,7 +1983,7 @@
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Word List</label><select value={activeTest.listId} onChange={(e) => updateActiveTest('listId', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="1A">List 1A</option><option value="2A">List 2A</option><option value="3A">List 3A</option><option value="4A">List 4A</option></select></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Section</label><select value={activeTest.section} onChange={(e) => updateActiveTest('section', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">{getSectionOptions(activeTestId).map(opt => (<option key={opt.val} value={opt.val}>{opt.label}</option>))}</select></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Level (e.g., MLV-avg or 65 dBC)</label><input type="text" value={activeTest.level} onChange={(e) => updateActiveTest('level', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
-                                            <div><label className="block text-xs font-medium text-slate-500 mb-1">SNR (dB)</label><input type="text" value={activeTest.snr} onChange={(e) => updateActiveTest('snr', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
+                                            <div><label className="block text-xs font-medium text-slate-500 mb-1">Noise (e.g., +10 dB SNR or 55 dBC)</label><input type="text" value={activeTest.snr} onChange={(e) => updateActiveTest('snr', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
                                         </div>
                                     </div>
                                 </div>
@@ -1450,24 +2020,30 @@
                                     <div className="p-6">
                                         <div className="flex justify-end mb-4 print:hidden"><div className="bg-slate-100 p-1 rounded-lg flex items-center gap-2 text-sm"><span className="px-2 text-xs font-semibold text-slate-500 uppercase">Critical Difference Level</span><button onClick={() => setConfidenceLevel(95)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 95 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>95%</button><button onClick={() => setConfidenceLevel(80)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 80 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>80%</button><button onClick={() => setShowChartModal(true)} className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> View Tables</button></div></div>
                                         <div className="grid grid-cols-3 gap-8 mb-8">
-                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test A (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{tests.A.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {tests.A.listId}</div><div>Level: {tests.A.level || '--'} dBC</div><div>SNR: {tests.A.snr || '--'} dB</div></div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsA.wordPercent}%</span></div>{tests.A.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsA.phonemePercent}%</span></div>)}</div></div>
+                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test A (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{tests.A.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {tests.A.listId}</div><div>Level: {tests.A.level || '--'}</div><div>Noise: {tests.A.snr || '--'}</div></div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsA.wordPercent}%</span></div>{tests.A.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsA.phonemePercent}%</span></div>)}</div></div>
 
                                             <div className="flex flex-col items-center justify-center text-center">
-                                                <div className="mb-2 text-xs font-bold text-slate-400 uppercase">Difference (B - A)</div>
+                                                {/* Word recognition difference - label above, styled like Ease label */}
+                                                <div className="text-sm font-bold text-slate-500">Word Recognition Difference</div>
                                                 <div className={`text-3xl font-bold mb-1 ${statsB.wordPercent - statsA.wordPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{statsB.wordPercent - statsA.wordPercent > 0 ? '+' : ''}{statsB.wordPercent - statsA.wordPercent}%</div>
-                                                <div className="text-sm text-slate-500 mb-6">Word Recognition</div>
 
                                                 {(tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') && (
                                                     <React.Fragment>
-                                                        <div className={`text-2xl font-bold mb-1 ${statsB.phonemePercent - statsA.phonemePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                            {statsB.phonemePercent - statsA.phonemePercent > 0 ? '+' : ''}{statsB.phonemePercent - statsA.phonemePercent}%
-                                                        </div>
-                                                        <div className="text-sm text-slate-500 mb-6">Phoneme Recognition</div>
+                                                        {/* Phoneme recognition difference - label above, styled like Ease label */}
+                                                        <div className="text-sm font-bold text-slate-500 mt-4">Phoneme Recognition Difference</div>
+                                                        <div className={`text-3xl font-bold mt-1 ${statsB.phonemePercent - statsA.phonemePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{statsB.phonemePercent - statsA.phonemePercent > 0 ? '+' : ''}{statsB.phonemePercent - statsA.phonemePercent}%</div>
                                                     </React.Fragment>
+                                                )}
+
+                                                {showComparativeEase && (
+                                                    <div className="mt-2 text-center">
+                                                        <div className="text-sm font-bold text-slate-500">Ease of Listening Delta</div>
+                                                        <div className={`text-3xl font-bold mt-1 ${tests.comparativeEase - 5 >= 2 ? 'text-emerald-600' : tests.comparativeEase - 5 <= -2 ? 'text-red-600' : 'text-slate-600'}`} aria-live="polite">{(tests.comparativeEase - 5) >= 0 ? '+' : ''}{tests.comparativeEase - 5}</div>
+                                                    </div>
                                                 )}
                                             </div>
 
-                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test B (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{tests.B.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {tests.B.listId}</div><div>Level: {tests.B.level || '--'} dBC</div><div>SNR: {tests.B.snr || '--'} dB</div></div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsB.wordPercent}%</span></div>{tests.B.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsB.phonemePercent}%</span></div>)}</div></div>
+                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test B (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{tests.B.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {tests.B.listId}</div><div>Level: {tests.B.level || '--'}</div><div>Noise: {tests.B.snr || '--'}</div></div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsB.wordPercent}%</span></div>{tests.B.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsB.phonemePercent}%</span></div>)}</div></div>
                                         </div>
 
                                         {/* Comparative Ease Slider */}

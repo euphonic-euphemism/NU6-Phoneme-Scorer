@@ -22,7 +22,7 @@ No Cloud Transmission: The Software does not connect to any external cloud datab
 
 The Software includes features to export data for clinical interoperability (e.g., FHIR JSON Bundle, Database Backup).
 
-Exported Files are Unencrypted: When you explicitly choose to export data (e.g., "Export FHIR" or "Export DB"), the Software generates a standard, unencrypted JSON file so it can be read by other Electronic Health Record (EHR) systems.
+Exported Files are Unencrypted: When you explicitly choose to export data (e.g., "Export DB"), the Software generates a standard, unencrypted JSON file so it can be read by other Electronic Health Record (EHR) systems.
 
 User Responsibility: Once a file is exported from the secure environment of the Software, it is no longer encrypted by the application. It is the sole responsibility of the user to ensure these exported files are stored, transmitted, or disposed of in a HIPAA-compliant manner.
 
