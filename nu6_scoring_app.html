@@ -295,8 +295,54 @@
         const FileText = (props) => ( <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></IconBase> );
 
         // ... [PHONEME_MAP, PHONEME_GROUPS, LISTS 1A-4A are the same] ...
-        const PHONEME_MAP = { "f": "Fricative", "v": "Fricative", "θ": "Fricative", "ð": "Fricative", "s": "Fricative", "z": "Fricative", "ʃ": "Fricative", "ʒ": "Fricative", "h": "Fricative", "tʃ": "Affricate", "dʒ": "Affricate", "p": "Stop", "b": "Stop", "t": "Stop", "d": "Stop", "k": "Stop", "g": "Stop", "m": "Nasal", "n": "Nasal", "ŋ": "Nasal", "l": "Liquid/Glide", "r": "Liquid/Glide", "w": "Liquid/Glide", "j": "Liquid/Glide", "i": "Vowel", "ɪ": "Vowel", "eɪ": "Vowel", "ɛ": "Vowel", "æ": "Vowel", "u": "Vowel", "ʊ": "Vowel", "oʊ": "Vowel", "ɔ": "Vowel", "ɑ": "Vowel", "ʌ": "Vowel", "ɝ": "Vowel", "aɪ": "Vowel", "ɔɪ": "Vowel", "aʊ": "Vowel", "ə": "Vowel", "ɚ": "Vowel" };
-        const PHONEME_GROUPS = { "High Frequency (Fricatives, Affricates, Stops)": ["Fricative", "Affricate", "Stop"], "Low Frequency (Nasals, Liquids, Glides, Vowels)": ["Nasal", "Liquid/Glide", "Vowel"] };
+        const PHONEME_MAP = { "f": "Fricative", "v": "Fricative", "θ": "Fricative", "ð": "Fricative", "s": "Fricative", "z": "Fricative", "ʃ": "Fricative", "ʒ": "Fricative", "h": "Fricative", "tʃ": "Affricate", "dʒ": "Affricate", "p": "Stop", "b": "Stop", "t": "Stop", "d": "Stop", "k": "Stop", "g": "Stop", "m": "Nasal", "n": "Nasal", "ŋ": "Nasal", "l": "Liquid", "r": "Liquid", "w": "Glide", "j": "Glide", "i": "Vowel", "ɪ": "Vowel", "eɪ": "Vowel", "ɛ": "Vowel", "æ": "Vowel", "u": "Vowel", "ʊ": "Vowel", "oʊ": "Vowel", "ɔ": "Vowel", "ɑ": "Vowel", "ʌ": "Vowel", "ɝ": "Vowel", "aɪ": "Vowel", "ɔɪ": "Vowel", "aʊ": "Vowel", "ə": "Vowel", "ɚ": "Vowel" };
+        const PHONEME_GROUPS = { "High Frequency (Fricatives, Affricates, Stops)": ["Fricative", "Affricate", "Stop"], "Low Frequency (Nasals, Liquids, Glides, Vowels)": ["Nasal", "Liquid", "Glide", "Vowel"] };
+        const PHONEME_FEATURES = {
+            // Voiceless
+            "p": { manner: "Stop", place: "Bilabial", voicing: "Voiceless" },
+            "t": { manner: "Stop", place: "Alveolar", voicing: "Voiceless" },
+            "k": { manner: "Stop", place: "Velar", voicing: "Voiceless" },
+            "f": { manner: "Fricative", place: "Labiodental", voicing: "Voiceless" },
+            "θ": { manner: "Fricative", place: "Dental", voicing: "Voiceless" },
+            "s": { manner: "Fricative", place: "Alveolar", voicing: "Voiceless" },
+            "ʃ": { manner: "Fricative", place: "Palato-alveolar", voicing: "Voiceless" },
+            "h": { manner: "Fricative", place: "Glottal", voicing: "Voiceless" },
+            "tʃ": { manner: "Affricate", place: "Palato-alveolar", voicing: "Voiceless" },
+            // Voiced
+            "b": { manner: "Stop", place: "Bilabial", voicing: "Voiced" },
+            "d": { manner: "Stop", place: "Alveolar", voicing: "Voiced" },
+            "g": { manner: "Stop", place: "Velar", voicing: "Voiced" },
+            "v": { manner: "Fricative", place: "Labiodental", voicing: "Voiced" },
+            "ð": { manner: "Fricative", place: "Dental", voicing: "Voiced" },
+            "z": { manner: "Fricative", place: "Alveolar", voicing: "Voiced" },
+            "ʒ": { manner: "Fricative", place: "Palato-alveolar", voicing: "Voiced" },
+            "dʒ": { manner: "Affricate", place: "Palato-alveolar", voicing: "Voiced" },
+            "m": { manner: "Nasal", place: "Bilabial", voicing: "Voiced" },
+            "n": { manner: "Nasal", place: "Alveolar", voicing: "Voiced" },
+            "ŋ": { manner: "Nasal", place: "Velar", voicing: "Voiced" },
+            "l": { manner: "Liquid", place: "Alveolar", voicing: "Voiced" },
+            "r": { manner: "Liquid", place: "Palatal", voicing: "Voiced" },
+            "w": { manner: "Glide", place: "Bilabial", voicing: "Voiced" },
+            "j": { manner: "Glide", place: "Palatal", voicing: "Voiced" },
+            // Vowels (all voiced)
+            "i": { manner: "Vowel", place: "High-Front", voicing: "Voiced" },
+            "ɪ": { manner: "Vowel", place: "High-Front", voicing: "Voiced" },
+            "eɪ": { manner: "Vowel", place: "Mid-Front", voicing: "Voiced" },
+            "ɛ": { manner: "Vowel", place: "Mid-Front", voicing: "Voiced" },
+            "æ": { manner: "Vowel", place: "Low-Front", voicing: "Voiced" },
+            "u": { manner: "Vowel", place: "High-Back", voicing: "Voiced" },
+            "ʊ": { manner: "Vowel", place: "High-Back", voicing: "Voiced" },
+            "oʊ": { manner: "Vowel", place: "Mid-Back", voicing: "Voiced" },
+            "ɔ": { manner: "Vowel", place: "Mid-Back", voicing: "Voiced" },
+            "ɑ": { manner: "Vowel", place: "Low-Back", voicing: "Voiced" },
+            "ʌ": { manner: "Vowel", place: "Mid-Central", voicing: "Voiced" },
+            "ɝ": { manner: "Vowel", place: "Mid-Central", voicing: "Voiced" },
+            "aɪ": { manner: "Vowel", place: "Diphthong", voicing: "Voiced" },
+            "ɔɪ": { manner: "Vowel", place: "Diphthong", voicing: "Voiced" },
+            "aʊ": { manner: "Vowel", place: "Diphthong", voicing: "Voiced" },
+            "ə": { manner: "Vowel", place: "Mid-Central", voicing: "Voiced" },
+            "ɚ": { manner: "Vowel", place: "Mid-Central", voicing: "Voiced" },
+        };
         const LIST_1A = [ { i: 1, w: "LAUD", p: ["l", "ɔ", "d"] }, { i: 2, w: "BOAT", p: ["b", "oʊ", "t"] }, { i: 3, w: "POOL", p: ["p", "u", "l"] }, { i: 4, w: "NAG", p: ["n", "æ", "g"] }, { i: 5, w: "LIMB", p: ["l", "ɪ", "m"] }, { i: 6, w: "SHOUT", p: ["ʃ", "aʊ", "t"] }, { i: 7, w: "SUB", p: ["s", "ʌ", "b"] }, { i: 8, w: "VINE", p: ["v", "aɪ", "n"] }, { i: 9, w: "DIME", p: ["d", "aɪ", "m"] }, { i: 10, w: "GOOSE", p: ["g", "u", "s"] }, { i: 11, w: "WHIP", p: ["w", "ɪ", "p"] }, { i: 12, w: "TOUGH", p: ["t", "ʌ", "f"] }, { i: 13, w: "PUFF", p: ["p", "ʌ", "f"] }, { i: 14, w: "KEEN", p: ["k", "i", "n"] }, { i: 15, w: "DEATH", p: ["d", "ɛ", "θ"] }, { i: 16, w: "SELL", p: ["s", "ɛ", "l"] }, { i: 17, w: "TAKE", p: ["t", "eɪ", "k"] }, { i: 18, w: "FALL", p: ["f", "ɔ", "l"] }, { i: 19, w: "RAISE", p: ["r", "eɪ", "z"] }, { i: 20, w: "THIRD", p: ["θ", "ɝ", "d"] }, { i: 21, w: "GAP", p: ["g", "æ", "p"] }, { i: 22, w: "FAT", p: ["f", "æ", "t"] }, { i: 23, w: "MET", p: ["m", "ɛ", "t"] }, { i: 24, w: "JAR", p: ["dʒ", "ɑ", "r"] }, { i: 25, w: "DOOR", p: ["d", "ɔ", "r"] }, { i: 26, w: "LOVE", p: ["l", "ʌ", "v"] }, { i: 27, w: "SURE", p: ["ʃ", "ʊ", "r"] }, { i: 28, w: "KNOCK", p: ["n", "ɑ", "k"] }, { i: 29, w: "CHOICE", p: ["tʃ", "ɔɪ", "s"] }, { i: 30, w: "HASH", p: ["h", "æ", "ʃ"] }, { i: 31, w: "LOT", p: ["l", "ɑ", "t"] }, { i: 32, w: "RAID", p: ["r", "eɪ", "d"] }, { i: 33, w: "HURL", p: ["h", "ɝ", "l"] }, { i: 34, w: "MOON", p: ["m", "u", "n"] }, { i: 35, w: "PAGE", p: ["p", "eɪ", "dʒ"] }, { i: 36, w: "YES", p: ["j", "ɛ", "s"] }, { i: 37, w: "REACH", p: ["r", "i", "tʃ"] }, { i: 38, w: "KING", p: ["k", "ɪ", "ŋ"] }, { i: 39, w: "HOME", p: ["h", "oʊ", "m"] }, { i: 40, w: "RAG", p: ["r", "æ", "g"] }, { i: 41, w: "WHICH", p: ["w", "ɪ", "tʃ"] }, { i: 42, w: "WEEK", p: ["w", "i", "k"] }, { i: 43, w: "SIZE", p: ["s", "aɪ", "z"] }, { i: 44, w: "MODE", p: ["m", "oʊ", "d"] }, { i: 45, w: "BEAN", p: ["b", "i", "n"] }, { i: 46, w: "TIP", p: ["t", "ɪ", "p"] }, { i: 47, w: "CHALK", p: ["tʃ", "ɔ", "k"] }, { i: 48, w: "JAIL", p: ["dʒ", "eɪ", "l"] }, { i: 49, w: "BURN", p: ["b", "ɝ", "n"] }, { i: 50, w: "KITE", p: ["k", "aɪ", "t"] } ];
         const LIST_2A = [ { i: 1, w: "PICK", p: ["p", "ɪ", "k"] }, { i: 2, w: "ROOM", p: ["r", "u", "m"] }, { i: 3, w: "NICE", p: ["n", "aɪ", "s"] }, { i: 4, w: "SAID", p: ["s", "ɛ", "d"] }, { i: 5, w: "FAIL", p: ["f", "eɪ", "l"] }, { i: 6, w: "SOUTH", p: ["s", "aʊ", "θ"] }, { i: 7, w: "WHITE", p: ["w", "aɪ", "t"] }, { i: 8, w: "KEEP", p: ["k", "i", "p"] }, { i: 9, w: "DEAD", p: ["d", "ɛ", "d"] }, { i: 10, w: "LOAF", p: ["l", "oʊ", "f"] }, { i: 11, w: "DAB", p: ["d", "æ", "b"] }, { i: 12, w: "NUMB", p: ["n", "ʌ", "m"] }, { i: 13, w: "JUICE", p: ["dʒ", "u", "s"] }, { i: 14, w: "CHIEF", p: ["tʃ", "i", "f"] }, { i: 15, w: "MERGE", p: ["m", "ɝ", "dʒ"] }, { i: 16, w: "WAG", p: ["w", "æ", "g"] }, { i: 17, w: "RAIN", p: ["r", "eɪ", "n"] }, { i: 18, w: "WITCH", p: ["w", "ɪ", "tʃ"] }, { i: 19, w: "SOAP", p: ["s", "oʊ", "p"] }, { i: 20, w: "YOUNG", p: ["j", "ʌ", "ŋ"] }, { i: 21, w: "TON", p: ["t", "ʌ", "n"] }, { i: 22, w: "KEG", p: ["k", "ɛ", "g"] }, { i: 23, w: "CALM", p: ["k", "ɑ", "m"] }, { i: 24, w: "TOOL", p: ["t", "u", "l"] }, { i: 25, w: "PIKE", p: ["p", "aɪ", "k"] }, { i: 26, w: "MILL", p: ["m", "ɪ", "l"] }, { i: 27, w: "HUSH", p: ["h", "ʌ", "ʃ"] }, { i: 28, w: "SHACK", p: ["ʃ", "æ", "k"] }, { i: 29, w: "READ", p: ["r", "i", "d"] }, { i: 30, w: "ROT", p: ["r", "ɑ", "t"] }, { i: 31, w: "HATE", p: ["h", "eɪ", "t"] }, { i: 32, w: "LIVE", p: ["l", "ɪ", "v"] }, { i: 33, w: "BOOK", p: ["b", "ʊ", "k"] }, { i: 34, w: "VOICE", p: ["v", "ɔɪ", "s"] }, { i: 35, w: "GAZE", p: ["g", "eɪ", "z"] }, { i: 36, w: "PAD", p: ["p", "æ", "d"] }, { i: 37, w: "THOUGHT", p: ["θ", "ɔ", "t"] }, { i: 38, w: "BOUGHT", p: ["b", "ɔ", "t"] }, { i: 39, w: "TURN", p: ["t", "ɝ", "n"] }, { i: 40, w: "CHAIR", p: ["tʃ", "ɛ", "r"] }, { i: 41, w: "LORE", p: ["l", "ɔ", "r"] }, { i: 42, w: "BITE", p: ["b", "aɪ", "t"] }, { i: 43, w: "HAZE", p: ["h", "eɪ", "z"] }, { i: 44, w: "MATCH", p: ["m", "æ", "tʃ"] }, { i: 45, w: "LEARN", p: ["l", "ɝ", "n"] }, { i: 46, w: "SHAWL", p: ["ʃ", "ɔ", "l"] }, { i: 47, w: "DEEP", p: ["d", "i", "p"] }, { i: 48, w: "GIN", p: ["dʒ", "ɪ", "n"] }, { i: 49, w: "GOAL", p: ["g", "oʊ", "l"] }, { i: 50, w: "FAR", p: ["f", "ɑ", "r"] } ];
         const LIST_3A = [ { i: 1, w: "BASE", p: ["b", "eɪ", "s"] }, { i: 2, w: "MESS", p: ["m", "ɛ", "s"] }, { i: 3, w: "CAUSE", p: ["k", "ɔ", "z"] }, { i: 4, w: "MOP", p: ["m", "ɑ", "p"] }, { i: 5, w: "GOOD", p: ["g", "ʊ", "d"] }, { i: 6, w: "LUCK", p: ["l", "ʌ", "k"] }, { i: 7, w: "WALK", p: ["w", "ɔ", "k"] }, { i: 8, w: "YOUTH", p: ["j", "u", "θ"] }, { i: 9, w: "PAIN", p: ["p", "eɪ", "n"] }, { i: 10, w: "DATE", p: ["d", "eɪ", "t"] }, { i: 11, w: "PEARL", p: ["p", "ɝ", "l"] }, { i: 12, w: "SEARCH", p: ["s", "ɝ", "tʃ"] }, { i: 13, w: "DITCH", p: ["d", "ɪ", "tʃ"] }, { i: 14, w: "TALK", p: ["t", "ɔ", "k"] }, { i: 15, w: "RING", p: ["r", "ɪ", "ŋ"] }, { i: 16, w: "GERM", p: ["dʒ", "ɝ", "m"] }, { i: 17, w: "LIFE", p: ["l", "aɪ", "f"] }, { i: 18, w: "TEAM", p: ["t", "i", "m"] }, { i: 19, w: "LID", p: ["l", "ɪ", "d"] }, { i: 20, w: "POLE", p: ["p", "oʊ", "l"] }, { i: 21, w: "RODE", p: ["r", "oʊ", "d"] }, { i: 22, w: "SHALL", p: ["ʃ", "æ", "l"] }, { i: 23, w: "LATE", p: ["l", "eɪ", "t"] }, { i: 24, w: "CHEEK", p: ["tʃ", "i", "k"] }, { i: 25, w: "BEG", p: ["b", "ɛ", "g"] }, { i: 26, w: "GUN", p: ["g", "ʌ", "n"] }, { i: 27, w: "JUG", p: ["dʒ", "ʌ", "g"] }, { i: 28, w: "SHEEP", p: ["ʃ", "i", "p"] }, { i: 29, w: "FIVE", p: ["f", "aɪ", "v"] }, { i: 30, w: "RUSH", p: ["r", "ʌ", "ʃ"] }, { i: 31, w: "RAT", p: ["r", "æ", "t"] }, { i: 32, w: "VOID", p: ["v", "ɔɪ", "d"] }, { i: 33, w: "WIRE", p: ["w", "aɪ", "r"] }, { i: 34, w: "HALF", p: ["h", "æ", "f"] }, { i: 35, w: "NOTE", p: ["n", "oʊ", "t"] }, { i: 36, w: "WHEN", p: ["w", "ɛ", "n"] }, { i: 37, w: "NAME", p: ["n", "eɪ", "m"] }, { i: 38, w: "THIN", p: ["θ", "ɪ", "n"] }, { i: 39, w: "TELL", p: ["t", "ɛ", "l"] }, { i: 40, w: "BAR", p: ["b", "ɑ", "r"] }, { i: 41, w: "MOUSE", p: ["m", "aʊ", "s"] }, { i: 42, w: "HIRE", p: ["h", "aɪ", "r"] }, { i: 43, w: "CAB", p: ["k", "æ", "b"] }, { i: 44, w: "HIT", p: ["h", "ɪ", "t"] }, { i: 45, w: "CHAT", p: ["tʃ", "æ", "t"] }, { i: 46, w: "PHONE", p: ["f", "oʊ", "n"] }, { i: 47, w: "SOUP", p: ["s", "u", "p"] }, { i: 48, w: "DODGE", p: ["d", "ɑ", "dʒ"] }, { i: 49, w: "SEIZE", p: ["s", "i", "z"] }, { i: 50, w: "COOL", p: ["k", "u", "l"] } ];
@@ -359,6 +405,13 @@
                 // Randomize scoringMode per test but bias to keep mode same across longitudinal tests
                 let scoringModeA = (patientPrevModeA[patientIndex] && rand() < 0.7) ? patientPrevModeA[patientIndex] : (rand() < 0.5 ? 'phoneme' : 'word');
                 let scoringModeB = (patientPrevModeB[patientIndex] && rand() < 0.7) ? patientPrevModeB[patientIndex] : (rand() < 0.5 ? 'phoneme' : 'word');
+
+                // Enforce phoneme parity: if either test is phoneme-scored, make both phoneme-scored
+                if (scoringModeA === 'phoneme' || scoringModeB === 'phoneme') {
+                    scoringModeA = scoringModeB = 'phoneme';
+                }
+
+                // Persist modes for longitudinal bias
                 patientPrevModeA[patientIndex] = scoringModeA;
                 patientPrevModeB[patientIndex] = scoringModeB;
 
@@ -512,16 +565,64 @@
                     statsB = computeStatsLocal(listB, 'second_10', scoresB, limitB);
                 }
 
-                // Ensure phoneme presence mirrored between Test A and Test B
-                const hasPhonemeA = Object.keys(scoresA).length > 0;
-                const hasPhonemeB = Object.keys(scoresB).length > 0;
-                if (hasPhonemeA && !hasPhonemeB) {
-                    // regenerate B as phoneme-scored so both have phoneme-level entries
-                    scoresB = genScoresFor(listB, 'second_10', 'phoneme', limitB, percentBaseB);
-                    statsB = computeStatsLocal(listB, 'second_10', scoresB, limitB);
-                } else if (hasPhonemeB && !hasPhonemeA) {
+                // Ensure phoneme presence mirrored between Test A and Test B and enforce scoringMode parity
+                if (scoringModeA === 'phoneme' || scoringModeB === 'phoneme') {
+                    // Make both phoneme-scored and regenerate phoneme-level scores
+                    scoringModeA = scoringModeB = 'phoneme';
+                    patientPrevModeA[patientIndex] = patientPrevModeB[patientIndex] = 'phoneme';
                     scoresA = genScoresFor(listA, 'second_10', 'phoneme', limitA, percentBaseA);
+                    scoresB = genScoresFor(listB, 'second_10', 'phoneme', limitB, percentBaseB);
                     statsA = computeStatsLocal(listA, 'second_10', scoresA, limitA);
+                    statsB = computeStatsLocal(listB, 'second_10', scoresB, limitB);
+                } else {
+                    // fallback: ensure both have at least some phoneme-level data if one has it
+                    const hasPhonemeA = Object.keys(scoresA).length > 0;
+                    const hasPhonemeB = Object.keys(scoresB).length > 0;
+                    if (hasPhonemeA && !hasPhonemeB) {
+                        scoresB = genScoresFor(listB, 'second_10', 'phoneme', limitB, percentBaseB);
+                        statsB = computeStatsLocal(listB, 'second_10', scoresB, limitB);
+                    } else if (hasPhonemeB && !hasPhonemeA) {
+                        scoresA = genScoresFor(listA, 'second_10', 'phoneme', limitA, percentBaseA);
+                        statsA = computeStatsLocal(listA, 'second_10', scoresA, limitA);
+                    }
+                }
+
+                // Enforce that Current Tech / New Tech are almost always better than Unaided
+                // Small chance of exception to keep data realistic
+                const TECH_EXCEPTION_CHANCE = 0.05;
+                const ensureTechBetterThanUnaided = (techListId, techScores, techStats, techLimit, techScoringMode, techPercentBase, unaidedStats) => {
+                    if (rand() < TECH_EXCEPTION_CHANCE) return { techStats, techScores };
+                    let attempts = 0;
+                    while (techStats.wordPercent + 2 < unaidedStats.wordPercent && attempts < 6) {
+                        attempts++;
+                        const boost = 2 + randInt(0, 6);
+                        const boostedBase = Math.min(100, Math.max(techPercentBase, unaidedStats.wordPercent + boost));
+                        techScores = genScoresFor(techListId, 'second_10', techScoringMode, techLimit, boostedBase);
+                        techStats = computeStatsLocal(techListId, 'second_10', techScores, techLimit);
+                    }
+                    return { techStats, techScores };
+                };
+
+                if (condA === 'Unaided' && (condB === 'Current Tech' || condB === 'New Tech')) {
+                    const r = ensureTechBetterThanUnaided(listB, scoresB, statsB, limitB, scoringModeB, percentBaseB, statsA);
+                    statsB = r.techStats; scoresB = r.techScores;
+                } else if (condB === 'Unaided' && (condA === 'Current Tech' || condA === 'New Tech')) {
+                    const r = ensureTechBetterThanUnaided(listA, scoresA, statsA, limitA, scoringModeA, percentBaseA, statsB);
+                    statsA = r.techStats; scoresA = r.techScores;
+                }
+
+                // If New Tech should generally be equal or better than other conditions, enforce it
+                if (condB === 'New Tech') {
+                    // If B is much worse (word% at least 10 points lower), try regenerating B a few times with boosted base
+                    let attempts = 0;
+                    while (statsB.wordPercent + 10 < statsA.wordPercent && attempts < 6) {
+                        attempts++;
+                        // bump the base so New Tech improves relative to A
+                        const boost = Math.max(5, Math.round((statsA.wordPercent - statsB.wordPercent) / 2));
+                        const newBase = Math.min(100, Math.max(percentBaseB, percentBaseA + boost + randInt(0, 4)));
+                        scoresB = genScoresFor(listB, 'second_10', scoringModeB, limitB, newBase);
+                        statsB = computeStatsLocal(listB, 'second_10', scoresB, limitB);
+                    }
                 }
 
                 // Set comparativeEase based on observed word performance (scaled and clamped 0-10)
@@ -538,8 +639,8 @@
                     activeTab: rand() < 0.5 ? 'comparison' : 'scoring',
                     confidenceLevel: rand() < 0.5 ? 95 : 80,
                     tests: {
-                        A: { id: 'A', listId: listA, section: 'second_10', scoringMode: scoringModeA, condition: condA, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, scores: scoresA, limitTo10: limitA, askedContinue: false },
-                        B: { id: 'B', listId: listB, section: 'second_10', scoringMode: scoringModeB, condition: condB, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, scores: scoresB, limitTo10: limitB, askedContinue: false },
+                        A: { id: 'A', listId: listA, section: 'second_10', scoringMode: scoringModeA, condition: condA, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, scores: scoresA, limitTo10: limitA, askedContinue: false, stats: statsA },
+                        B: { id: 'B', listId: listB, section: 'second_10', scoringMode: scoringModeB, condition: condB, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, scores: scoresB, limitTo10: limitB, askedContinue: false, stats: statsB },
                         comparativeEase: comparativeEase
                     }
                 });
@@ -898,22 +999,43 @@
             const [showInfo, setShowInfo] = useState(false);
 
             const breakdown = useMemo(() => {
-                const groups = { "High Frequency (Fricatives, Affricates, Stops)": { total: 0, missed: 0, types: ["Fricative", "Affricate", "Stop"] }, "Low Frequency (Nasals, Liquids, Glides, Vowels)": { total: 0, missed: 0, types: ["Nasal", "Liquid/Glide", "Vowel"] } };
-                const details = { Fricative: { total: 0, missed: 0 }, Affricate: { total: 0, missed: 0 }, Stop: { total: 0, missed: 0 }, Nasal: { total: 0, missed: 0 }, "Liquid/Glide": { total: 0, missed: 0 }, Vowel: { total: 0, missed: 0 } };
+                const groups = { "High Frequency (Fricatives, Affricates, Stops)": { total: 0, missed: 0, types: ["Fricative", "Affricate", "Stop"] }, "Low Frequency (Nasals, Liquids, Glides, Vowels)": { total: 0, missed: 0, types: ["Nasal", "Liquid", "Glide", "Vowel"] } };
+                const details = { Fricative: { total: 0, missed: 0 }, Affricate: { total: 0, missed: 0 }, Stop: { total: 0, missed: 0 }, Nasal: { total: 0, missed: 0 }, Liquid: { total: 0, missed: 0 }, Glide: { total: 0, missed: 0 }, Vowel: { total: 0, missed: 0 } };
+                
+                // NEW: Feature breakdown
+                const feature_breakdown = {
+                    manner: {},
+                    place: {},
+                    voicing: {}
+                };
 
                 stats.visibleWords.forEach(word => {
                     word.p.forEach((p, idx) => {
                         if (p === '-') return;
                         const type = PHONEME_MAP[p];
+                        const features = PHONEME_FEATURES[p];
                         const isCorrect = scores[`${listId}_${word.i}_${idx}`];
+                        
                         if (type) {
                             if(details[type]) { details[type].total++; if (!isCorrect) details[type].missed++; }
                             if (groups["High Frequency (Fricatives, Affricates, Stops)"].types.includes(type)) { groups["High Frequency (Fricatives, Affricates, Stops)"].total++; if (!isCorrect) groups["High Frequency (Fricatives, Affricates, Stops)"].missed++; }
                             else if (groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].types.includes(type)) { groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].total++; if (!isCorrect) groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].missed++; }
                         }
+                        
+                        // Populate feature breakdown
+                        if (features) {
+                            for (const [feature, value] of Object.entries(features)) {
+                                if (!feature_breakdown[feature]) feature_breakdown[feature] = {};
+                                if (!feature_breakdown[feature][value]) feature_breakdown[feature][value] = { total: 0, missed: 0 };
+                                feature_breakdown[feature][value].total++;
+                                if (!isCorrect) {
+                                    feature_breakdown[feature][value].missed++;
+                                }
+                            }
+                        }
                     });
                 });
-                return { groups, details };
+                return { groups, details, feature_breakdown };
             }, [stats, scores, listId]);
 
             useEffect(() => {
@@ -935,7 +1057,45 @@
                             <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm h-56 relative"><canvas ref={canvasRef}></canvas></div>
                             {Object.entries(breakdown.groups).map(([name, data]) => { const percent = data.total > 0 ? Math.round((data.missed / data.total) * 100) : 0; return ( <div key={name} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm"> <div className="flex justify-between items-center mb-1"> <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">{name}</span> <span className={`text-xs font-bold ${percent > 30 ? 'text-red-600' : 'text-slate-500'}`}>{percent}% Missed</span> </div> <div className="w-full bg-slate-100 rounded-full h-2 mb-1"> <div className={`h-2 rounded-full ${percent > 50 ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div> </div> <div className="text-[10px] text-slate-400 text-right">{data.missed} / {data.total} phonemes</div> </div> ); })}
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm"><h5 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3 border-b border-slate-100 pb-2">Detailed Breakdown</h5><div className="grid grid-cols-2 gap-y-2 gap-x-4">{Object.entries(breakdown.details).map(([type, data]) => { if(data.total === 0) return null; const pct = Math.round((data.missed / data.total) * 100); return ( <div key={type} className="flex justify-between items-center text-xs"> <span className="text-slate-600">{type}</span> <span className={`font-mono ${pct > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}`}> {data.missed}/{data.total} ({pct}%) </span> </div> ); })}</div></div>
+                        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                            <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3 border-b border-slate-100 pb-2">Error Analysis by Type</h5>
+                            <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                                {Object.entries(breakdown.details).map(([type, data]) => {
+                                    if(data.total === 0) return null;
+                                    const pct = Math.round((data.missed / data.total) * 100);
+                                    return (
+                                        <div key={type} className="flex justify-between items-center text-xs">
+                                            <span className="text-slate-600">{type}</span>
+                                            <span className={`font-mono ${pct > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+                                                {data.missed}/{data.total} ({pct}%)
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wide my-3 border-b border-slate-100 pb-2 pt-2">Error Analysis by Feature</h5>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <h6 className="text-xs font-bold text-slate-600 mb-1">Manner</h6>
+                                    <div className="space-y-1 text-xs">
+                                        {breakdown.feature_breakdown.manner && Object.entries(breakdown.feature_breakdown.manner).sort((a,b) => b[1].missed - a[1].missed).map(([type, data]) => { if(data.total === 0) return null; const pct = Math.round((data.missed / data.total) * 100); return ( <div key={type} className="flex justify-between"> <span className="text-slate-600">{type}</span> <span className={`font-mono ${pct > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>{data.missed}/{data.total}</span> </div> ); })}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h6 className="text-xs font-bold text-slate-600 mb-1">Place</h6>
+                                    <div className="space-y-1 text-xs">
+                                        {breakdown.feature_breakdown.place && Object.entries(breakdown.feature_breakdown.place).sort((a,b) => b[1].missed - a[1].missed).map(([type, data]) => { if(data.total === 0) return null; const pct = Math.round((data.missed / data.total) * 100); return ( <div key={type} className="flex justify-between"> <span className="text-slate-600">{type}</span> <span className={`font-mono ${pct > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>{data.missed}/{data.total}</span> </div> ); })}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h6 className="text-xs font-bold text-slate-600 mb-1">Voicing</h6>
+                                    <div className="space-y-1 text-xs">
+                                        {breakdown.feature_breakdown.voicing && Object.entries(breakdown.feature_breakdown.voicing).sort((a,b) => b[1].missed - a[1].missed).map(([type, data]) => { if(data.total === 0) return null; const pct = Math.round((data.missed / data.total) * 100); return ( <div key={type} className="flex justify-between"> <span className="text-slate-600">{type}</span> <span className={`font-mono ${pct > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>{data.missed}/{data.total}</span> </div> ); })}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             );
@@ -1878,7 +2038,7 @@
                                 <p className="text-sm text-slate-600 mb-4">This action will permanently delete <strong>all patient records</strong> from the local database. Clinic settings will be preserved. This cannot be undone.</p>
                                 <div className="mb-4">
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Type <span className="font-mono">DELETE</span> to confirm</label>
-                                    <input type="text" value={deleteDbConfirmText} onChange={(e) => setDeleteDbConfirmText(e.target.value)} placeholder="Type DELETE to confirm" className="w-full px-3 py-2 border border-slate-300 rounded" />
+                                    <input type="text" value={deleteDbConfirmText} onChange={(e) => setDeleteDbConfirmText(e.target.value)} placeholder="Type DELETE to confirm" className="w-full px-3 py-2 border border-slate-300 rounded" autoFocus />
                                 </div>
                                 <div className="flex justify-end gap-2">
                                     <button onClick={() => { setShowDeleteDbModal(false); setDeleteDbConfirmText(''); }} className="px-4 py-2 bg-white border rounded">Cancel</button>
@@ -1987,7 +2147,9 @@
                                         </div>
                                     </div>
                                 </div>
-                                {activeTest.scoringMode === 'phoneme' && (<DiagnosticsPanel stats={activeStats} scores={activeTest.scores} listId={activeTest.listId} />)}
+                                        {activeTest.scoringMode === 'phoneme' && activeStats.totalWords > 10 && (
+                                            <DiagnosticsPanel stats={activeStats} scores={activeTest.scores} listId={activeTest.listId} />
+                                        )}
                                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black">
                                     <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
                                         <div className="font-bold text-slate-700 flex items-center gap-2">Scoring: Test {activeTestId} <span className="font-normal text-slate-500 mx-1">|</span> {activeTest.listId}{activeTest.limitTo10 && <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full border border-orange-200 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Limited to 10 Words</span>}</div>

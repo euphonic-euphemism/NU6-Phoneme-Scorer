@@ -86,3 +86,6 @@ release/
 Mac OS
 
 .DS_Store
+
+# Electron-builder cache
+.cache/

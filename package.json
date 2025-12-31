@@ -1,7 +1,7 @@
 {
   "name": "nu6-phoneme-scorer",
   "productName": "NU-6-Phoneme-Scorer",
-  "version": "1.0.23",
+  "version": "1.0.24",
   "description": "NU-6 Whole Word and Phoneme Scoring Application",
   "main": "main.js",
   "homepage": "https://github.com/euphonic-euphemism/NU6-Phoneme-Scorer",

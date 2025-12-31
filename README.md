@@ -1,86 +1,89 @@
-NU-6 Word and Phoneme Scorer
+# NU-6 Word and Phoneme Scorer
 
 A standalone, secure, web-based application for scoring NU-6 word lists in clinical audiology settings. This tool offers granular phoneme scoring, whole-word scoring, and statistical comparison between two test conditions using gold-standard simulation data.
 
-Features
+## Features
 
-Standardized Lists
+- **Standardized Lists**: Includes NU-6 Lists 1A, 2A, 3A, and 4A with full phonemic breakdowns and IPA notation.
+- **Advanced Scoring Modes**: Granular phoneme scoring, whole-word scoring, and error pattern analysis.
+- **Statistical Veracity**: Monte Carlo simulation models for accurate critical difference tables.
+- **Significance Detection**: Real-time calculation of statistical significance between two test conditions.
+- **Security & Privacy**: All patient data is stored locally with AES-GCM 256-bit encryption.
+- **Clinical Workflow Tools**: Comparison mode, comparative ease of listening scale, and longitudinal history tracking.
+- **Reporting & Integration**: Professional PDF export and data portability with JSON.
 
-Includes NU-6 Lists 1A, 2A, 3A, and 4A with full phonemic breakdowns and IPA notation.
+## Installation & Usage
 
-Advanced Scoring Modes
+### Web Version
 
-Granular Phoneme Scoring: Mark individual phonemes as correct or incorrect. Automatically identifies error patterns by phoneme class (Fricatives, Nasals, Vowels, etc.).
+Simply open `nu6_scoring_app.html` in any modern web browser (Chrome, Edge, Firefox, Safari). The app is entirely self-contained and functions offline once loaded.
 
-Whole Word Scoring: Rapid scoring via "Correct" or "Incorrect" toggles for standard Word Recognition Score (WRS) calculation.
+### Desktop App
 
-Statistical Veracity
+Desktop applications for Windows, macOS, and Linux are available via the [GitHub Releases](https://github.com/NU-Audiology/nu6-scorer-desktop/releases) page.
 
-Monte Carlo Simulation Models: Replaces the legacy Thornton & Raffin (1978) mathematical approximations with more accurate critical difference tables derived via Pairwise Monte Carlo simulations.
+---
 
-Comprehensive Lookup Tables: In-app access to 80% and 95% Confidence Interval tables for all supported list lengths (N=10, 25, 50 words; N=30, 75, 150 phonemes).
+## For Developers
 
-Significance Detection: Real-time calculation of whether the difference between two test conditions (e.g., Aided vs. Unaided) is statistically significant.
+This section provides instructions for setting up the development environment, running the application locally, and building the distribution packages.
 
-Security & Privacy
+### Prerequisites
 
-Local Encryption: All patient data is stored locally in the browser's IndexedDB, protected by AES-GCM 256-bit encryption.
+- [Node.js](https://nodejs.org/) (v18 or later recommended)
+- [npm](https://www.npmjs.com/) (usually included with Node.js)
 
-Zero-Knowledge Architecture: Decryption keys are derived from user passwords using PBKDF2; data never leaves the local machine.
+### Project Structure
 
-Clinical Workflow Tools
+```
+/
+├── .github/              # GitHub Actions workflows for CI/CD
+├── build/                # Icons and build resources
+├── scripts/              # Helper scripts (e.g., database checks)
+├── main.js               # Electron main process
+├── nu6_scoring_app.html  # The single-page HTML application
+├── package.json          # Project metadata and dependencies
+└── README.md             # This file
+```
 
-Comparison Mode: Evaluate "Condition A" against "Condition B" side-by-side.
+### Setup and Running Locally
 
-Comparative Ease of Listening Scale: Quantify subjective patient feedback on a 0-10 scale when objective scores are within critical limits.
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/NU-Audiology/nu6-scorer-desktop.git
+    cd nu6-scorer-desktop
+    ```
 
-Longitudinal History: Track a patient’s performance over time with automated trend graphing.
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-Reporting & Integration
+3.  **Run the application in development mode:**
+    This will start the Electron application with hot-reloading enabled.
+    ```bash
+    npm start
+    ```
 
-Professional PDF Export: Generate formatted clinical reports including clinic branding, patient demographics, and automated statistical interpretations.
+### Building for Production
 
-Data Portability: Export local databases to JSON or FHIR Bundle format for potential EHR integration.
+The application uses `electron-builder` to create distributable packages for Windows, macOS, and Linux.
 
-Installation & Usage
+-   **Build for your current OS:**
+    ```bash
+    npm run dist
+    ```
 
-Web Version
+-   **Build for a specific OS:**
+    -   Windows (NSIS installer): `npm run dist -- --win`
+    -   macOS (DMG): `npm run dist -- --mac`
+    -   Linux (Debian package & AppImage): `npm run dist -- --linux`
 
-Simply open nu6_scoring_app.html in any modern web browser (Chrome, Edge, Firefox, Safari). The app is entirely self-contained and functions offline once loaded.
+    The generated installers and packages will be located in the `dist/` directory.
 
-Desktop App (Linux/Debian)
+### Code Style and Conventions
 
-To build the desktop application using Electron:
-
-Install Dependencies:
-
-npm install
-
-
-Run Locally:
-
-npm start
-
-
-Build Installer:
-
-npm run dist
-
-
-Tech Stack
-
-React: UI logic and state management.
-
-Tailwind CSS: Modern, responsive styling.
-
-Web Crypto API: PBKDF2 key derivation and AES-GCM encryption.
-
-IndexedDB: Persistent, secure local storage.
-
-Chart.js: Historical trend analysis and visualization.
-
-jsPDF: Professional document generation.
-
-License
-
-ISC
+-   The application is built as a single, large React component within a single HTML file (`nu6_scoring_app.html`).
+-   All JavaScript, including React and application logic, is transpiled in the browser by Babel.
+-   Styling is done with Tailwind CSS.
+-   Please maintain the existing code style and conventions when contributing.

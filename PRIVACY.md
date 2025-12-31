@@ -1,47 +1,53 @@
-Privacy Policy for NU-6 Word and Phoneme Scorer
+# Privacy Policy for NU-6 Word and Phoneme Scorer
 
-Last Updated: December 29, 2025
+**Last Updated: December 30, 2025**
 
-1. Introduction
+### 1. The Bottom Line: Your Data is Yours
 
-The NU-6 Word and Phoneme Scorer ("the Software") is a local-first application designed for audiologists and clinicians to score and track speech recognition tests. This Privacy Policy describes how data is handled within the application, specifically regarding local storage, encryption, and data export.
+The NU-6 Word and Phoneme Scorer ("the Software") is designed with privacy as a core feature. **We do not collect, transmit, or store any of your data.** All information you enter into the software stays on your computer.
 
-2. Data Storage & Encryption
+### 2. How Your Data is Stored and Protected
 
-The Software operates on a "Local-First" and "Zero-Knowledge" basis.
+-   **Local Storage Only**: All patient information (names, IDs, test results, notes) is saved only on your computer using your web browser's local database (IndexedDB).
+-   **Zero Cloud**: Your data is never sent to a server or cloud service. It never leaves your machine.
+-   **Strong Encryption**: Before any data is saved, it is encrypted using **AES-256-GCM**, an industry-standard, secure encryption method.
+-   **You Hold the Key**:
+    -   Access to your data is protected by a master password that you create.
+    -   This password is used to generate an encryption key via **PBKDF2**.
+    -   **Your password is never stored.** If you lose your password, your data cannot be recovered, not even by us.
 
-Local Storage: All patient data (Names, Patient IDs, Test Results, and Clinical Notes) is stored strictly on the local hard drive of the computer running the Software, using the browser's IndexedDB technology.
+### 3. What We Don't Collect
 
-Encryption at Rest: All sensitive patient data is encrypted before it is saved to the disk using AES-256-GCM (Advanced Encryption Standard).
+To be perfectly clear, we **do not** collect, see, or have access to:
+-   Your name, email, or any personal identifiers.
+-   Any patient information you enter.
+-   Your usage patterns or how you interact with the software.
+-   Your IP address or location.
 
-Password Protection & Key Derivation: Access to the database requires a master password set by the user. The Software uses PBKDF2 (Password-Based Key Derivation Function 2) to derive the encryption key from this password. The Software does not store this password. If the password is lost, the data is mathematically unrecoverable.
+The software contains no analytics, tracking pixels, or telemetry of any kind.
 
-No Cloud Transmission: The Software does not connect to any external cloud database (such as Firebase, AWS, or Google Cloud). No patient data is ever transmitted to the developer or any third party.
+### 4. Data Export: You Are in Control
 
-3. Data Export & Interoperability
+The software allows you to export your data for your own purposes, such as for backups or importing into an Electronic Health Record (EHR) system.
 
-The Software includes features to export data for clinical interoperability (e.g., FHIR JSON Bundle, Database Backup).
+-   **Exported Files are Not Encrypted**: When you use the "Export DB" feature, the software creates a standard, unencrypted JSON file. This is necessary so that other systems can read it.
+-   **Your Responsibility**: Once you export a file, you are responsible for keeping it safe. Please ensure you handle these files in a way that complies with your security and privacy obligations (such as HIPAA).
 
-Exported Files are Unencrypted: When you explicitly choose to export data (e.g., "Export DB"), the Software generates a standard, unencrypted JSON file so it can be read by other Electronic Health Record (EHR) systems.
+### 5. Data Deletion
 
-User Responsibility: Once a file is exported from the secure environment of the Software, it is no longer encrypted by the application. It is the sole responsibility of the user to ensure these exported files are stored, transmitted, or disposed of in a HIPAA-compliant manner.
+You have full control to delete your data at any time.
+-   **Deleting a Single Record**: You can delete individual patient records from within the application.
+-   **Deleting the Entire Database**: The "Delete DB" feature in the settings menu will permanently and irreversibly delete all patient records from your computer.
 
-4. HIPAA Compliance
+### 6. How This Helps with HIPAA Compliance
 
-The Software provides the technical tools to assist clinicians in maintaining HIPAA compliance:
+This software is designed to help you meet your HIPAA obligations by providing:
+-   **Access Control**: Data is locked behind your master password.
+-   **Encryption at Rest**: PHI (Protected Health Information) is encrypted where it is stored.
+-   **Physical Control**: You maintain full physical and digital control over the device and the data on it.
 
-Physical Control: PHI (Protected Health Information) remains contained within the user's secure internal network or device.
+*Note: While the software provides these technical safeguards, you are still responsible for the physical security of your computer and the confidentiality of your password.*
 
-Encryption: Data is encrypted at rest, providing a layer of security against unauthorized access to the physical device.
+### 7. Contact
 
-Access Control: The application requires authentication via the user-defined master password to view or decrypt patient records.
-
-Note: While the Software provides the tools for compliance, the user is responsible for the physical security of the device and the management of their encryption password.
-
-5. Analytics & Telemetry
-
-The Software does not contain tracking pixels, analytics scripts, or telemetry that reports usage or data back to the developer. It functions entirely as a standalone client-side tool.
-
-6. Contact
-
-If you have questions about this privacy policy or the source code, please open an issue in the GitHub Repository or email me at mark.shaver@posteo.net
+If you have any questions about this privacy policy, please open an issue in the [GitHub Repository](https://github.com/NU-Audiology/nu6-scorer-desktop/issues) or email the developer at [mark.shaver@posteo.net](mailto:mark.shaver@posteo.net).
