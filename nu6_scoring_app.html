@@ -293,6 +293,8 @@
         const Flame = (props) => ( <IconBase {...props}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.115.385-2.256 1.034-3.222l.173.239a5.32 5.32 0 0 0 2.293 2.483Z"/></IconBase> );
         const SettingsIcon = (props) => ( <IconBase {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></IconBase> );
         const FileText = (props) => ( <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></IconBase> );
+        const Moon = (props) => ( <IconBase {...props}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></IconBase> );
+        const Sun = (props) => ( <IconBase {...props}><circle cx="12" cy="12" r="5"/><line x1="12" x2="12" y1="1" y2="3"/><line x1="12" x2="12" y1="21" y2="23"/><line x1="4.22" x2="5.64" y1="4.22" y2="5.64"/><line x1="18.36" x2="19.78" y1="18.36" y2="19.78"/><line x1="1" x2="3" y1="12" y2="12"/><line x1="21" x2="23" y1="12" y2="12"/><line x1="4.22" x2="5.64" y1="19.78" y2="18.36"/><line x1="18.36" x2="19.78" y1="5.64" y2="4.22"/></IconBase> );
 
         // ... [PHONEME_MAP, PHONEME_GROUPS, LISTS 1A-4A are the same] ...
         const PHONEME_MAP = { "f": "Fricative", "v": "Fricative", "θ": "Fricative", "ð": "Fricative", "s": "Fricative", "z": "Fricative", "ʃ": "Fricative", "ʒ": "Fricative", "h": "Fricative", "tʃ": "Affricate", "dʒ": "Affricate", "p": "Stop", "b": "Stop", "t": "Stop", "d": "Stop", "k": "Stop", "g": "Stop", "m": "Nasal", "n": "Nasal", "ŋ": "Nasal", "l": "Liquid/Glide", "r": "Liquid/Glide", "w": "Liquid/Glide", "j": "Liquid/Glide", "i": "Vowel", "ɪ": "Vowel", "eɪ": "Vowel", "ɛ": "Vowel", "æ": "Vowel", "u": "Vowel", "ʊ": "Vowel", "oʊ": "Vowel", "ɔ": "Vowel", "ɑ": "Vowel", "ʌ": "Vowel", "ɝ": "Vowel", "aɪ": "Vowel", "ɔɪ": "Vowel", "aʊ": "Vowel", "ə": "Vowel", "ɚ": "Vowel" };
@@ -967,21 +969,46 @@
             const breakdown = useMemo(() => {
                 const groups = { "High Frequency (Fricatives, Affricates, Stops)": { total: 0, missed: 0, types: ["Fricative", "Affricate", "Stop"] }, "Low Frequency (Nasals, Liquids, Glides, Vowels)": { total: 0, missed: 0, types: ["Nasal", "Liquid/Glide", "Vowel"] } };
                 const details = { Fricative: { total: 0, missed: 0 }, Affricate: { total: 0, missed: 0 }, Stop: { total: 0, missed: 0 }, Nasal: { total: 0, missed: 0 }, "Liquid/Glide": { total: 0, missed: 0 }, Vowel: { total: 0, missed: 0 } };
+                
+                // Feature-based analysis
+                const mannerErrors = {}, placeErrors = {}, voicingErrors = { Voiced: { total: 0, missed: 0 }, Voiceless: { total: 0, missed: 0 } };
 
                 stats.visibleWords.forEach(word => {
                     word.p.forEach((p, idx) => {
                         if (p === '-') return;
                         const type = PHONEME_MAP[p];
                         const isCorrect = scores[`${listId}_${word.i}_${idx}`];
+                        const features = PHONEME_FEATURES[p];
                         
                         if (type) {
                             if(details[type]) { details[type].total++; if (!isCorrect) details[type].missed++; }
                             if (groups["High Frequency (Fricatives, Affricates, Stops)"].types.includes(type)) { groups["High Frequency (Fricatives, Affricates, Stops)"].total++; if (!isCorrect) groups["High Frequency (Fricatives, Affricates, Stops)"].missed++; }
                             else if (groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].types.includes(type)) { groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].total++; if (!isCorrect) groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].missed++; }
                         }
+                        
+                        if (features) {
+                            const { manner, place, voicing } = features;
+                            
+                            if (manner) {
+                                if (!mannerErrors[manner]) mannerErrors[manner] = { total: 0, missed: 0 };
+                                mannerErrors[manner].total++;
+                                if (!isCorrect) mannerErrors[manner].missed++;
+                            }
+                            
+                            if (place) {
+                                if (!placeErrors[place]) placeErrors[place] = { total: 0, missed: 0 };
+                                placeErrors[place].total++;
+                                if (!isCorrect) placeErrors[place].missed++;
+                            }
+                            
+                            if (voicing) {
+                                voicingErrors[voicing].total++;
+                                if (!isCorrect) voicingErrors[voicing].missed++;
+                            }
+                        }
                     });
                 });
-                return { groups, details };
+                return { groups, details, mannerErrors, placeErrors, voicingErrors };
             }, [stats, scores, listId]);
 
             useEffect(() => {
@@ -995,15 +1022,61 @@
             }, [breakdown]);
 
             return (
-                <div className="bg-slate-50 border-t border-slate-200 p-4">
+                <div className="bg-slate-50 border-t border-slate-200 p-4 space-y-4">
                     <PhonemeFrequencyModal isOpen={showInfo} onClose={() => setShowInfo(false)} />
                     <div className="flex items-center gap-2 mb-3"><h4 className="text-sm font-bold text-slate-700 flex items-center gap-2"><Activity className="w-4 h-4 text-blue-600" /> Automated Error Pattern Analysis</h4><button onClick={() => setShowInfo(true)} className="text-slate-400 hover:text-blue-600 transition-colors" title="View Phoneme Frequency Guide"><HelpCircle className="w-4 h-4" /></button></div>
+                    
+                    {/* Feature-based error summary */}
+                    <div className="bg-white rounded-lg border border-slate-200 p-3 shadow-sm">
+                        <h5 className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2 border-b border-slate-100 pb-2">Error Summary by Feature</h5>
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                            {/* Manner Errors */}
+                            {breakdown && breakdown.mannerErrors && (() => {
+                                let totalManner = 0, missedManner = 0;
+                                Object.values(breakdown.mannerErrors).forEach(data => { totalManner += data.total; missedManner += data.missed; });
+                                const pct = totalManner > 0 ? Math.round((missedManner / totalManner) * 100) : 0;
+                                return (
+                                    <div className="text-center">
+                                        <div className="font-semibold text-slate-700 mb-1">Manner</div>
+                                        <div className={`text-2xl font-bold ${pct > 0 ? 'text-red-600' : 'text-slate-400'}`}>{pct}%</div>
+                                    </div>
+                                );
+                            })()}
+                            
+                            {/* Place Errors */}
+                            {breakdown && breakdown.placeErrors && (() => {
+                                let totalPlace = 0, missedPlace = 0;
+                                Object.values(breakdown.placeErrors).forEach(data => { totalPlace += data.total; missedPlace += data.missed; });
+                                const pct = totalPlace > 0 ? Math.round((missedPlace / totalPlace) * 100) : 0;
+                                return (
+                                    <div className="text-center">
+                                        <div className="font-semibold text-slate-700 mb-1">Place</div>
+                                        <div className={`text-2xl font-bold ${pct > 0 ? 'text-red-600' : 'text-slate-400'}`}>{pct}%</div>
+                                    </div>
+                                );
+                            })()}
+                            
+                            {/* Voicing Errors */}
+                            {breakdown && breakdown.voicingErrors && (() => {
+                                let totalVoicing = 0, missedVoicing = 0;
+                                Object.values(breakdown.voicingErrors).forEach(data => { totalVoicing += data.total; missedVoicing += data.missed; });
+                                const pct = totalVoicing > 0 ? Math.round((missedVoicing / totalVoicing) * 100) : 0;
+                                return (
+                                    <div className="text-center">
+                                        <div className="font-semibold text-slate-700 mb-1">Voicing</div>
+                                        <div className={`text-2xl font-bold ${pct > 0 ? 'text-red-600' : 'text-slate-400'}`}>{pct}%</div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-3">
                             <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm h-56 relative"><canvas ref={canvasRef}></canvas></div>
-                            {Object.entries(breakdown.groups).map(([name, data]) => { const percent = data.total > 0 ? Math.round((data.missed / data.total) * 100) : 0; return ( <div key={name} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm"> <div className="flex justify-between items-center mb-1"> <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">{name}</span> <span className={`text-xs font-bold ${percent > 30 ? 'text-red-600' : 'text-slate-500'}`}>{percent}% Missed</span> </div> <div className="w-full bg-slate-100 rounded-full h-2 mb-1"> <div className={`h-2 rounded-full ${percent > 50 ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div> </div> <div className="text-[10px] text-slate-400 text-right">{data.missed} / {data.total} phonemes</div> </div> ); })}
+                            {breakdown && breakdown.groups && Object.entries(breakdown.groups).map(([name, data]) => { const percent = data.total > 0 ? Math.round((data.missed / data.total) * 100) : 0; return ( <div key={name} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm"> <div className="flex justify-between items-center mb-1"> <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">{name}</span> <span className={`text-xs font-bold ${percent > 30 ? 'text-red-600' : 'text-slate-500'}`}>{percent}% Missed</span> </div> <div className="w-full bg-slate-100 rounded-full h-2 mb-1"> <div className={`h-2 rounded-full ${percent > 50 ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div> </div> <div className="text-[10px] text-slate-400 text-right">{data.missed} / {data.total} phonemes</div> </div> ); })}
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm"><h5 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3 border-b border-slate-100 pb-2">Error Analysis by Type</h5><div className="grid grid-cols-2 gap-y-2 gap-x-4">{Object.entries(breakdown.details).map(([type, data]) => { if(data.total === 0) return null; const pct = Math.round((data.missed / data.total) * 100); return ( <div key={type} className="flex justify-between items-center text-xs"> <span className="text-slate-600">{type}</span> <span className={`font-mono ${pct > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}`}> {data.missed}/{data.total} ({pct}%) </span> </div> ); })}</div></div>
+                        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm"><h5 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3 border-b border-slate-100 pb-2">Error Analysis by Type</h5><div className="grid grid-cols-2 gap-y-2 gap-x-4">{breakdown && breakdown.details && Object.entries(breakdown.details).map(([type, data]) => { if(data.total === 0) return null; const pct = Math.round((data.missed / data.total) * 100); return ( <div key={type} className="flex justify-between items-center text-xs"> <span className="text-slate-600">{type}</span> <span className={`font-mono ${pct > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}`}> {data.missed}/{data.total} ({pct}%) </span> </div> ); })}</div></div>
                     </div>
                 </div>
             );
@@ -1229,10 +1302,10 @@
         };
 
         // Import Preview Modal (top-level)
-        const ImportPreviewModal = ({ isOpen, onClose, fileName, records, invalidCount, onImportOverwrite, onImportAppend, onImportSkip, onImportUseSelected, defaultMode }) => {
+        const ImportPreviewModal = ({ isOpen, onClose, fileName, records, invalidCount, onImportOverwrite, onImportAppend, onImportSkip, onImportMerge, onImportUseSelected, defaultMode }) => {
             if (!isOpen) return null;
             const sample = (records || []).slice(0,5);
-            const modeLabels = { append: 'Append', skip: 'Skip duplicates', overwrite: 'Overwrite' };
+            const modeLabels = { append: 'Append', skip: 'Skip duplicates', overwrite: 'Overwrite', merge: 'Merge duplicates' };
             const selectedLabel = modeLabels[defaultMode] || 'Append';
             return (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -1245,7 +1318,7 @@
                             <div className="text-sm">Invalid records detected: <span className="font-bold">{invalidCount}</span></div>
                         </div>
 
-                        <div className="mb-3 text-xs text-slate-500">Import options: <span className="font-medium">Append</span> (import as new records), <span className="font-medium">Skip duplicates</span> (ignore records with same ID), or <span className="font-medium">Overwrite</span> (replace existing records by ID). The <span className="font-medium">selected</span> mode before opening this modal is shown below.</div>
+                        <div className="mb-3 text-xs text-slate-500">Import options: <span className="font-medium">Append</span> (import as new records), <span className="font-medium">Skip duplicates</span> (ignore records with same ID), <span className="font-medium">Overwrite</span> (replace existing records by ID), or <span className="font-medium">Merge duplicates</span> (combine matching IDs or patient/date records). The <span className="font-medium">selected</span> mode before opening this modal is shown below.</div>
 
                         <div className="mb-4">
                             <div className="text-sm font-bold text-slate-600 mb-1">Selected mode</div>
@@ -1266,6 +1339,7 @@
                         <div className="flex gap-2 justify-end">
                             <button onClick={() => { onImportAppend(); }} className="px-4 py-2 bg-slate-100 rounded text-slate-700">Import (Append as New IDs)</button>
                             <button onClick={() => { onImportSkip(); }} className="px-4 py-2 bg-yellow-100 rounded text-yellow-800">Import (Skip duplicates)</button>
+                            <button onClick={() => { onImportMerge(); }} className="px-4 py-2 bg-emerald-100 rounded text-emerald-800">Import (Merge duplicates)</button>
                             <button onClick={() => { onImportOverwrite(); }} className="px-4 py-2 bg-blue-600 rounded text-white">Import (Overwrite by ID)</button>
                             <button onClick={() => onImportUseSelected()} className="px-4 py-2 bg-green-600 rounded text-white">Import (Use Selected: {selectedLabel})</button>
                             <button onClick={() => { onClose(); if (fileInputRef && fileInputRef.current) fileInputRef.current.value = ''; }} className="px-4 py-2 bg-white border rounded">Cancel</button>
@@ -1588,10 +1662,22 @@
             );
         };
 
+        const computeAgeYears = (dobStr, refDateStr) => {
+            if (!dobStr || !refDateStr) return null;
+            const dob = new Date(dobStr);
+            const ref = new Date(refDateStr);
+            if (Number.isNaN(dob.getTime()) || Number.isNaN(ref.getTime())) return null;
+            let age = ref.getFullYear() - dob.getFullYear();
+            const m = ref.getMonth() - dob.getMonth();
+            if (m < 0 || (m === 0 && ref.getDate() < dob.getDate())) age--;
+            return age >= 0 ? age : null;
+        };
+
         const App = () => {
             // ... (State setup) ...
             const [patientName, setPatientName] = useState('');
             const [cNumber, setCNumber] = useState('');
+            const [dateOfBirth, setDateOfBirth] = useState('');
             const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
             const [activeTab, setActiveTab] = useState('scoring');
             const [activeTestId, setActiveTestId] = useState('A');
@@ -1644,6 +1730,12 @@
             const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
             const [showRecoveryModal, setShowRecoveryModal] = useState(false);
             const [recoveryData, setRecoveryData] = useState(null);
+            const [lastSaved, setLastSaved] = useState(null);
+            const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+            const [showExportModal, setShowExportModal] = useState(false);
+            const [showEncryptedImportModal, setShowEncryptedImportModal] = useState(false);
+            const [encryptedImportPassword, setEncryptedImportPassword] = useState('');
+            const [encryptedImportFile, setEncryptedImportFile] = useState(null);
 
             const [tests, setTests] = useState({
                 A: { id: 'A', listId: '3A', section: 'second_10', scoringMode: 'word', condition: 'Unaided', deviceModel: '', level: '', snr: '', scores: {}, limitTo10: false, askedContinue: false },
@@ -1656,6 +1748,7 @@
             const statsA = useMemo(() => calculateStats(tests.A.listId, tests.A.section, tests.A.scores, tests.A.limitTo10), [tests.A]);
             const statsB = useMemo(() => calculateStats(tests.B.listId, tests.B.section, tests.B.scores, tests.B.limitTo10), [tests.B]);
             const activeStats = activeTestId === 'A' ? statsA : statsB;
+            const ageYears = useMemo(() => computeAgeYears(dateOfBirth, testDate), [dateOfBirth, testDate]);
             const wordCriticalLimits = useMemo(() => { if (statsA.totalWords === 0) return { lower: 0, upper: 100 }; return getCriticalLimits(statsA.wordPercent, statsA.totalWords, confidenceLevel); }, [statsA.wordPercent, statsA.totalWords, confidenceLevel]);
             const phonemeCriticalLimits = useMemo(() => { 
                 if (statsA.totalPhonemes === 0) return { lower: 0, upper: 100 }; 
@@ -1722,6 +1815,7 @@
                 setCurrentTestId(null);
                 setPatientName('');
                 setCNumber('');
+                setDateOfBirth('');
                 setTestDate(new Date().toISOString().split('T')[0]);
                 setTests({
                     A: { id: 'A', listId: '3A', section: 'second_10', scoringMode: 'word', condition: 'Unaided', deviceModel: '', level: '', snr: '', scores: {}, limitTo10: false, askedContinue: false },
@@ -1738,12 +1832,13 @@
             const handleSave = async () => {
                 if (!patientName.trim()) { alert("Please enter a Patient Name."); return; }
                 if (!testDate) { alert("Please set a Test Date before saving."); return; }
-                const data = { id: currentTestId, patientName, cNumber, testDate, tests, activeTestId, activeTab, confidenceLevel };
+                const data = { id: currentTestId, patientName, cNumber, dateOfBirth, testDate, tests, activeTestId, activeTab, confidenceLevel };
                 try {
                     try {
                         const savedId = await window.SecureDB.saveTest(data);
                         setCurrentTestId(savedId);
                         setHasUnsavedChanges(false);
+                        setLastSaved(new Date());
                         localStorage.removeItem('nu6_draft_recovery');
                         alert("Test encrypted and saved to local database successfully!");
                     } catch (e) {
@@ -1753,6 +1848,7 @@
                                 const savedId = await window.SecureDB.saveTest(data, { overwriteExistingSameDate: true });
                                 setCurrentTestId(savedId);
                                 setHasUnsavedChanges(false);
+                                setLastSaved(new Date());
                                 localStorage.removeItem('nu6_draft_recovery');
                                 alert('Existing record overwritten and saved successfully.');
                             } else {
@@ -1769,7 +1865,22 @@
                 }
             };
             
-            const handleLoadTest = (loadedData) => { if (loadedData) { setCurrentTestId(loadedData.id); setPatientName(loadedData.patientName || ''); setCNumber(loadedData.cNumber || ''); setTestDate(loadedData.testDate || new Date().toISOString().split('T')[0]); setTests(loadedData.tests); setActiveTestId(loadedData.activeTestId || 'A'); setActiveTab(loadedData.activeTab || 'scoring'); if(loadedData.confidenceLevel) setConfidenceLevel(loadedData.confidenceLevel); setHasUnsavedChanges(false); } };
+            const handleAutoSave = async () => {
+                if (!patientName.trim() || !testDate || !hasUnsavedChanges) return;
+                const data = { id: currentTestId, patientName, cNumber, dateOfBirth, testDate, tests, activeTestId, activeTab, confidenceLevel };
+                try {
+                    const savedId = await window.SecureDB.saveTest(data, currentTestId ? { overwriteExistingSameDate: true } : {});
+                    setCurrentTestId(savedId);
+                    setHasUnsavedChanges(false);
+                    setLastSaved(new Date());
+                    localStorage.removeItem('nu6_draft_recovery');
+                } catch (e) {
+                    console.error('Auto-save error', e);
+                    // Silent failure for auto-save - don't interrupt user
+                }
+            };
+            
+            const handleLoadTest = (loadedData) => { if (loadedData) { setCurrentTestId(loadedData.id); setPatientName(loadedData.patientName || ''); setCNumber(loadedData.cNumber || ''); setDateOfBirth(loadedData.dateOfBirth || ''); setTestDate(loadedData.testDate || new Date().toISOString().split('T')[0]); setTests(loadedData.tests); setActiveTestId(loadedData.activeTestId || 'A'); setActiveTab(loadedData.activeTab || 'scoring'); if(loadedData.confidenceLevel) setConfidenceLevel(loadedData.confidenceLevel); setHasUnsavedChanges(false); } };
             const handleDeleteCurrentRecord = async () => { if (!currentTestId) return; if (confirm("Are you sure you want to delete this record from the database?")) { try { await window.SecureDB.deleteTest(currentTestId); alert("Record deleted."); resetForm(); } catch (e) { console.error(e); alert("Failed to delete record."); } } };
 
             const handleDeleteAllDb = async () => {
@@ -1783,7 +1894,72 @@
                     alert('Failed to delete database.');
                 }
             };
-            const handleExportDB = async () => { try { const allData = await window.SecureDB.getAllTests(); if(!confirm("Warning: This will export unencrypted patient data to a JSON file. Ensure you save this file to a secure location.")) return; const jsonString = JSON.stringify(allData, null, 2); const blob = new Blob([jsonString], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `NU6_Database_Export_DECRYPTED_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); } catch (err) { console.error("Export failed:", err); alert("Failed to export database."); } };
+            // Open export modal to choose export type
+            const handleExportDB = () => {
+                setShowExportModal(true);
+            };
+
+            // Export encrypted with password (AES-256)
+            const handleExportEncrypted = async () => {
+                try {
+                    const allData = await window.SecureDB.getAllTests();
+                    const password = prompt('Enter a password to encrypt the export file (remember this password - you\'ll need it to import):');
+                    if (!password) { alert('Export cancelled - no password provided.'); return; }
+                    if (password.length < 8) { alert('Password must be at least 8 characters.'); return; }
+                    
+                    // Encrypt entire dataset
+                    const encrypted = await CryptoService.encryptData(allData, password);
+                    const exportObj = { version: '1.0', encrypted: true, data: encrypted };
+                    const jsonString = JSON.stringify(exportObj, null, 2);
+                    const blob = new Blob([jsonString], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `NU6_Encrypted_Export_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setShowExportModal(false);
+                    alert('Encrypted export complete. Keep your password safe!');
+                } catch (err) {
+                    console.error('Encrypted export failed:', err);
+                    alert('Failed to export encrypted database.');
+                }
+            };
+
+            // Export de-identified (remove PHI)
+            const handleExportDeidentified = async () => {
+                try {
+                    const allData = await window.SecureDB.getAllTests();
+                    const deidentified = allData.map(record => {
+                        const { patientName, dateOfBirth, ...rest } = record;
+                        let age = null;
+                        if (dateOfBirth && record.testDate) {
+                            age = computeAgeYears(dateOfBirth, record.testDate);
+                        }
+                        return {
+                            ...rest,
+                            patientName: '[REDACTED]',
+                            dateOfBirth: null,
+                            age: age !== null && age >= 90 ? '90+' : age
+                        };
+                    });
+                    const jsonString = JSON.stringify(deidentified, null, 2);
+                    const blob = new Blob([jsonString], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `NU6_Deidentified_Export_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setShowExportModal(false);
+                    alert('De-identified export complete (PHI removed).');
+                } catch (err) {
+                    console.error('De-identified export failed:', err);
+                    alert('Failed to export de-identified database.');
+                }
+            };
 
             // Import DB: open source selection (simulated or upload)
             const handleImportDB = () => {
@@ -1813,6 +1989,15 @@
                 try {
                     const text = await file.text();
                     let parsed = JSON.parse(text);
+                    
+                    // Check if this is an encrypted export
+                    if (parsed && parsed.encrypted === true && parsed.data) {
+                        setEncryptedImportFile(parsed.data);
+                        setShowEncryptedImportModal(true);
+                        if (e && e.target) e.target.value = '';
+                        return;
+                    }
+                    
                     let records = [];
                     if (Array.isArray(parsed)) {
                         records = parsed;
@@ -1855,18 +2040,54 @@
             };
 
             // Perform the actual import (called by modal confirm actions)
+            const mergeTestSections = (existing = {}, incoming = {}) => {
+                return {
+                    ...existing,
+                    ...incoming,
+                    scores: { ...(existing.scores || {}), ...(incoming.scores || {}) }
+                };
+            };
+
+            const mergeRecordsById = (existing = {}, incoming = {}) => {
+                const existingTests = existing.tests || {};
+                const incomingTests = incoming.tests || {};
+                const mergedTests = {
+                    ...existingTests,
+                    ...incomingTests,
+                    A: mergeTestSections(existingTests.A || {}, incomingTests.A || {}),
+                    B: mergeTestSections(existingTests.B || {}, incomingTests.B || {}),
+                    comparativeEase: incomingTests.comparativeEase ?? existingTests.comparativeEase
+                };
+
+                return {
+                    ...existing,
+                    ...incoming,
+                    id: existing.id || incoming.id,
+                    patientName: incoming.patientName || existing.patientName || '',
+                    cNumber: incoming.cNumber || existing.cNumber || '',
+                    dateOfBirth: incoming.dateOfBirth || existing.dateOfBirth || '',
+                    testDate: incoming.testDate || existing.testDate || '',
+                    tests: mergedTests,
+                    activeTestId: incoming.activeTestId ?? existing.activeTestId,
+                    activeTab: incoming.activeTab ?? existing.activeTab,
+                    confidenceLevel: incoming.confidenceLevel ?? existing.confidenceLevel
+                };
+            };
+
             const importRecords = async (mode) => {
-                // mode: 'overwrite' | 'append' | 'skip'
+                // mode: 'overwrite' | 'append' | 'skip' | 'merge'
                 setShowImportPreviewModal(false);
                 const records = importPreviewRecords || [];
                 let imported = 0; let errors = 0; let skipped = 0;
 
                 // Build existing maps for IDs and patient|date
                 let existingIds = new Set();
+                let existingById = new Map();
                 let existingByPatientDate = new Map();
                 try {
                     const existing = await window.SecureDB.getAllTests();
                     existingIds = new Set(existing.map(r => r.id));
+                    existingById = new Map(existing.map(r => [r.id, r]));
                     for (const r of existing) {
                         const key = `${r.cNumber || r.patientName}||${r.testDate}`;
                         if (!existingByPatientDate.has(key)) existingByPatientDate.set(key, r.id);
@@ -1875,14 +2096,45 @@
 
                 for (const rec of records) {
                     try {
+                        if (!rec) { errors++; continue; }
+                        const recKey = `${rec.cNumber || rec.patientName}||${rec.testDate}`;
+                        const existingIdForKey = existingByPatientDate.get(recKey);
+
                         // Skip duplicates by ID when mode=skip
                         if (mode === 'skip' && rec && rec.id && existingIds.has(rec.id)) {
                             skipped++;
                             continue;
                         }
 
-                        // Determine patient-date key if possible
-                        const recKey = `${rec.cNumber || rec.patientName}||${rec.testDate}`;
+                        if (mode === 'merge') {
+                            if (rec.id && existingById.has(rec.id)) {
+                                const merged = mergeRecordsById(existingById.get(rec.id), rec);
+                                await window.SecureDB.saveTest(merged);
+                                existingIds.add(rec.id);
+                                existingById.set(rec.id, merged);
+                                existingByPatientDate.set(recKey, rec.id);
+                                imported++;
+                                continue;
+                            }
+
+                            if (existingIdForKey && existingById.has(existingIdForKey)) {
+                                const merged = mergeRecordsById(existingById.get(existingIdForKey), { ...rec, id: existingIdForKey });
+                                await window.SecureDB.saveTest(merged);
+                                existingIds.add(existingIdForKey);
+                                existingById.set(existingIdForKey, merged);
+                                existingByPatientDate.set(recKey, existingIdForKey);
+                                imported++;
+                                continue;
+                            }
+
+                            const savedId = await window.SecureDB.saveTest(rec);
+                            const finalId = rec.id || savedId;
+                            existingIds.add(finalId);
+                            existingById.set(finalId, { ...rec, id: finalId });
+                            existingByPatientDate.set(recKey, finalId);
+                            imported++;
+                            continue;
+                        }
 
                         if (mode === 'append') {
                             // Do not append if same patient/date already exists
@@ -1890,29 +2142,48 @@
                             const toSave = { ...rec };
                             delete toSave.id; // create new id
                             // default save will block same-date duplicates, but we pre-checked
-                            await window.SecureDB.saveTest(toSave);
+                            const savedId = await window.SecureDB.saveTest(toSave);
+                            const finalId = savedId || toSave.id;
+                            existingIds.add(finalId);
+                            existingById.set(finalId, { ...toSave, id: finalId });
+                            existingByPatientDate.set(recKey, finalId);
                             imported++;
                         } else if (mode === 'overwrite') {
                             // Overwrite by ID if present, else overwrite any same patient/date
                             if (rec.id && existingIds.has(rec.id)) {
                                 await window.SecureDB.saveTest(rec); // will overwrite because same id
+                                existingIds.add(rec.id);
+                                existingById.set(rec.id, rec);
+                                existingByPatientDate.set(recKey, rec.id);
                                 imported++;
                             } else if (existingByPatientDate.has(recKey)) {
                                 // delete existing by patient/date and save incoming record (preserve its id)
                                 const existingId = existingByPatientDate.get(recKey);
                                 try { await window.SecureDB.deleteTest(existingId); } catch (e) { console.warn('Failed to delete existing by date', e); }
                                 await window.SecureDB.saveTest(rec);
+                                const finalId = rec.id || existingId;
+                                existingIds.add(finalId);
+                                existingById.set(finalId, { ...rec, id: finalId });
+                                existingByPatientDate.set(recKey, finalId);
                                 imported++;
                             } else {
                                 // no match - just save
-                                await window.SecureDB.saveTest(rec);
+                                const savedId = await window.SecureDB.saveTest(rec);
+                                const finalId = rec.id || savedId;
+                                existingIds.add(finalId);
+                                existingById.set(finalId, { ...rec, id: finalId });
+                                existingByPatientDate.set(recKey, finalId);
                                 imported++;
                             }
                         } else {
                             // fallback - treat as append
                             const toSave = { ...rec };
                             delete toSave.id;
-                            await window.SecureDB.saveTest(toSave);
+                            const savedId = await window.SecureDB.saveTest(toSave);
+                            const finalId = savedId || toSave.id;
+                            existingIds.add(finalId);
+                            existingById.set(finalId, { ...toSave, id: finalId });
+                            existingByPatientDate.set(recKey, finalId);
                             imported++;
                         }
                     } catch (err) {
@@ -1962,6 +2233,7 @@
                             timestamp: new Date().toISOString(),
                             patientName,
                             cNumber,
+                            dateOfBirth,
                             testDate,
                             tests,
                             activeTestId,
@@ -1977,7 +2249,7 @@
 
                 const timer = setInterval(saveDraft, 10000); // Auto-save every 10 seconds
                 return () => clearInterval(timer);
-            }, [hasUnsavedChanges, patientName, cNumber, testDate, tests, activeTestId, activeTab, confidenceLevel, currentTestId, isLocked]);
+            }, [hasUnsavedChanges, patientName, cNumber, dateOfBirth, testDate, tests, activeTestId, activeTab, confidenceLevel, currentTestId, isLocked]);
 
             // Check for recovery data on mount (after unlock)
             useEffect(() => {
@@ -2001,12 +2273,26 @@
                     console.error('Failed to check recovery data:', e);
                 }
             }, [isLocked]);
+            
+            // Auto-save every 30 seconds
+            useEffect(() => {
+                if (!autoSaveEnabled || isLocked) return;
+                
+                const interval = setInterval(() => {
+                    if (hasUnsavedChanges) {
+                        handleAutoSave();
+                    }
+                }, 30000); // 30 seconds
+                
+                return () => clearInterval(interval);
+            }, [hasUnsavedChanges, autoSaveEnabled, isLocked, patientName, testDate, currentTestId, cNumber, dateOfBirth, tests, activeTestId, activeTab, confidenceLevel]);
 
             const handleRestoreRecovery = () => {
                 if (!recoveryData) return;
                 setCurrentTestId(recoveryData.currentTestId);
                 setPatientName(recoveryData.patientName || '');
                 setCNumber(recoveryData.cNumber || '');
+                setDateOfBirth(recoveryData.dateOfBirth || '');
                 setTestDate(recoveryData.testDate || new Date().toISOString().split('T')[0]);
                 setTests(recoveryData.tests);
                 setActiveTestId(recoveryData.activeTestId || 'A');
@@ -2021,6 +2307,33 @@
                 localStorage.removeItem('nu6_draft_recovery');
                 setShowRecoveryModal(false);
                 setRecoveryData(null);
+            };
+
+            // Handle encrypted import with password
+            const handleDecryptAndImport = async () => {
+                if (!encryptedImportPassword || !encryptedImportFile) {
+                    alert('Please enter the password.');
+                    return;
+                }
+                try {
+                    const decrypted = await CryptoService.decryptData(encryptedImportFile, encryptedImportPassword);
+                    if (!Array.isArray(decrypted)) {
+                        alert('Invalid encrypted file format.');
+                        return;
+                    }
+                    // Show import preview
+                    setImportPreviewRecords(decrypted);
+                    setImportPreviewFileName('Encrypted Import');
+                    const invalidCount = decrypted.filter(r => !r || !r.patientName || !r.testDate || !r.tests).length;
+                    setImportPreviewInvalidCount(invalidCount);
+                    setShowEncryptedImportModal(false);
+                    setEncryptedImportPassword('');
+                    setEncryptedImportFile(null);
+                    setShowImportPreviewModal(true);
+                } catch (err) {
+                    console.error('Decryption failed:', err);
+                    alert('Failed to decrypt file. Wrong password or corrupted file.');
+                }
             };
 
             const handleSaveSettings = async (newSettings) => {
@@ -2051,15 +2364,18 @@
 
                 // Patient Info
                 doc.setFontSize(12);
+                const reportAge = computeAgeYears(dateOfBirth, testDate);
                 doc.text(`Patient: ${patientName}`, 140, 30);
                 doc.text(`ID: ${cNumber}`, 140, 36);
                 doc.text(`Date: ${testDate}`, 140, 42);
+                doc.text(`DOB: ${dateOfBirth || '--'}`, 140, 48);
+                doc.text(`Age: ${reportAge !== null && reportAge !== undefined ? reportAge + ' yrs' : '--'}`, 140, 54);
 
-                doc.line(20, 46, 190, 46);
+                doc.line(20, 58, 190, 58);
 
                 // Summary Table
                 doc.autoTable({
-                    startY: 50,
+                    startY: 62,
                     head: [['Test', 'Condition', 'List', 'Level', 'SNR', 'Word Score', 'Phoneme Score']],
                     body: [
                         ['Test A', formatCondition(tests.A), tests.A.listId, `${tests.A.level || '--'}`, `${tests.A.snr || '--'}`, `${statsA.wordPercent}%`, `${statsA.phonemePercent}%`],
@@ -2085,6 +2401,71 @@
                     finalY += 5;
                     const isPhonSig = isPhonemeDiffSig ? "YES - Significant Difference" : "NO - Within Critical Limits";
                     doc.text(`Phoneme Score Difference: ${isPhonSig}`, 20, finalY);
+                    
+                    // Add Error Pattern Analysis for phoneme scoring
+                    finalY += 10;
+                    doc.setFontSize(11);
+                    doc.text("Error Pattern Analysis:", 20, finalY);
+                    doc.setFontSize(10);
+                    
+                    // Calculate manner, place, and voicing errors for both tests
+                    const calculateFeatureErrors = (test) => {
+                        const listData = getListData(test.listId);
+                        let visibleWords = listData;
+                        if (test.section === 'first') visibleWords = listData.slice(0, 25);
+                        else if (test.section === 'first_10') visibleWords = listData.slice(0, 10);
+                        else if (test.section === 'second') visibleWords = listData.slice(25, 50);
+                        else if (test.section === 'second_10') visibleWords = listData.slice(25, 35);
+                        if (test.limitTo10) visibleWords = visibleWords.slice(0, 10);
+                        
+                        const mannerErrors = {}, placeErrors = {}, voicingErrors = { Voiced: { total: 0, missed: 0 }, Voiceless: { total: 0, missed: 0 } };
+                        
+                        visibleWords.forEach(word => {
+                            word.p.forEach((p, idx) => {
+                                if (p === '-') return;
+                                const isCorrect = test.scores[`${test.listId}_${word.i}_${idx}`];
+                                const features = PHONEME_FEATURES[p];
+                                
+                                if (features) {
+                                    const { manner, place, voicing } = features;
+                                    if (manner) {
+                                        if (!mannerErrors[manner]) mannerErrors[manner] = { total: 0, missed: 0 };
+                                        mannerErrors[manner].total++;
+                                        if (!isCorrect) mannerErrors[manner].missed++;
+                                    }
+                                    if (place) {
+                                        if (!placeErrors[place]) placeErrors[place] = { total: 0, missed: 0 };
+                                        placeErrors[place].total++;
+                                        if (!isCorrect) placeErrors[place].missed++;
+                                    }
+                                    if (voicing) {
+                                        voicingErrors[voicing].total++;
+                                        if (!isCorrect) voicingErrors[voicing].missed++;
+                                    }
+                                }
+                            });
+                        });
+                        
+                        // Calculate totals
+                        let totalManner = 0, missedManner = 0, totalPlace = 0, missedPlace = 0, totalVoicing = 0, missedVoicing = 0;
+                        Object.values(mannerErrors).forEach(data => { totalManner += data.total; missedManner += data.missed; });
+                        Object.values(placeErrors).forEach(data => { totalPlace += data.total; missedPlace += data.missed; });
+                        Object.values(voicingErrors).forEach(data => { totalVoicing += data.total; missedVoicing += data.missed; });
+                        
+                        return {
+                            manner: totalManner > 0 ? Math.round((missedManner / totalManner) * 100) : 0,
+                            place: totalPlace > 0 ? Math.round((missedPlace / totalPlace) * 100) : 0,
+                            voicing: totalVoicing > 0 ? Math.round((missedVoicing / totalVoicing) * 100) : 0
+                        };
+                    };
+                    
+                    const errorsA = calculateFeatureErrors(tests.A);
+                    const errorsB = calculateFeatureErrors(tests.B);
+                    
+                    finalY += 6;
+                    doc.text(`Test A - Manner: ${errorsA.manner}%  |  Place: ${errorsA.place}%  |  Voicing: ${errorsA.voicing}%`, 25, finalY);
+                    finalY += 5;
+                    doc.text(`Test B - Manner: ${errorsB.manner}%  |  Place: ${errorsB.place}%  |  Voicing: ${errorsB.voicing}%`, 25, finalY);
                 }
 
                 // Add Comparative Ease if applicable
@@ -2133,15 +2514,61 @@
             const showComparativeEase = !isWordDiffSig && !(tests.A.scoringMode === 'phoneme' && isPhonemeDiffSig);
 
             return (
-                <div className="min-h-screen bg-slate-100 p-4 md:p-8 print:p-0 print:bg-white">
+                <div className="min-h-screen bg-slate-100 text-slate-900 p-4 md:p-8 print:p-0 print:bg-white">
                     <ListeningEffortScaleModal isOpen={showScaleModal} onClose={() => setShowScaleModal(false)} />
                     <CriticalDifferenceModal isOpen={showChartModal} onClose={() => setShowChartModal(false)} confidenceLevel={confidenceLevel} />
                     <PhonemeDisclaimerModal isOpen={showPhonemeModal} onClose={() => setShowPhonemeModal(false)} />
                     <LoadTestModal isOpen={showLoadModal} onClose={() => setShowLoadModal(false)} onLoad={handleLoadTest} />
                     <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} initialSettings={clinicSettings} onSave={handleSaveSettings} />
                     <ComparativeEaseScaleModal isOpen={showComparativeScaleModal} onClose={() => setShowComparativeScaleModal(false)} />
-                    <ImportPreviewModal isOpen={showImportPreviewModal} onClose={() => setShowImportPreviewModal(false)} fileName={importPreviewFileName} records={importPreviewRecords} invalidCount={importPreviewInvalidCount} onImportOverwrite={() => importRecords('overwrite')} onImportAppend={() => importRecords('append')} onImportSkip={() => importRecords('skip')} onImportUseSelected={() => importRecords(importModePick)} defaultMode={importModePick} />
+                    <ImportPreviewModal isOpen={showImportPreviewModal} onClose={() => setShowImportPreviewModal(false)} fileName={importPreviewFileName} records={importPreviewRecords} invalidCount={importPreviewInvalidCount} onImportOverwrite={() => importRecords('overwrite')} onImportAppend={() => importRecords('append')} onImportSkip={() => importRecords('skip')} onImportMerge={() => importRecords('merge')} onImportUseSelected={() => importRecords(importModePick)} defaultMode={importModePick} />
                     <RecoveryModal isOpen={showRecoveryModal} data={recoveryData} onRestore={handleRestoreRecovery} onDiscard={handleDiscardRecovery} />
+
+                    {/* Export Options Modal */}
+                    {showExportModal && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
+                                <button onClick={() => setShowExportModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                                <h3 className="text-lg font-bold text-slate-800 mb-3">Export Database</h3>
+                                <p className="text-sm text-slate-600 mb-4">Choose export format:</p>
+                                <div className="space-y-3">
+                                    <button onClick={handleExportEncrypted} className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-left transition">
+                                        <div className="font-semibold">🔒 Encrypted Export (with PHI)</div>
+                                        <div className="text-xs opacity-90 mt-1">AES-256 encrypted, password protected, includes all patient data</div>
+                                    </button>
+                                    <button onClick={handleExportDeidentified} className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-left transition">
+                                        <div className="font-semibold">🔓 De-identified Export (PHI removed)</div>
+                                        <div className="text-xs opacity-90 mt-1">Unencrypted, removes patient name & DOB, age 90+ grouped</div>
+                                    </button>
+                                </div>
+                                <button onClick={() => setShowExportModal(false)} className="w-full mt-3 px-4 py-2 bg-slate-100 rounded text-slate-700">Cancel</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Encrypted Import Password Modal */}
+                    {showEncryptedImportModal && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
+                                <button onClick={() => { setShowEncryptedImportModal(false); setEncryptedImportPassword(''); setEncryptedImportFile(null); }} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                                <h3 className="text-lg font-bold text-slate-800 mb-3">🔒 Encrypted Import</h3>
+                                <p className="text-sm text-slate-600 mb-4">This file is encrypted. Enter the password used during export:</p>
+                                <input 
+                                    type="password" 
+                                    value={encryptedImportPassword} 
+                                    onChange={(e) => setEncryptedImportPassword(e.target.value)}
+                                    onKeyPress={(e) => { if (e.key === 'Enter') handleDecryptAndImport(); }}
+                                    placeholder="Enter password" 
+                                    className="w-full px-3 py-2 border border-slate-300 rounded mb-4" 
+                                    autoFocus 
+                                />
+                                <div className="flex gap-2">
+                                    <button onClick={handleDecryptAndImport} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Decrypt & Import</button>
+                                    <button onClick={() => { setShowEncryptedImportModal(false); setEncryptedImportPassword(''); setEncryptedImportFile(null); }} className="flex-1 px-4 py-2 bg-slate-100 rounded">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Delete DB Warning Modal */}
                     {showDeleteDbModal && (
@@ -2173,7 +2600,7 @@
                                     <button onClick={handleUseSimulatedDB} className="w-full px-4 py-2 bg-slate-100 rounded text-slate-800">Use Simulated DB (100 records, longitudinal)</button>
                                     <button onClick={handleUseFileUpload} className="w-full px-4 py-2 bg-white border rounded text-slate-800">Upload JSON File</button>
                                 </div>
-                                <div className="mt-4 text-xs text-slate-500">Tip: choose <strong>Skip duplicates</strong> mode if you are re-importing the same exported file to avoid duplicates.</div>
+                                <div className="mt-4 text-xs text-slate-500">Tip: choose <strong>Skip duplicates</strong> mode if you are re-importing the same exported file to avoid duplicates, or <strong>Merge duplicates</strong> to combine updated IDs.</div>
                             </div>
                         </div>
                     )}
@@ -2185,7 +2612,7 @@
                                 <div>
                                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                                         <Calculator className="w-6 h-6 text-blue-600" />
-                                        NU-6 Whole Word and Phoneme Scorer
+                                        Hearing Aid Demo Word and Phoneme Scorer
                                     </h1>
                                     <p className="text-slate-500 text-sm">Comparison Mode & Multi-list Support</p>
                                 </div>
@@ -2193,7 +2620,7 @@
                                     <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition text-sm font-medium"><SettingsIcon className="w-4 h-4"/></button>
                                     {/* Delete DB (moved up) */}
                                     <button onClick={() => setShowDeleteDbModal(true)} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium bg-red-50 text-red-700 hover:bg-red-200`}><Trash2 className="w-4 h-4" /> Delete DB</button>
-                                    <button onClick={handleExportDB} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><Download className="w-4 h-4" /> Export DB (JSON)</button>
+                                    <button onClick={handleExportDB} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><Download className="w-4 h-4" /> Export DB</button>
                                     <div className="flex items-center gap-2">
                                         <button onClick={handleImportDB} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-sm font-medium"><FileUp className="w-4 h-4" /> Import DB (JSON)</button>
                                     </div>
@@ -2201,7 +2628,14 @@
                                     <button onClick={() => setShowLoadModal(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><Database className="w-4 h-4" /> Load Patient</button>
 
                                     <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm font-medium"><FileText className="w-4 h-4" /> PDF Report</button>
-                                    <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"><Save className="w-4 h-4" /> Save (Local)</button>
+                                    <div className="flex flex-col gap-1">
+                                        <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"><Save className="w-4 h-4" /> Save (Local)</button>
+                                        {lastSaved && (
+                                            <div className="text-[10px] text-slate-400 text-center">
+                                                Last saved: {lastSaved.toLocaleTimeString()}
+                                            </div>
+                                        )}
+                                    </div>
                                     {currentTestId && (
                                         <button onClick={handleDeleteCurrentRecord} className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition text-sm font-medium"><Trash2 className="w-4 h-4" /> Delete</button>
                                     )}
@@ -2214,12 +2648,14 @@
                             {/* Patient Info */}
                             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-6">
                                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Patient Information</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                                     <div><label className="block text-xs font-medium text-slate-500 mb-1">Patient Name</label><input type="text" value={patientName} onChange={(e) => { setPatientName(e.target.value); setHasUnsavedChanges(true); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="Enter name..." /></div>
                                     <div><label className="block text-xs font-medium text-slate-500 mb-1">ID</label><input type="text" value={cNumber} onChange={(e) => { setCNumber(e.target.value); setHasUnsavedChanges(true); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="Patient ID" /></div>
+                                    <div><label className="block text-xs font-medium text-slate-500 mb-1">Date of Birth</label><input type="date" value={dateOfBirth} onChange={(e) => { setDateOfBirth(e.target.value); setHasUnsavedChanges(true); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
+                                    <div><label className="block text-xs font-medium text-slate-500 mb-1">Age</label><div className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white h-[42px] flex items-center">{ageYears !== null && ageYears !== undefined ? `${ageYears} years` : '—'}</div></div>
                                     <div><label className="block text-xs font-medium text-slate-500 mb-1">Test Date</label><input type="date" value={testDate} onChange={(e) => { setTestDate(e.target.value); setHasUnsavedChanges(true); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
-                                    <div className="flex items-end"><div className="bg-white p-3 rounded-lg text-xs text-slate-600 border border-slate-200 w-full h-[42px] flex items-center justify-center text-center">Comparison Mode Active</div></div>
                                 </div>
+                                <div className="mt-3 text-xs text-slate-500 flex items-center gap-2"><span className="inline-flex px-2 py-1 rounded bg-blue-100 text-blue-700 text-[11px] font-semibold">Comparison Mode Active</span><span>Age auto-calculates using DOB and Test Date.</span></div>
                             </div>
 
                             {/* Tabs */}
@@ -2261,10 +2697,9 @@
                                         </div>
                                     </div>
                                 </div>
-                                {activeTest.scoringMode === 'phoneme' && !activeTest.section.includes('_10') && (<DiagnosticsPanel stats={activeStats} scores={activeTest.scores} listId={activeTest.listId} />)}
                                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black">
                                     <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
-                                        <div className="font-bold text-slate-700 flex items-center gap-2">Scoring: Test {activeTestId} <span className="font-normal text-slate-500 mx-1">|</span> {activeTest.listId}{activeTest.limitTo10 && <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full border border-orange-200 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Limited to 10 Words</span>}</div>
+                                        <div className="font-bold text-slate-700 flex items-center gap-2">Scoring: Test {activeTestId} <span className="font-normal text-slate-500 mx-1">|</span> {activeTest.listId} {activeTest.section}{activeTest.limitTo10 && <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full border border-orange-200 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Limited to 10 Words</span>}</div>
                                         <div className="flex gap-2 print:hidden"><button onClick={() => markAll(true)} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium">Mark All</button></div>
                                     </div>
                                     <table className="w-full text-left text-sm">
@@ -2281,6 +2716,7 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                {activeTest.scoringMode === 'phoneme' && !activeTest.section.includes('_10') && (<DiagnosticsPanel stats={activeStats} scores={activeTest.scores} listId={activeTest.listId} />)}
                             </div>
                         )}
 
