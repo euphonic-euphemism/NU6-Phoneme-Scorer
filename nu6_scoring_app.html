@@ -23,8 +23,27 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
     <!-- Tailwind CSS -->
-    <!-- Tailwind CSS -->
-    <link rel="stylesheet" href="tailwind.min.css">
+    <script>
+        // Load Tailwind CSS from the correct path (unpacked asar location in Electron)
+        if (typeof require !== 'undefined') {
+            const path = require('path');
+            let cssPath = path.join(__dirname, 'tailwind.min.css');
+            // Check if we need to use the unpacked asar location
+            if (__dirname.includes('app.asar')) {
+                cssPath = path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'tailwind.min.css');
+            }
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = cssPath;
+            document.head.appendChild(link);
+        } else {
+            // Browser fallback
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'tailwind.min.css';
+            document.head.appendChild(link);
+        }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
