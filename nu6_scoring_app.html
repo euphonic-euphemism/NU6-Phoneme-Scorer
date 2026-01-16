@@ -27,17 +27,26 @@
         // Load Tailwind CSS from the correct path (unpacked asar location in Electron)
         if (typeof require !== 'undefined') {
             const path = require('path');
-            const { pathToFileURL } = require('url');
+            const fs = require('fs');
             let cssPath = path.join(__dirname, 'tailwind.min.css');
             // Check if we need to use the unpacked asar location
             if (__dirname.includes('app.asar')) {
                 cssPath = path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'tailwind.min.css');
             }
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = pathToFileURL(cssPath).href;
-            document.head.appendChild(link);
-            console.log('Loading Tailwind CSS from:', link.href);
+            try {
+                const cssContent = fs.readFileSync(cssPath, 'utf-8');
+                const style = document.createElement('style');
+                style.textContent = cssContent;
+                document.head.appendChild(style);
+                console.log('Tailwind CSS injected successfully');
+            } catch (error) {
+                console.error('Failed to load Tailwind CSS:', error);
+                // Fallback to link tag
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'tailwind.min.css';
+                document.head.appendChild(link);
+            }
         } else {
             // Browser fallback
             const link = document.createElement('link');
