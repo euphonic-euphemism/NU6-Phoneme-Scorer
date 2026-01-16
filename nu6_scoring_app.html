@@ -697,8 +697,18 @@ Yes<!DOCTYPE html>
         const loadCriticalDifferenceTables = async (confidenceLevel) => {
             const fileName = `${confidenceLevel}_Word_Recognition_Critical_Differences_Simulated_v2.csv`;
             try {
-                const response = await fetch(fileName);
-                const csvText = await response.text();
+                let csvText;
+                // Check if we're in Electron (packaged app)
+                if (typeof require !== 'undefined') {
+                    const fs = require('fs');
+                    const path = require('path');
+                    const filePath = path.join(__dirname, fileName);
+                    csvText = fs.readFileSync(filePath, 'utf-8');
+                } else {
+                    // Browser/dev environment
+                    const response = await fetch(fileName);
+                    csvText = await response.text();
+                }
                 
                 // Parse CSV
                 const lines = csvText.trim().split('\n');
@@ -740,8 +750,18 @@ Yes<!DOCTYPE html>
         const loadPhonemeTables = async (confidenceLevel) => {
             const fileName = `${confidenceLevel}_Word_Recognition_Critical_Differences_Simulated_v2.csv`;
             try {
-                const response = await fetch(fileName);
-                const csvText = await response.text();
+                let csvText;
+                // Check if we're in Electron (packaged app)
+                if (typeof require !== 'undefined') {
+                    const fs = require('fs');
+                    const path = require('path');
+                    const filePath = path.join(__dirname, fileName);
+                    csvText = fs.readFileSync(filePath, 'utf-8');
+                } else {
+                    // Browser/dev environment
+                    const response = await fetch(fileName);
+                    csvText = await response.text();
+                }
                 
                 // Parse CSV
                 const lines = csvText.trim().split('\n');
