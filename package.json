@@ -28,6 +28,9 @@
       "nu6_scoring_app.html",
       "*.csv"
     ],
+    "asarUnpack": [
+      "*.csv"
+    ],
     "directories": {
       "output": "dist"
     },
