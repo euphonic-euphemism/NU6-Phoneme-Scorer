@@ -30,7 +30,8 @@
       "*.csv"
     ],
     "asarUnpack": [
-      "*.csv"
+      "*.csv",
+      "tailwind.min.css"
     ],
     "directories": {
       "output": "dist"
