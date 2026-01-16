@@ -38,6 +38,15 @@ function createWindow() {
     // Load the HTML file
     win.loadFile(path.join(__dirname, 'nu6_scoring_app.html'));
 
+    // Log any console errors
+    win.webContents.on('console-message', (event, level, message, line, sourceId) => {
+        console.log(`[Renderer ${level}] ${message} (${sourceId}:${line})`);
+    });
+
+    win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+        console.error('Failed to load:', errorCode, errorDescription);
+    });
+
     // Create application menu with About dialog
     const template = [
         {
