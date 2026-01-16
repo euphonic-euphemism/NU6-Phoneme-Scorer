@@ -1,0 +1,144 @@
+ENCRYPTED EXPORT - Replace lines 1902-1929 with:
+
+            // Export encrypted with password (AES-256)
+            const handleExportEncrypted = async () => {
+                try {
+                    const allData = await window.SecureDB.getAllTests();
+                    const password = prompt('Enter a password to encrypt the export file (remember this password - you\'ll need it to import):');
+                    if (!password) { alert('Export cancelled - no password provided.'); return; }
+                    if (password.length < 8) { alert('Password must be at least 8 characters.'); return; }
+                    
+                    // Enrich data with calculated statistics
+                    const enrichedData = allData.map(record => {
+                        const statsA = calculateStats(record.tests.A.listId, record.tests.A.section, record.tests.A.scores, record.tests.A.limitTo10);
+                        const statsB = calculateStats(record.tests.B.listId, record.tests.B.section, record.tests.B.scores, record.tests.B.limitTo10);
+                        const confidence = record.confidenceLevel || 95;
+                        
+                        const wordLimits = getCriticalLimits(statsA.wordPercent, statsA.totalWords, confidence, false);
+                        const isWordDiffSig = statsB.wordPercent < wordLimits.lower || statsB.wordPercent > wordLimits.upper;
+                        
+                        let isPhonemeDiffSig = false;
+                        if (record.tests.A.scoringMode === 'phoneme') {
+                            const rawPercent = statsA.totalPhonemes === 0 ? 0 : (statsA.correctPhonemes / statsA.totalPhonemes) * 100;
+                            const phonemeLimits = getCriticalLimits(rawPercent, statsA.totalPhonemes, confidence, true);
+                            isPhonemeDiffSig = statsB.phonemePercent < phonemeLimits.lower || statsB.phonemePercent > phonemeLimits.upper;
+                        }
+                        
+                        const showComparativeEase = !isWordDiffSig && !(record.tests.A.scoringMode === 'phoneme' && isPhonemeDiffSig);
+                        
+                        return {
+                            ...record,
+                            exportedStats: {
+                                testA: {
+                                    wordPercent: statsA.wordPercent,
+                                    phonemePercent: record.tests.A.scoringMode === 'phoneme' ? statsA.phonemePercent : undefined,
+                                    totalWords: statsA.totalWords,
+                                    totalPhonemes: record.tests.A.scoringMode === 'phoneme' ? statsA.totalPhonemes : undefined
+                                },
+                                testB: {
+                                    wordPercent: statsB.wordPercent,
+                                    phonemePercent: record.tests.B.scoringMode === 'phoneme' ? statsB.phonemePercent : undefined,
+                                    totalWords: statsB.totalWords,
+                                    totalPhonemes: record.tests.B.scoringMode === 'phoneme' ? statsB.totalPhonemes : undefined
+                                },
+                                significance: {
+                                    wordDifferenceSignificant: isWordDiffSig,
+                                    phonemeDifferenceSignificant: record.tests.A.scoringMode === 'phoneme' ? isPhonemeDiffSig : undefined
+                                },
+                                comparativeEase: showComparativeEase ? record.tests.comparativeEase : undefined
+                            }
+                        };
+                    });
+                    
+                    // Encrypt entire dataset
+                    const encrypted = await CryptoService.encryptData(enrichedData, password);
+                    const exportObj = { version: '1.0', encrypted: true, data: encrypted };
+                    const jsonString = JSON.stringify(exportObj, null, 2);
+                    const blob = new Blob([jsonString], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `NU6_Encrypted_Export_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setShowExportModal(false);
+                    alert('Encrypted export complete. Keep your password safe!');
+                } catch (err) {
+                    console.error('Encrypted export failed:', err);
+                    alert('Failed to export encrypted database.');
+                }
+            };
+
+DEIDENTIFIED EXPORT - Replace lines 1931-1962 with:
+
+            // Export de-identified (remove PHI)
+            const handleExportDeidentified = async () => {
+                try {
+                    const allData = await window.SecureDB.getAllTests();
+                    const deidentified = allData.map(record => {
+                        const { patientName, dateOfBirth, ...rest } = record;
+                        let age = null;
+                        if (dateOfBirth && record.testDate) {
+                            age = computeAgeYears(dateOfBirth, record.testDate);
+                        }
+                        
+                        // Calculate statistics
+                        const statsA = calculateStats(record.tests.A.listId, record.tests.A.section, record.tests.A.scores, record.tests.A.limitTo10);
+                        const statsB = calculateStats(record.tests.B.listId, record.tests.B.section, record.tests.B.scores, record.tests.B.limitTo10);
+                        const confidence = record.confidenceLevel || 95;
+                        
+                        const wordLimits = getCriticalLimits(statsA.wordPercent, statsA.totalWords, confidence, false);
+                        const isWordDiffSig = statsB.wordPercent < wordLimits.lower || statsB.wordPercent > wordLimits.upper;
+                        
+                        let isPhonemeDiffSig = false;
+                        if (record.tests.A.scoringMode === 'phoneme') {
+                            const rawPercent = statsA.totalPhonemes === 0 ? 0 : (statsA.correctPhonemes / statsA.totalPhonemes) * 100;
+                            const phonemeLimits = getCriticalLimits(rawPercent, statsA.totalPhonemes, confidence, true);
+                            isPhonemeDiffSig = statsB.phonemePercent < phonemeLimits.lower || statsB.phonemePercent > phonemeLimits.upper;
+                        }
+                        
+                        const showComparativeEase = !isWordDiffSig && !(record.tests.A.scoringMode === 'phoneme' && isPhonemeDiffSig);
+                        
+                        return {
+                            ...rest,
+                            patientName: '[REDACTED]',
+                            dateOfBirth: null,
+                            age: age !== null && age >= 90 ? '90+' : age,
+                            exportedStats: {
+                                testA: {
+                                    wordPercent: statsA.wordPercent,
+                                    phonemePercent: record.tests.A.scoringMode === 'phoneme' ? statsA.phonemePercent : undefined,
+                                    totalWords: statsA.totalWords,
+                                    totalPhonemes: record.tests.A.scoringMode === 'phoneme' ? statsA.totalPhonemes : undefined
+                                },
+                                testB: {
+                                    wordPercent: statsB.wordPercent,
+                                    phonemePercent: record.tests.B.scoringMode === 'phoneme' ? statsB.phonemePercent : undefined,
+                                    totalWords: statsB.totalWords,
+                                    totalPhonemes: record.tests.B.scoringMode === 'phoneme' ? statsB.totalPhonemes : undefined
+                                },
+                                significance: {
+                                    wordDifferenceSignificant: isWordDiffSig,
+                                    phonemeDifferenceSignificant: record.tests.A.scoringMode === 'phoneme' ? isPhonemeDiffSig : undefined
+                                },
+                                comparativeEase: showComparativeEase ? record.tests.comparativeEase : undefined
+                            }
+                        };
+                    });
+                    const jsonString = JSON.stringify(deidentified, null, 2);
+                    const blob = new Blob([jsonString], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `NU6_Deidentified_Export_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setShowExportModal(false);
+                    alert('De-identified export complete (PHI removed).');
+                } catch (err) {
+                    console.error('De-identified export failed:', err);
+                    alert('Failed to export de-identified database.');
+                }
+            };
