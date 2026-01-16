@@ -26,6 +26,7 @@
     "files": [
       "main.js",
       "nu6_scoring_app.html",
+      "tailwind.min.css",
       "*.csv"
     ],
     "asarUnpack": [
