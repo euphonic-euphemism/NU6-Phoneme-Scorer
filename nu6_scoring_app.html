@@ -100,8 +100,15 @@
 
         const dbPromise = new Promise((resolve, reject) => {
             const request = indexedDB.open(DB_NAME, DB_VERSION);
-            request.onerror = (event) => reject("Database error: " + event.target.errorCode);
-            request.onsuccess = (event) => resolve(event.target.result);
+            request.onerror = (event) => {
+                const error = event.target.error || event.target.errorCode || "Unknown database error";
+                console.error("IndexedDB failed to open:", error);
+                reject("Database error: " + error);
+            };
+            request.onsuccess = (event) => {
+                console.log("IndexedDB opened successfully");
+                resolve(event.target.result);
+            };
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
                 if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: "id" });
