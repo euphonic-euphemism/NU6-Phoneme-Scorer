@@ -23,6 +23,11 @@
   "build": {
     "appId": "com.audiology.nu6scorer",
     "productName": "NU-6-Phoneme-Scorer",
+    "files": [
+      "main.js",
+      "nu6_scoring_app.html",
+      "*.csv"
+    ],
     "directories": {
       "output": "dist"
     },
