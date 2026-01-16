@@ -36,7 +36,7 @@ function createWindow() {
     });
 
     // Load the HTML file
-    win.loadFile('nu6_scoring_app.html');
+    win.loadFile(path.join(__dirname, 'nu6_scoring_app.html'));
 
     // Create application menu with About dialog
     const template = [
