@@ -3047,7 +3047,13 @@
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        try {
+            root.render(<App />);
+            console.log('React app rendered successfully');
+        } catch (error) {
+            console.error('Failed to render React app:', error);
+            document.body.innerHTML = '<div style="padding: 20px; color: red; font-family: monospace;">Error rendering app: ' + error.message + '</div>';
+        }
     </script>
 </body>
 </html>
