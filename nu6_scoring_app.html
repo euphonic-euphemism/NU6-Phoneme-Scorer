@@ -709,7 +709,13 @@
                 if (typeof require !== 'undefined') {
                     const fs = require('fs');
                     const path = require('path');
-                    const filePath = path.join(__dirname, fileName);
+                    // In packaged Electron apps, check both regular path and unpacked path
+                    let filePath = path.join(__dirname, fileName);
+                    if (!fs.existsSync(filePath)) {
+                        // Try the unpacked asar location
+                        filePath = path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), fileName);
+                    }
+                    console.log('Loading CSV from:', filePath);
                     csvText = fs.readFileSync(filePath, 'utf-8');
                 } else {
                     // Browser/dev environment
@@ -762,7 +768,13 @@
                 if (typeof require !== 'undefined') {
                     const fs = require('fs');
                     const path = require('path');
-                    const filePath = path.join(__dirname, fileName);
+                    // In packaged Electron apps, check both regular path and unpacked path
+                    let filePath = path.join(__dirname, fileName);
+                    if (!fs.existsSync(filePath)) {
+                        // Try the unpacked asar location
+                        filePath = path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), fileName);
+                    }
+                    console.log('Loading CSV from:', filePath);
                     csvText = fs.readFileSync(filePath, 'utf-8');
                 } else {
                     // Browser/dev environment
