@@ -35,10 +35,20 @@
             }
             try {
                 const cssContent = fs.readFileSync(cssPath, 'utf-8');
+                console.log('CSS file read, size:', cssContent.length, 'bytes');
                 const style = document.createElement('style');
                 style.textContent = cssContent;
                 document.head.appendChild(style);
-                console.log('Tailwind CSS injected successfully');
+                console.log('Tailwind CSS injected successfully, style elements:', document.head.querySelectorAll('style').length);
+                // Verify CSS is actually applied
+                setTimeout(() => {
+                    const testDiv = document.createElement('div');
+                    testDiv.className = 'bg-blue-500';
+                    document.body.appendChild(testDiv);
+                    const bgColor = window.getComputedStyle(testDiv).backgroundColor;
+                    document.body.removeChild(testDiv);
+                    console.log('CSS test - bg-blue-500 color:', bgColor);
+                }, 100);
             } catch (error) {
                 console.error('Failed to load Tailwind CSS:', error);
                 // Fallback to link tag
