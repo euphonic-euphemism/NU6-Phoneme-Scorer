@@ -394,6 +394,10 @@
         const FileText = (props) => ( <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></IconBase> );
         const Moon = (props) => ( <IconBase {...props}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></IconBase> );
         const Sun = (props) => ( <IconBase {...props}><circle cx="12" cy="12" r="5"/><line x1="12" x2="12" y1="1" y2="3"/><line x1="12" x2="12" y1="21" y2="23"/><line x1="4.22" x2="5.64" y1="4.22" y2="5.64"/><line x1="18.36" x2="19.78" y1="18.36" y2="19.78"/><line x1="1" x2="3" y1="12" y2="12"/><line x1="21" x2="23" y1="12" y2="12"/><line x1="4.22" x2="5.64" y1="19.78" y2="18.36"/><line x1="18.36" x2="19.78" y1="5.64" y2="4.22"/></IconBase> );
+        const Clock = (props) => ( <IconBase {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase> );
+        const Play = (props) => ( <IconBase {...props}><polygon points="5 3 19 12 5 21 5 3"/></IconBase> );
+        const Pause = (props) => ( <IconBase {...props}><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></IconBase> );
+        const Square = (props) => ( <IconBase {...props}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></IconBase> );
 
         // ... [PHONEME_MAP, PHONEME_GROUPS, LISTS 1A-4A are the same] ...
         const PHONEME_MAP = { "f": "Fricative", "v": "Fricative", "θ": "Fricative", "ð": "Fricative", "s": "Fricative", "z": "Fricative", "ʃ": "Fricative", "ʒ": "Fricative", "h": "Fricative", "tʃ": "Affricate", "dʒ": "Affricate", "p": "Stop", "b": "Stop", "t": "Stop", "d": "Stop", "k": "Stop", "g": "Stop", "m": "Nasal", "n": "Nasal", "ŋ": "Nasal", "l": "Liquid/Glide", "r": "Liquid/Glide", "w": "Liquid/Glide", "j": "Liquid/Glide", "i": "Vowel", "ɪ": "Vowel", "eɪ": "Vowel", "ɛ": "Vowel", "æ": "Vowel", "u": "Vowel", "ʊ": "Vowel", "oʊ": "Vowel", "ɔ": "Vowel", "ɑ": "Vowel", "ʌ": "Vowel", "ɝ": "Vowel", "aɪ": "Vowel", "ɔɪ": "Vowel", "aʊ": "Vowel", "ə": "Vowel", "ɚ": "Vowel" };
@@ -1871,10 +1875,22 @@
             const [encryptedImportFile, setEncryptedImportFile] = useState(null);
 
             const [tests, setTests] = useState({
-                A: { id: 'A', listId: '3A', section: 'second_10', scoringMode: 'word', condition: 'Unaided', deviceModel: '', level: '', snr: '', scores: {}, limitTo10: false, askedContinue: false },
-                B: { id: 'B', listId: '4A', section: 'second_10', scoringMode: 'word', condition: 'New Tech', deviceModel: '', level: '', snr: '', scores: {}, limitTo10: false, askedContinue: false },
+                A: { id: 'A', listId: '3A', section: 'second_10', scoringMode: 'word', condition: 'Unaided', deviceModel: '', level: '', snr: '', stimulusPresentation: 'MLV', scores: {}, limitTo10: false, askedContinue: false },
+                B: { id: 'B', listId: '4A', section: 'second_10', scoringMode: 'word', condition: 'New Tech', deviceModel: '', level: '', snr: '', stimulusPresentation: 'MLV', scores: {}, limitTo10: false, askedContinue: false },
                 comparativeEase: 5
             });
+
+            // Timer state
+            const [timerStartTime, setTimerStartTime] = useState(null);
+            const [timerElapsed, setTimerElapsed] = useState(0);
+            const [timerPausedAt, setTimerPausedAt] = useState(null);
+            const [timerIsRunning, setTimerIsRunning] = useState(false);
+            const [timerDisplay, setTimerDisplay] = useState('00:00');
+
+            // Outcome state
+            const [outcome, setOutcome] = useState('Sold');
+            const [notSoldReason, setNotSoldReason] = useState('Price');
+            const [soldType, setSoldType] = useState('Private Pay');
 
             // ... (Helper memos: activeTest, statsA, statsB, limits ...) ...
             const activeTest = tests[activeTestId];
@@ -1932,13 +1948,81 @@
                         newTests.A.scoringMode = value; 
                         newTests.B.scoringMode = value; 
                     } 
-                    if (activeTestId === 'A' && (field === 'level' || field === 'snr')) { 
+                    if (activeTestId === 'A' && (field === 'level' || field === 'snr' || field === 'stimulusPresentation')) { 
                         newTests.B[field] = value; 
                     } 
                     return newTests; 
                 }); 
             };
             const updateComparativeEase = (value) => { setHasUnsavedChanges(true); setTests(prev => ({ ...prev, comparativeEase: value })); };
+
+            // Timer functions
+            const startTimer = () => {
+                if (!timerIsRunning) {
+                    const now = Date.now();
+                    if (timerPausedAt !== null) {
+                        // Resuming from pause
+                        setTimerStartTime(now - timerElapsed);
+                        setTimerPausedAt(null);
+                    } else {
+                        // Starting fresh
+                        setTimerStartTime(now);
+                        setTimerElapsed(0);
+                    }
+                    setTimerIsRunning(true);
+                    setHasUnsavedChanges(true);
+                }
+            };
+
+            const pauseTimer = () => {
+                if (timerIsRunning && timerStartTime !== null) {
+                    const elapsed = Date.now() - timerStartTime;
+                    setTimerElapsed(elapsed);
+                    setTimerPausedAt(Date.now());
+                    setTimerIsRunning(false);
+                }
+            };
+
+            const stopTimer = () => {
+                if (timerIsRunning && timerStartTime !== null) {
+                    const elapsed = Date.now() - timerStartTime;
+                    setTimerElapsed(elapsed);
+                }
+                setTimerIsRunning(false);
+                setTimerPausedAt(null);
+            };
+
+            const resetTimer = () => {
+                setTimerStartTime(null);
+                setTimerElapsed(0);
+                setTimerPausedAt(null);
+                setTimerIsRunning(false);
+                setTimerDisplay('00:00');
+            };
+
+            const formatTimerDisplay = (milliseconds) => {
+                const totalSeconds = Math.floor(milliseconds / 1000);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            };
+
+            // Update timer display
+            useEffect(() => {
+                let interval;
+                if (timerIsRunning && timerStartTime !== null) {
+                    interval = setInterval(() => {
+                        const elapsed = Date.now() - timerStartTime;
+                        setTimerElapsed(elapsed);
+                        setTimerDisplay(formatTimerDisplay(elapsed));
+                    }, 100);
+                } else if (timerPausedAt !== null || timerElapsed > 0) {
+                    setTimerDisplay(formatTimerDisplay(timerElapsed));
+                }
+                return () => {
+                    if (interval) clearInterval(interval);
+                };
+            }, [timerIsRunning, timerStartTime, timerElapsed, timerPausedAt]);
             const togglePhoneme = (wordIndex, pIndex) => { setHasUnsavedChanges(true); const listId = activeTest.listId; const key = `${listId}_${wordIndex}_${pIndex}`; setTests(prev => { const currentScores = prev[activeTestId].scores; const newScores = { ...currentScores, [key]: !currentScores[key] }; return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores } }; }); };
             const setWordScore = (wordIndex, isCorrect) => { setHasUnsavedChanges(true); const listId = activeTest.listId; const wordData = activeStats.visibleWords.find(w => w.i === wordIndex); if (!wordData) return; setTests(prev => { const currentScores = { ...prev[activeTestId].scores }; let shouldClear = false; let currentIsAllCorrect = true; let currentIsAllIncorrect = true; let hasAnyScore = false; wordData.p.forEach((p, idx) => { if (p !== '-') { const val = currentScores[`${listId}_${wordIndex}_${idx}`]; if (val !== undefined) hasAnyScore = true; if (val !== true) currentIsAllCorrect = false; if (val !== false) currentIsAllIncorrect = false; } }); if (isCorrect && currentIsAllCorrect && hasAnyScore) shouldClear = true; if (!isCorrect && currentIsAllIncorrect && hasAnyScore) shouldClear = true; wordData.p.forEach((p, idx) => { if (p !== '-') { if (shouldClear) { delete currentScores[`${listId}_${wordIndex}_${idx}`]; } else { currentScores[`${listId}_${wordIndex}_${idx}`] = isCorrect; } } }); return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } }; }); };
             const toggleWordCorrect = (wordIndex) => { setHasUnsavedChanges(true); const listId = activeTest.listId; const wordData = activeStats.visibleWords.find(w => w.i === wordIndex); if (!wordData) return; setTests(prev => { const currentScores = { ...prev[activeTestId].scores }; let isFullyCorrect = true; wordData.p.forEach((p, idx) => { if (p !== '-' && !currentScores[`${listId}_${wordIndex}_${idx}`]) { isFullyCorrect = false; } }); wordData.p.forEach((p, idx) => { if (p !== '-') { if (isFullyCorrect) { delete currentScores[`${listId}_${wordIndex}_${idx}`]; } else { currentScores[`${listId}_${wordIndex}_${idx}`] = true; } } }); return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } }; }); };
@@ -1948,6 +2032,10 @@
                 setCurrentTestId(null);
                 setFirstName('');
                 setLastName('');
+                resetTimer();
+                setOutcome('Sold');
+                setNotSoldReason('Price');
+                setSoldType('Private Pay');
                 setCNumber('');
                 setDateOfBirth('');
                 setTestDate(new Date().toISOString().split('T')[0]);
@@ -1966,7 +2054,7 @@
             const handleSave = async () => {
                 if (!patientName.trim()) { alert("Please enter a Patient Name."); return; }
                 if (!testDate) { alert("Please set a Test Date before saving."); return; }
-                const data = { id: currentTestId, patientName, cNumber, dateOfBirth, testDate, tests, activeTestId, activeTab, confidenceLevel };
+                const data = { id: currentTestId, patientName, cNumber, dateOfBirth, testDate, tests, activeTestId, activeTab, confidenceLevel, timerElapsed, outcome, notSoldReason, soldType };
                 try {
                     try {
                         const savedId = await window.SecureDB.saveTest(data);
@@ -2001,7 +2089,7 @@
             
             const handleAutoSave = async () => {
                 if (!patientName.trim() || !testDate || !hasUnsavedChanges) return;
-                const data = { id: currentTestId, patientName, cNumber, dateOfBirth, testDate, tests, activeTestId, activeTab, confidenceLevel };
+                const data = { id: currentTestId, patientName, cNumber, dateOfBirth, testDate, tests, activeTestId, activeTab, confidenceLevel, timerElapsed, outcome, notSoldReason, soldType };
                 try {
                     const savedId = await window.SecureDB.saveTest(data, currentTestId ? { overwriteExistingSameDate: true } : {});
                     setCurrentTestId(savedId);
@@ -2015,6 +2103,18 @@
             };
             
             const handleLoadTest = (loadedData) => { if (loadedData) { setCurrentTestId(loadedData.id);
+                    // Load timer data if present
+                    if (loadedData.timerElapsed !== undefined) {
+                        setTimerElapsed(loadedData.timerElapsed);
+                        setTimerDisplay(formatTimerDisplay(loadedData.timerElapsed));
+                        setTimerIsRunning(false);
+                        setTimerPausedAt(null);
+                        setTimerStartTime(null);
+                    }
+                    // Load outcome data if present
+                    if (loadedData.outcome !== undefined) setOutcome(loadedData.outcome);
+                    if (loadedData.notSoldReason !== undefined) setNotSoldReason(loadedData.notSoldReason);
+                    if (loadedData.soldType !== undefined) setSoldType(loadedData.soldType);
                     // Populate first/last name from explicit fields if present, otherwise split existing patientName
                     let lf = '';
                     let ll = '';
@@ -2048,6 +2148,242 @@
             };
 
             // Export encrypted with password (AES-256)
+            // Process export data for individual or aggregate analysis
+            const processExportData = (data, mode) => {
+                if (mode === 'individual') {
+                    // Flatten to individual test records
+                    const flatData = [];
+                    data.forEach(record => {
+                        if (record.tests) {
+                            // Calculate stats for both tests
+                            const statsA = calculateStats(record.tests.A.listId, record.tests.A.section, record.tests.A.scores, record.tests.A.limitTo10);
+                            const statsB = calculateStats(record.tests.B.listId, record.tests.B.section, record.tests.B.scores, record.tests.B.limitTo10);
+                            
+                            // Get confidence level (default to 95 if not set)
+                            const confidenceLevel = record.confidenceLevel || 95;
+                            
+                            // Calculate critical limits for word scores
+                            const wordCriticalLimits = statsA.totalWords > 0 
+                                ? getCriticalLimits(statsA.wordPercent, statsA.totalWords, confidenceLevel)
+                                : { lower: 0, upper: 100 };
+                            
+                            // Check if word difference is significant
+                            const isWordDiffSig = statsB.wordPercent < wordCriticalLimits.lower || statsB.wordPercent > wordCriticalLimits.upper;
+                            
+                            // Calculate critical limits for phoneme scores (if both use phoneme scoring)
+                            let isPhonemeDiffSig = 'N/A';
+                            let phonemeCriticalLower = 'N/A';
+                            let phonemeCriticalUpper = 'N/A';
+                            
+                            if (record.tests.A.scoringMode === 'phoneme' && record.tests.B.scoringMode === 'phoneme' && statsA.totalPhonemes > 0) {
+                                const rawPercent = (statsA.correctPhonemes / statsA.totalPhonemes) * 100;
+                                const phonemeCriticalLimits = getCriticalLimits(rawPercent, statsA.totalPhonemes, confidenceLevel, true);
+                                phonemeCriticalLower = phonemeCriticalLimits.lower.toFixed(1);
+                                phonemeCriticalUpper = phonemeCriticalLimits.upper.toFixed(1);
+                                isPhonemeDiffSig = statsB.phonemePercent < phonemeCriticalLimits.lower || statsB.phonemePercent > phonemeCriticalLimits.upper ? 'Yes' : 'No';
+                            }
+                            
+                            // Calculate score differences
+                            const wordDifference = statsB.wordPercent - statsA.wordPercent;
+                            const phonemeDifference = statsB.phonemePercent - statsA.phonemePercent;
+                            
+                            // Comparative ease of listening
+                            const comparativeEase = record.tests.comparativeEase !== undefined ? record.tests.comparativeEase : 'N/A';
+                            const easeDelta = comparativeEase !== 'N/A' ? comparativeEase - 5 : 'N/A';
+                            
+                            // Common fields for this record
+                            const commonFields = {
+                                PatientID: record.cNumber || 'N/A',
+                                Date: record.testDate || 'N/A',
+                                ConditionA: record.tests.A.condition || 'N/A',
+                                ConditionB: record.tests.B.condition || 'N/A',
+                                WordScoreDifference: wordDifference,
+                                WordSignificant: isWordDiffSig ? 'Yes' : 'No',
+                                WordCriticalLower: wordCriticalLimits.lower,
+                                WordCriticalUpper: wordCriticalLimits.upper,
+                                PhonemeScoreDifference: phonemeDifference,
+                                PhonemeSignificant: isPhonemeDiffSig,
+                                PhonemeCriticalLower: phonemeCriticalLower,
+                                PhonemeCriticalUpper: phonemeCriticalUpper,
+                                ComparativeEase: comparativeEase,
+                                EaseDelta: easeDelta,
+                                ConfidenceLevel: confidenceLevel + '%',
+                                Outcome: record.outcome || 'N/A',
+                                SoldType: record.soldType || 'N/A',
+                                NotSoldReason: record.notSoldReason || 'N/A',
+                                TimerDuration: record.timerElapsed ? formatTimerDisplay(record.timerElapsed) : 'N/A'
+                            };
+                            
+                            // Test A
+                            flatData.push({
+                                ...commonFields,
+                                Ear: 'A',
+                                List: record.tests.A.listId,
+                                Section: record.tests.A.section,
+                                WordScore: statsA.wordPercent,
+                                PhonemeScore: statsA.phonemePercent,
+                                StimulusPresentation: record.tests.A.stimulusPresentation || 'N/A',
+                                ScoringMode: record.tests.A.scoringMode || 'N/A'
+                            });
+                            
+                            // Test B
+                            flatData.push({
+                                ...commonFields,
+                                Ear: 'B',
+                                List: record.tests.B.listId,
+                                Section: record.tests.B.section,
+                                WordScore: statsB.wordPercent,
+                                PhonemeScore: statsB.phonemePercent,
+                                StimulusPresentation: record.tests.B.stimulusPresentation || 'N/A',
+                                ScoringMode: record.tests.B.scoringMode || 'N/A'
+                            });
+                        }
+                    });
+                    return flatData;
+                } else if (mode === 'aggregate') {
+                    // Group by List and calculate statistics
+                    const grouped = {};
+                    
+                    data.forEach(record => {
+                        if (record.tests) {
+                            ['A', 'B'].forEach(testId => {
+                                const test = record.tests[testId];
+                                const listId = test.listId;
+                                const stats = calculateStats(test.listId, test.section, test.scores, test.limitTo10);
+                                
+                                if (!grouped[listId]) {
+                                    grouped[listId] = {
+                                        wordScores: [],
+                                        phonemeScores: []
+                                    };
+                                }
+                                
+                                grouped[listId].wordScores.push(stats.wordPercent);
+                                grouped[listId].phonemeScores.push(stats.phonemePercent);
+                            });
+                        }
+                    });
+                    
+                    // Calculate statistics for each list
+                    const aggregateData = Object.keys(grouped).map(listId => {
+                        const wordScores = grouped[listId].wordScores;
+                        const phonemeScores = grouped[listId].phonemeScores;
+                        
+                        // Calculate mean
+                        const meanWord = wordScores.reduce((a, b) => a + b, 0) / wordScores.length;
+                        const meanPhoneme = phonemeScores.reduce((a, b) => a + b, 0) / phonemeScores.length;
+                        
+                        // Calculate standard deviation
+                        const stdWord = Math.sqrt(wordScores.reduce((sum, val) => sum + Math.pow(val - meanWord, 2), 0) / wordScores.length);
+                        const stdPhoneme = Math.sqrt(phonemeScores.reduce((sum, val) => sum + Math.pow(val - meanPhoneme, 2), 0) / phonemeScores.length);
+                        
+                        return {
+                            List: listId,
+                            Count: wordScores.length,
+                            MeanWordScore: Number(meanWord.toFixed(2)),
+                            StdDevWordScore: Number(stdWord.toFixed(2)),
+                            MeanPhonemeScore: Number(meanPhoneme.toFixed(2)),
+                            StdDevPhonemeScore: Number(stdPhoneme.toFixed(2))
+                        };
+                    });
+                    
+                    return aggregateData;
+                }
+                
+                return [];
+            };
+
+            // Download data as CSV file
+            const downloadAsCSV = (filename, dataArray) => {
+                if (!dataArray || dataArray.length === 0) {
+                    alert('No data to export.');
+                    return;
+                }
+                
+                // Extract headers from first object
+                const headers = Object.keys(dataArray[0]);
+                
+                // Helper function to escape CSV values
+                const escapeCSV = (value) => {
+                    if (value === null || value === undefined) return '';
+                    const stringValue = String(value);
+                    // Quote the value if it contains comma, quote, or newline
+                    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                        return `"${stringValue.replace(/"/g, '""')}"`;
+                    }
+                    return stringValue;
+                };
+                
+                // Build CSV string
+                let csvContent = '';
+                
+                // Add headers
+                csvContent += headers.map(escapeCSV).join(',') + '\n';
+                
+                // Add data rows
+                dataArray.forEach(row => {
+                    csvContent += headers.map(header => escapeCSV(row[header])).join(',') + '\n';
+                });
+                
+                // Create Blob and trigger download
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            };
+
+            // Helper function to decrypt a record (placeholder for actual decryption logic)
+            const decryptRecord = async (record) => {
+                // In this implementation, SecureDB already returns decrypted records
+                // This function exists for extensibility if raw encrypted records need processing
+                return record;
+            };
+
+            // Handle export click for CSV export
+            const handleExportClick = async (mode) => {
+                try {
+                    // Fetch all records from IndexedDB
+                    const records = await window.SecureDB.getAllTests();
+                    
+                    if (!records || records.length === 0) {
+                        alert('No records found to export.');
+                        return;
+                    }
+                    
+                    // Decrypt records (if needed)
+                    const decryptedData = await Promise.all(
+                        records.map(record => decryptRecord(record))
+                    );
+                    
+                    // Process data based on mode
+                    const processedData = processExportData(decryptedData, mode);
+                    
+                    if (!processedData || processedData.length === 0) {
+                        alert('No data to export after processing.');
+                        return;
+                    }
+                    
+                    // Generate filename based on mode
+                    const timestamp = new Date().toISOString().split('T')[0];
+                    const filename = mode === 'individual' 
+                        ? `NU6_Individual_Export_${timestamp}.csv`
+                        : `NU6_Aggregate_Export_${timestamp}.csv`;
+                    
+                    // Download as CSV
+                    downloadAsCSV(filename, processedData);
+                    
+                    alert(`Export complete! Downloaded ${processedData.length} row(s).`);
+                } catch (err) {
+                    console.error('Export failed:', err);
+                    alert('Failed to export data: ' + (err.message || 'Unknown error'));
+                }
+            };
+
             const handleExportEncrypted = async () => {
                 try {
                     const allData = await window.SecureDB.getAllTests();
@@ -2526,12 +2862,16 @@
                 doc.text(`Date: ${testDate}`, 140, 42);
                 doc.text(`DOB: ${dateOfBirth || '--'}`, 140, 48);
                 doc.text(`Age: ${reportAge !== null && reportAge !== undefined ? reportAge + ' yrs' : '--'}`, 140, 54);
+                if (timerElapsed > 0) {
+                    doc.text(`Duration: ${formatTimerDisplay(timerElapsed)}`, 140, 60);
+                }
 
-                doc.line(20, 58, 190, 58);
+                const lineY = timerElapsed > 0 ? 64 : 58;
+                doc.line(20, lineY, 190, lineY);
 
                 // Summary Table
                 doc.autoTable({
-                    startY: 62,
+                    startY: lineY + 4,
                     head: [['Test', 'Condition', 'List', 'Level', 'SNR', 'Word Score', 'Phoneme Score']],
                     body: [
                         ['Test A', formatCondition(tests.A), tests.A.listId, `${tests.A.level || '--'}`, `${tests.A.snr || '--'}`, `${statsA.wordPercent}%`, `${statsA.phonemePercent}%`],
@@ -2647,6 +2987,20 @@
                     doc.setFontSize(10);
                 }
 
+                // Outcome
+                finalY += 10;
+                doc.setFontSize(11);
+                doc.text("Outcome:", 20, finalY);
+                doc.setFontSize(10);
+                finalY += 6;
+                if (outcome === 'Sold') {
+                    doc.text(`Sold - Type: ${soldType}`, 20, finalY);
+                } else if (outcome === 'Not Sold') {
+                    doc.text(`Not Sold - Reason: ${notSoldReason}`, 20, finalY);
+                } else {
+                    doc.text(outcome, 20, finalY);
+                }
+
                 // Notes
                 finalY += 15;
                 doc.text("Clinical Notes:", 20, finalY);
@@ -2689,12 +3043,20 @@
                                 <p className="text-sm text-slate-600 mb-4">Choose export format:</p>
                                 <div className="space-y-3">
                                     <button onClick={handleExportEncrypted} className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-left transition">
-                                        <div className="font-semibold">🔒 Encrypted Export (with PHI)</div>
+                                        <div className="font-semibold">🔒 Encrypted Export (JSON with PHI)</div>
                                         <div className="text-xs opacity-90 mt-1">AES-256 encrypted, password protected, includes all patient data</div>
                                     </button>
                                     <button onClick={handleExportDeidentified} className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-left transition">
-                                        <div className="font-semibold">🔓 De-identified Export (PHI removed)</div>
+                                        <div className="font-semibold">🔓 De-identified Export (JSON - PHI removed)</div>
                                         <div className="text-xs opacity-90 mt-1">Unencrypted, removes patient name & DOB, age 90+ grouped</div>
+                                    </button>
+                                    <button onClick={() => { handleExportClick('individual'); setShowExportModal(false); }} className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-left transition">
+                                        <div className="font-semibold">📊 CSV Export - Individual Tests</div>
+                                        <div className="text-xs opacity-90 mt-1">One row per test, includes significance calculations & outcomes</div>
+                                    </button>
+                                    <button onClick={() => { handleExportClick('aggregate'); setShowExportModal(false); }} className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-left transition">
+                                        <div className="font-semibold">📈 CSV Export - Aggregate Statistics</div>
+                                        <div className="text-xs opacity-90 mt-1">Grouped by list, with mean scores and standard deviations</div>
                                     </button>
                                 </div>
                                 <button onClick={() => setShowExportModal(false)} className="w-full mt-3 px-4 py-2 bg-slate-100 rounded text-slate-700">Cancel</button>
@@ -2798,6 +3160,28 @@
 
                                     {/* New Test - make green */}
                                     <button onClick={clearAllData} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium ${clearConfirm ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}><RotateCcw className="w-4 h-4" /> {clearConfirm ? "Confirm?" : "New Test"}</button>
+                                    
+                                    {/* Timer Controls */}
+                                    <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg">
+                                        <div className="flex items-center gap-2">
+                                            <Clock className="w-4 h-4 text-purple-600" />
+                                            <span className="font-mono text-lg font-bold text-purple-700">{timerDisplay}</span>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            {!timerIsRunning ? (
+                                                <button onClick={startTimer} className="p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded transition" title="Start Timer">
+                                                    <Play className="w-3 h-3" />
+                                                </button>
+                                            ) : (
+                                                <button onClick={pauseTimer} className="p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded transition" title="Pause Timer">
+                                                    <Pause className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                            <button onClick={stopTimer} disabled={!timerIsRunning && timerElapsed === 0} className="p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded transition disabled:opacity-50 disabled:cursor-not-allowed" title="Stop Timer">
+                                                <Square className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -2844,10 +3228,11 @@
                                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                                         <div className="lg:col-span-5 space-y-6">
                                             <div><label className="block text-xs font-medium text-slate-500 mb-2">Condition</label><div className="flex rounded-lg overflow-hidden border border-slate-200 mb-3">{(activeTestId === 'A' ? ['Unaided', 'Current Tech'] : ['Current Tech', 'New Tech']).map(c => (<button key={c} onClick={() => updateActiveTest('condition', c)} className={`flex-1 py-2 text-sm font-medium transition ${activeTest.condition === c ? 'bg-indigo-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>{c}</button>))}</div>{(activeTest.condition === 'Current Tech' || activeTest.condition === 'New Tech') && (<div><input type="text" value={activeTest.deviceModel || ''} onChange={(e) => updateActiveTest('deviceModel', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="Enter Make/Model..." /></div>)}</div>
+                                            <div><label className="block text-xs font-medium text-slate-500 mb-2">Stimulus Presentation</label><div className="flex rounded-lg overflow-hidden border border-slate-200"><button onClick={() => activeTestId === 'A' && updateActiveTest('stimulusPresentation', 'MLV')} disabled={activeTestId === 'B'} className={`flex-1 py-2 text-xs font-bold transition ${activeTest.stimulusPresentation === 'MLV' ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'} ${activeTestId === 'B' ? 'cursor-not-allowed opacity-60' : ''}`}>MLV</button><button onClick={() => activeTestId === 'A' && updateActiveTest('stimulusPresentation', 'Recording')} disabled={activeTestId === 'B'} className={`flex-1 py-2 text-xs font-bold transition ${activeTest.stimulusPresentation === 'Recording' ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'} ${activeTestId === 'B' ? 'cursor-not-allowed opacity-60' : ''}`}>Recording</button></div>{activeTestId === 'B' && <div className="text-[10px] text-slate-400 mt-1 italic">Locked to match Test A</div>}</div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-2">Scoring Mode</label><div className="flex rounded-lg overflow-hidden border border-slate-200"><button onClick={() => updateActiveTest('scoringMode', 'phoneme')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'phoneme' ? 'bg-slate-700 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><ListChecks className="w-3 h-3" /> Phoneme</button><button onClick={() => updateActiveTest('scoringMode', 'word')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'word' ? 'bg-slate-700 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><WholeWord className="w-3 h-3" /> Word</button></div></div>
                                         </div>
                                         <div className="lg:col-span-7 grid grid-cols-2 gap-4">
-                                            <div><label className="block text-xs font-medium text-slate-500 mb-1">Word List</label><select value={activeTest.listId} onChange={(e) => updateActiveTest('listId', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="1A">NU-6 List 1A</option><option value="2A">NU-6 List 2A</option><option value="3A">NU-6 List 3A</option><option value="4A">NU-6 List 4A</option><option value="HF1">HF Word List Form 1</option><option value="HF2">HF Word List Form 2</option></select></div>
+                                            <div><label className="block text-xs font-medium text-slate-500 mb-1">Word List</label><select value={activeTest.listId} onChange={(e) => updateActiveTest('listId', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="1A">NU-6 List 1A</option><option value="2A">NU-6 List 2A</option><option value="3A">NU-6 List 3A</option><option value="4A">NU-6 List 4A</option><option value="HF1">Rose Hill HF Word List Form 1</option><option value="HF2">Rose Hill HF Word List Form 2</option></select></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Section</label><select value={activeTest.section} onChange={(e) => updateActiveTest('section', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">{getSectionOptions(activeTestId).map(opt => (<option key={opt.val} value={opt.val}>{opt.label}</option>))}</select></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Level (e.g., MLV-avg or 65 dBC)</label><input type="text" value={activeTest.level} onChange={(e) => updateActiveTest('level', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Noise (e.g., +10 dB SNR or 55 dBC)</label><input type="text" value={activeTest.snr} onChange={(e) => updateActiveTest('snr', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
@@ -3061,7 +3446,42 @@
                                             )}
                                         </div>
 
-                                        <div><label className="block text-xs font-bold uppercase text-slate-500 mb-2">Clinical Interpretation / Notes</label><textarea className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 h-24" placeholder="Enter notes comparing the two conditions..."></textarea></div>
+                                        {/* Outcome */}
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Outcome</label>
+                                                <div className="flex gap-4">
+                                                    <div className="flex rounded-lg overflow-hidden border border-slate-200">
+                                                        <button onClick={() => { setOutcome('Sold'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Sold' ? 'bg-emerald-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Sold</button>
+                                                        <button onClick={() => { setOutcome('Not Sold'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Not Sold' ? 'bg-red-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Not Sold</button>
+                                                        <button onClick={() => { setOutcome('Need to Follow Up'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Need to Follow Up' ? 'bg-blue-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Need to Follow Up</button>
+                                                    </div>
+                                                    {outcome === 'Sold' && (
+                                                        <div className="flex-1">
+                                                            <select value={soldType} onChange={(e) => { setSoldType(e.target.value); setHasUnsavedChanges(true); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+                                                                <option value="Private Pay">Private Pay</option>
+                                                                <option value="Managed Care">Managed Care</option>
+                                                                <option value="Vocational Rehabilitation Services">Vocational Rehabilitation Services</option>
+                                                            </select>
+                                                        </div>
+                                                    )}
+                                                    {outcome === 'Not Sold' && (
+                                                        <div className="flex-1">
+                                                            <select value={notSoldReason} onChange={(e) => { setNotSoldReason(e.target.value); setHasUnsavedChanges(true); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+                                                                <option value="Price">Price</option>
+                                                                <option value="Current Hearing Aids Too New">Current Hearing Aids Too New</option>
+                                                                <option value="Patient Considers Themselves Too Old">Patient Considers Themselves Too Old</option>
+                                                                <option value="Question of Value">Question of Value</option>
+                                                                <option value="No Benefit">No Benefit</option>
+                                                                <option value="Other">Other</option>
+                                                            </select>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-6"><label className="block text-xs font-bold uppercase text-slate-500 mb-2">Clinical Interpretation / Notes</label><textarea className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 h-24" placeholder="Enter notes comparing the two conditions..."></textarea></div>
                                     </div>
                                 </div>
                             </div>
