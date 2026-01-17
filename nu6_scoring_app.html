@@ -3081,18 +3081,6 @@
         try {
             root.render(<App />);
             console.log('React app rendered successfully');
-            // Check if Tailwind loaded (increased timeout for injected CSS to apply)
-            setTimeout(() => {
-                const testEl = document.createElement('div');
-                testEl.className = 'hidden';
-                document.body.appendChild(testEl);
-                const isHidden = window.getComputedStyle(testEl).display === 'none';
-                document.body.removeChild(testEl);
-                if (!isHidden) {
-                    console.error('Tailwind CSS failed to load! App may appear blank.');
-                    alert('Warning: The app styling failed to load. Please restart the app.');
-                }
-            }, 2000);
         } catch (error) {
             console.error('Failed to render React app:', error);
             document.body.innerHTML = '<div style="padding: 20px; color: red; font-family: monospace;">Error rendering app: ' + error.message + '</div>';
