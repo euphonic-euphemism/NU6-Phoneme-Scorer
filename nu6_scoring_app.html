@@ -40,6 +40,11 @@
                 style.textContent = cssContent;
                 document.head.appendChild(style);
                 console.log('Tailwind CSS injected successfully, style elements:', document.head.querySelectorAll('style').length);
+                // Add bright test background to body to verify CSS works
+                const testStyle = document.createElement('style');
+                testStyle.textContent = 'body { background: red !important; } #root { background: lime !important; min-height: 100vh; }';
+                document.head.appendChild(testStyle);
+                console.log('Test background colors applied');
                 // Verify CSS is actually applied
                 setTimeout(() => {
                     const testDiv = document.createElement('div');
