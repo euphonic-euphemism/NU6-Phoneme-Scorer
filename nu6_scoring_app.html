@@ -2672,8 +2672,15 @@
 
             const getEffortColor = (val) => { if (val <= 4) return 'text-emerald-600'; if (val >= 6) return 'text-red-600'; return 'text-blue-600'; };
 
+            // Debug overlay
+            const debugInfo = `dbReady: ${dbReady}, isLocked: ${isLocked}, hasPassword: ${hasPassword}`;
+            console.log('App state:', debugInfo);
+
             if (!dbReady) return <div className="min-h-screen flex items-center justify-center text-slate-500"><Loader className="w-8 h-8 mr-2"/> Initializing secure storage...</div>;
-            if (isLocked) return <LoginModal isSetup={hasPassword} onLogin={() => setIsLocked(false)} />;
+            if (isLocked) {
+                console.log('Rendering LoginModal, isSetup:', hasPassword);
+                return <LoginModal isSetup={hasPassword} onLogin={() => setIsLocked(false)} />;
+            }
 
             // Determine if we show comparative ease scale
             // Logic: Show if Word Diff is NOT Significant AND (Phoneme Diff is NOT Significant OR not in phoneme mode)
