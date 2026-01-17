@@ -29,11 +29,8 @@ function createWindow() {
         title: "NU-6 Phoneme Scorer",
         webPreferences: {
             nodeIntegration: true,
-            contextIsolation: false,
-            offscreen: false
-        },
-        show: true,
-        backgroundColor: '#FF0000'  // Red background as fallback
+            contextIsolation: false
+        }
     });
 
     // Load the HTML file
