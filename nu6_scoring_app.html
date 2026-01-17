@@ -45,6 +45,16 @@
                 testStyle.textContent = 'body { background: red !important; } #root { background: lime !important; min-height: 100vh; }';
                 document.head.appendChild(testStyle);
                 console.log('Test background colors applied');
+                // Debug: Check if styles are actually in the DOM
+                setTimeout(() => {
+                    const bodyStyle = window.getComputedStyle(document.body);
+                    const rootStyle = window.getComputedStyle(document.getElementById('root') || document.body);
+                    console.log('Body computed background:', bodyStyle.backgroundColor);
+                    console.log('Body computed display:', bodyStyle.display);
+                    console.log('Root computed background:', rootStyle.backgroundColor);
+                    console.log('Styles in head:', document.head.querySelectorAll('style').length);
+                    console.log('Style element content length:', Array.from(document.head.querySelectorAll('style')).map(s => s.textContent.length));
+                }, 200);
                 // Verify CSS is actually applied
                 setTimeout(() => {
                     const testDiv = document.createElement('div');
