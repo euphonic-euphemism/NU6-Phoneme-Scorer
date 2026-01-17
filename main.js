@@ -4,22 +4,20 @@ const packageJson = require('./package.json');
 
 // Platform-aware GPU handling to avoid GL/VSync/GTK errors on some Linux setups.
 // Behavior:
-// - If `NU6_GPU=off` or `NU6_FORCE_SOFTWARE=1` is set, force software GL.
-// - On X11 sessions we default to disabling hardware acceleration (avoids common driver bugs).
-// - On Wayland sessions we enable the Ozone/Wayland backend for better integration.
+// - Default to software rendering on Linux (avoids Wayland/GPU compositing issues)
+// - Set NU6_GPU=on to enable hardware acceleration if needed
 const sessionType = process.env.XDG_SESSION_TYPE || (process.env.WAYLAND_DISPLAY ? 'wayland' : process.env.DISPLAY ? 'x11' : 'unknown');
-const forceSoftware = process.env.NU6_GPU === 'off' || process.env.NU6_FORCE_SOFTWARE === '1';
-const preferWayland = process.env.NU6_WAYLAND === '1';
+const forceHardware = process.env.NU6_GPU === 'on';
 
-if (forceSoftware || (process.platform === 'linux' && sessionType === 'x11')) {
+if (process.platform === 'linux' && !forceHardware) {
     app.disableHardwareAcceleration();
     app.commandLine.appendSwitch('disable-gpu');
     app.commandLine.appendSwitch('disable-gpu-compositing');
-    console.log('NU6: running with software GL (hardware acceleration disabled)');
-} else if (process.platform === 'linux' && (sessionType === 'wayland' || preferWayland)) {
+    console.log('NU6: running with software GL (hardware acceleration disabled by default on Linux)');
+} else if (process.platform === 'linux' && sessionType === 'wayland') {
     app.commandLine.appendSwitch('enable-features', 'UseOzonePlatform');
     app.commandLine.appendSwitch('ozone-platform', 'wayland');
-    console.log('NU6: using Wayland/Ozone platform for rendering');
+    console.log('NU6: using Wayland/Ozone platform with hardware acceleration');
 } else {
     console.log(`NU6: sessionType=${sessionType}, default GPU settings`);
 }

@@ -35,35 +35,10 @@
             }
             try {
                 const cssContent = fs.readFileSync(cssPath, 'utf-8');
-                console.log('CSS file read, size:', cssContent.length, 'bytes');
                 const style = document.createElement('style');
                 style.textContent = cssContent;
                 document.head.appendChild(style);
-                console.log('Tailwind CSS injected successfully, style elements:', document.head.querySelectorAll('style').length);
-                // Add bright test background to body to verify CSS works
-                const testStyle = document.createElement('style');
-                testStyle.textContent = 'body { background: red !important; } #root { background: lime !important; min-height: 100vh; }';
-                document.head.appendChild(testStyle);
-                console.log('Test background colors applied');
-                // Debug: Check if styles are actually in the DOM
-                setTimeout(() => {
-                    const bodyStyle = window.getComputedStyle(document.body);
-                    const rootStyle = window.getComputedStyle(document.getElementById('root') || document.body);
-                    console.log('Body computed background:', bodyStyle.backgroundColor);
-                    console.log('Body computed display:', bodyStyle.display);
-                    console.log('Root computed background:', rootStyle.backgroundColor);
-                    console.log('Styles in head:', document.head.querySelectorAll('style').length);
-                    console.log('Style element content length:', Array.from(document.head.querySelectorAll('style')).map(s => s.textContent.length));
-                }, 200);
-                // Verify CSS is actually applied
-                setTimeout(() => {
-                    const testDiv = document.createElement('div');
-                    testDiv.className = 'bg-blue-500';
-                    document.body.appendChild(testDiv);
-                    const bgColor = window.getComputedStyle(testDiv).backgroundColor;
-                    document.body.removeChild(testDiv);
-                    console.log('CSS test - bg-blue-500 color:', bgColor);
-                }, 100);
+                console.log('Tailwind CSS loaded:', cssContent.length, 'bytes');
             } catch (error) {
                 console.error('Failed to load Tailwind CSS:', error);
                 // Fallback to link tag
@@ -2687,15 +2662,8 @@
 
             const getEffortColor = (val) => { if (val <= 4) return 'text-emerald-600'; if (val >= 6) return 'text-red-600'; return 'text-blue-600'; };
 
-            // Debug overlay
-            const debugInfo = `dbReady: ${dbReady}, isLocked: ${isLocked}, hasPassword: ${hasPassword}`;
-            console.log('App state:', debugInfo);
-
             if (!dbReady) return <div className="min-h-screen flex items-center justify-center text-slate-500"><Loader className="w-8 h-8 mr-2"/> Initializing secure storage...</div>;
-            if (isLocked) {
-                console.log('Rendering LoginModal, isSetup:', hasPassword);
-                return <LoginModal isSetup={hasPassword} onLogin={() => setIsLocked(false)} />;
-            }
+            if (isLocked) return <LoginModal isSetup={hasPassword} onLogin={() => setIsLocked(false)} />;
 
             // Determine if we show comparative ease scale
             // Logic: Show if Word Diff is NOT Significant AND (Phoneme Diff is NOT Significant OR not in phoneme mode)
@@ -3113,16 +3081,6 @@
         try {
             root.render(<App />);
             console.log('React app rendered successfully');
-            // Debug: Check if DOM has content
-            setTimeout(() => {
-                const rootEl = document.getElementById('root');
-                console.log('Root element children:', rootEl?.children.length);
-                console.log('Root element innerHTML length:', rootEl?.innerHTML.length);
-                console.log('Body visible elements:', document.body.querySelectorAll('*:not(script):not(style)').length);
-                if (rootEl && rootEl.innerHTML.length === 0) {
-                    console.error('Root element is empty!');
-                }
-            }, 500);
         } catch (error) {
             console.error('Failed to render React app:', error);
             document.body.innerHTML = '<div style="padding: 20px; color: red; font-family: monospace;">Error rendering app: ' + error.message + '</div>';
