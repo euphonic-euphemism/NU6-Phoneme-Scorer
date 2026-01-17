@@ -38,6 +38,9 @@ function createWindow() {
     // Load the HTML file
     win.loadFile(path.join(__dirname, 'nu6_scoring_app.html'));
 
+    // Open DevTools for debugging
+    win.webContents.openDevTools();
+
     // Log any console errors
     win.webContents.on('console-message', (event, level, message, line, sourceId) => {
         console.log(`[Renderer ${level}] ${message} (${sourceId}:${line})`);
