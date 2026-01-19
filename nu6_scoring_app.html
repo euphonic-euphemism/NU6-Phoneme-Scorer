@@ -717,6 +717,22 @@
                 let comparativeEase = Math.round((statsB.wordPercent - statsA.wordPercent) / 10) + 5;
                 if (comparativeEase < 0) comparativeEase = 0; if (comparativeEase > 10) comparativeEase = 10;
 
+                // Generate outcome data
+                const outcomeOptions = ['Sold', 'Not Sold', 'Need to Follow Up'];
+                const outcome = outcomeOptions[randInt(0, outcomeOptions.length - 1)];
+                
+                const soldTypeOptions = ['Private Pay', 'Managed Care', 'Vocational Rehabilitation Services'];
+                const soldType = outcome === 'Sold' ? soldTypeOptions[randInt(0, soldTypeOptions.length - 1)] : 'Private Pay';
+                
+                const notSoldReasonOptions = ['Price', 'Current Hearing Aids Too New', 'Patient Considers Themselves Too Old', 'Question of Value', 'No Benefit', 'Other'];
+                const notSoldReason = outcome === 'Not Sold' ? notSoldReasonOptions[randInt(0, notSoldReasonOptions.length - 1)] : 'Price';
+                
+                // Generate random timer duration (5-15 minutes in milliseconds)
+                const timerElapsed = randInt(300000, 900000); // 5-15 minutes
+                
+                // Generate stimulus presentation
+                const stimulusPresentation = rand() < 0.7 ? 'MLV' : 'Recording';
+
                 records.push({
                     id: `sim-${String(i + 1).padStart(3, '0')}`,
                     patientName,
@@ -726,9 +742,13 @@
                     activeTestId: rand() < 0.5 ? 'A' : 'B',
                     activeTab: rand() < 0.5 ? 'comparison' : 'scoring',
                     confidenceLevel: rand() < 0.5 ? 95 : 80,
+                    outcome: outcome,
+                    soldType: soldType,
+                    notSoldReason: notSoldReason,
+                    timerElapsed: timerElapsed,
                     tests: {
-                        A: { id: 'A', listId: listA, section: 'second_10', scoringMode: scoringModeA, condition: condA, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, scores: scoresA, limitTo10: limitA, askedContinue: false },
-                        B: { id: 'B', listId: listB, section: 'second_10', scoringMode: scoringModeB, condition: condB, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, scores: scoresB, limitTo10: limitB, askedContinue: false },
+                        A: { id: 'A', listId: listA, section: 'second_10', scoringMode: scoringModeA, condition: condA, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, stimulusPresentation: stimulusPresentation, scores: scoresA, limitTo10: limitA, askedContinue: false },
+                        B: { id: 'B', listId: listB, section: 'second_10', scoringMode: scoringModeB, condition: condB, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, stimulusPresentation: stimulusPresentation, scores: scoresB, limitTo10: limitB, askedContinue: false },
                         comparativeEase: comparativeEase
                     }
                 });
@@ -1870,6 +1890,8 @@
             const [lastSaved, setLastSaved] = useState(null);
             const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
             const [showExportModal, setShowExportModal] = useState(false);
+            const [exportStartDate, setExportStartDate] = useState('');
+            const [exportEndDate, setExportEndDate] = useState('');
             const [showEncryptedImportModal, setShowEncryptedImportModal] = useState(false);
             const [encryptedImportPassword, setEncryptedImportPassword] = useState('');
             const [encryptedImportFile, setEncryptedImportFile] = useState(null);
@@ -2246,20 +2268,75 @@
                     
                     data.forEach(record => {
                         if (record.tests) {
+                            const confidenceLevel = record.confidenceLevel || 95;
+                            
+                            // Calculate stats for both tests
+                            const statsA = calculateStats(record.tests.A.listId, record.tests.A.section, record.tests.A.scores, record.tests.A.limitTo10);
+                            const statsB = calculateStats(record.tests.B.listId, record.tests.B.section, record.tests.B.scores, record.tests.B.limitTo10);
+                            
+                            // Calculate score differences (B - A)
+                            const wordDifference = statsB.wordPercent - statsA.wordPercent;
+                            const phonemeDifference = statsB.phonemePercent - statsA.phonemePercent;
+                            
+                            // Get comparative ease of listening
+                            const comparativeEase = record.tests.comparativeEase !== undefined ? record.tests.comparativeEase : null;
+                            
+                            // Get outcome
+                            const outcome = record.outcome || null;
+                            
+                            // Add data for both tests
                             ['A', 'B'].forEach(testId => {
                                 const test = record.tests[testId];
                                 const listId = test.listId;
-                                const stats = calculateStats(test.listId, test.section, test.scores, test.limitTo10);
+                                const stats = testId === 'A' ? statsA : statsB;
+                                const otherStats = testId === 'A' ? statsB : statsA;
+                                
+                                // Calculate critical limits and significance for word scores
+                                const wordCriticalLimits = stats.totalWords > 0 
+                                    ? getCriticalLimits(stats.wordPercent, stats.totalWords, confidenceLevel)
+                                    : { lower: 0, upper: 100 };
+                                const isWordSignificant = otherStats.wordPercent < wordCriticalLimits.lower || otherStats.wordPercent > wordCriticalLimits.upper;
+                                
+                                // Calculate critical limits and significance for phoneme scores (if both use phoneme scoring)
+                                let isPhonemeSignificant = null;
+                                if (record.tests.A.scoringMode === 'phoneme' && record.tests.B.scoringMode === 'phoneme' && stats.totalPhonemes > 0) {
+                                    const rawPercent = (stats.correctPhonemes / stats.totalPhonemes) * 100;
+                                    const phonemeCriticalLimits = getCriticalLimits(rawPercent, stats.totalPhonemes, confidenceLevel, true);
+                                    isPhonemeSignificant = otherStats.phonemePercent < phonemeCriticalLimits.lower || otherStats.phonemePercent > phonemeCriticalLimits.upper;
+                                }
                                 
                                 if (!grouped[listId]) {
                                     grouped[listId] = {
                                         wordScores: [],
-                                        phonemeScores: []
+                                        phonemeScores: [],
+                                        wordDifferences: [],
+                                        phonemeDifferences: [],
+                                        wordSignificant: [],
+                                        phonemeSignificant: [],
+                                        comparativeEase: [],
+                                        outcomes: [],
+                                        dates: []
                                     };
                                 }
                                 
                                 grouped[listId].wordScores.push(stats.wordPercent);
                                 grouped[listId].phonemeScores.push(stats.phonemePercent);
+                                grouped[listId].wordSignificant.push(isWordSignificant ? 1 : 0);
+                                if (isPhonemeSignificant !== null) {
+                                    grouped[listId].phonemeSignificant.push(isPhonemeSignificant ? 1 : 0);
+                                }
+                                if (comparativeEase !== null) {
+                                    grouped[listId].comparativeEase.push(comparativeEase);
+                                }
+                                if (outcome !== null) {
+                                    grouped[listId].outcomes.push(outcome);
+                                }
+                                // Track dates and differences for this list (only once per record, not per test)
+                                if (testId === 'A' && record.testDate) {
+                                    grouped[listId].dates.push(record.testDate);
+                                    grouped[listId].wordDifferences.push(wordDifference);
+                                    grouped[listId].phonemeDifferences.push(phonemeDifference);
+                                }
                             });
                         }
                     });
@@ -2268,22 +2345,69 @@
                     const aggregateData = Object.keys(grouped).map(listId => {
                         const wordScores = grouped[listId].wordScores;
                         const phonemeScores = grouped[listId].phonemeScores;
+                        const wordDiffs = grouped[listId].wordDifferences;
+                        const phonemeDiffs = grouped[listId].phonemeDifferences;
+                        const wordSig = grouped[listId].wordSignificant;
+                        const phonemeSig = grouped[listId].phonemeSignificant;
+                        const compEase = grouped[listId].comparativeEase;
+                        const outcomes = grouped[listId].outcomes;
+                        const dates = grouped[listId].dates;
                         
-                        // Calculate mean
+                        // Calculate mean scores
                         const meanWord = wordScores.reduce((a, b) => a + b, 0) / wordScores.length;
                         const meanPhoneme = phonemeScores.reduce((a, b) => a + b, 0) / phonemeScores.length;
                         
-                        // Calculate standard deviation
-                        const stdWord = Math.sqrt(wordScores.reduce((sum, val) => sum + Math.pow(val - meanWord, 2), 0) / wordScores.length);
-                        const stdPhoneme = Math.sqrt(phonemeScores.reduce((sum, val) => sum + Math.pow(val - meanPhoneme, 2), 0) / phonemeScores.length);
+                        // Calculate mean differences (B - A)
+                        const meanWordDiff = wordDiffs.length > 0
+                            ? Number((wordDiffs.reduce((a, b) => a + b, 0) / wordDiffs.length).toFixed(2))
+                            : null;
+                        const meanPhonemeDiff = phonemeDiffs.length > 0
+                            ? Number((phonemeDiffs.reduce((a, b) => a + b, 0) / phonemeDiffs.length).toFixed(2))
+                            : null;
+                        
+                        // Calculate percentage of significant differences
+                        const wordSigPercent = wordSig.length > 0 
+                            ? Number(((wordSig.reduce((a, b) => a + b, 0) / wordSig.length) * 100).toFixed(1))
+                            : null;
+                        const phonemeSigPercent = phonemeSig.length > 0 
+                            ? Number(((phonemeSig.reduce((a, b) => a + b, 0) / phonemeSig.length) * 100).toFixed(1))
+                            : null;
+                        
+                        // Calculate mean comparative ease if present
+                        const meanCompEase = compEase.length > 0
+                            ? Number((compEase.reduce((a, b) => a + b, 0) / compEase.length).toFixed(2))
+                            : null;
+                        
+                        // Count outcomes
+                        const outcomeCounts = {};
+                        outcomes.forEach(outcome => {
+                            outcomeCounts[outcome] = (outcomeCounts[outcome] || 0) + 1;
+                        });
+                        const outcomeStr = Object.entries(outcomeCounts)
+                            .map(([outcome, count]) => `${outcome}: ${count}`)
+                            .join('; ') || null;
+                        
+                        // Calculate date range
+                        let dateRange = null;
+                        if (dates.length > 0) {
+                            const sortedDates = dates.map(d => new Date(d)).sort((a, b) => a - b);
+                            const earliest = sortedDates[0].toISOString().split('T')[0];
+                            const latest = sortedDates[sortedDates.length - 1].toISOString().split('T')[0];
+                            dateRange = earliest === latest ? earliest : `${earliest} to ${latest}`;
+                        }
                         
                         return {
                             List: listId,
                             Count: wordScores.length,
+                            DateRange: dateRange,
                             MeanWordScore: Number(meanWord.toFixed(2)),
-                            StdDevWordScore: Number(stdWord.toFixed(2)),
+                            MeanWordDifference: meanWordDiff,
+                            WordSignificantPercent: wordSigPercent,
                             MeanPhonemeScore: Number(meanPhoneme.toFixed(2)),
-                            StdDevPhonemeScore: Number(stdPhoneme.toFixed(2))
+                            MeanPhonemeDifference: meanPhonemeDiff,
+                            PhonemeSignificantPercent: phonemeSigPercent,
+                            MeanComparativeEase: meanCompEase,
+                            Outcomes: outcomeStr
                         };
                     });
                     
@@ -2356,9 +2480,25 @@
                     }
                     
                     // Decrypt records (if needed)
-                    const decryptedData = await Promise.all(
+                    let decryptedData = await Promise.all(
                         records.map(record => decryptRecord(record))
                     );
+                    
+                    // Filter by date range if specified
+                    if (exportStartDate || exportEndDate) {
+                        decryptedData = decryptedData.filter(record => {
+                            if (!record.testDate) return false;
+                            const recordDate = new Date(record.testDate);
+                            if (exportStartDate && recordDate < new Date(exportStartDate)) return false;
+                            if (exportEndDate && recordDate > new Date(exportEndDate)) return false;
+                            return true;
+                        });
+                        
+                        if (decryptedData.length === 0) {
+                            alert('No records found in the specified date range.');
+                            return;
+                        }
+                    }
                     
                     // Process data based on mode
                     const processedData = processExportData(decryptedData, mode);
@@ -2686,6 +2826,15 @@
                 setImportPreviewFileName('');
                 setImportPreviewInvalidCount(0);
                 alert(`Import complete. ${imported} records imported, ${skipped} skipped, ${errors} errors.`);
+                
+                // Fix Windows focus issue - restore focus to document body
+                setTimeout(() => {
+                    if (document.activeElement) {
+                        document.activeElement.blur();
+                    }
+                    document.body.focus();
+                    document.body.click();
+                }, 150);
             };
 
             const handleOpenClick = () => fileInputRef.current.click(); // Unused
@@ -3040,7 +3189,40 @@
                             <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
                                 <button onClick={() => setShowExportModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
                                 <h3 className="text-lg font-bold text-slate-800 mb-3">Export Database</h3>
-                                <p className="text-sm text-slate-600 mb-4">Choose export format:</p>
+                                <p className="text-sm text-slate-600 mb-2">Choose export format:</p>
+                                
+                                {/* Date Filter Section */}
+                                <div className="bg-slate-50 rounded-lg p-3 mb-4 border border-slate-200">
+                                    <div className="text-xs font-semibold text-slate-700 mb-2">📅 Filter by Test Date (optional)</div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="text-xs text-slate-600">Start Date</label>
+                                            <input 
+                                                type="date" 
+                                                value={exportStartDate} 
+                                                onChange={(e) => setExportStartDate(e.target.value)}
+                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-600">End Date</label>
+                                            <input 
+                                                type="date" 
+                                                value={exportEndDate} 
+                                                onChange={(e) => setExportEndDate(e.target.value)}
+                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded"
+                                            />
+                                        </div>
+                                    </div>
+                                    {(exportStartDate || exportEndDate) && (
+                                        <button 
+                                            onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
+                                            className="text-xs text-blue-600 hover:text-blue-800 mt-2"
+                                        >
+                                            Clear dates
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="space-y-3">
                                     <button onClick={handleExportEncrypted} className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-left transition">
                                         <div className="font-semibold">🔒 Encrypted Export (JSON with PHI)</div>
@@ -3101,7 +3283,7 @@
                                 </div>
                                 <div className="flex justify-end gap-2">
                                     <button onClick={() => { setShowDeleteDbModal(false); setDeleteDbConfirmText(''); }} className="px-4 py-2 bg-white border rounded">Cancel</button>
-                                    <button onClick={async () => { if (deleteDbConfirmText === 'DELETE') { setShowDeleteDbModal(false); setDeleteDbConfirmText(''); try { await window.SecureDB.deleteAllTests(); alert('Database cleared. Clinic settings preserved.'); resetForm(); } catch (e) { console.error(e); alert('Failed to delete database.'); } } else { alert('Please type DELETE to confirm.'); } }} className="px-4 py-2 bg-red-600 text-white rounded">Delete Database</button>
+                                    <button onClick={async () => { if (deleteDbConfirmText === 'DELETE') { setShowDeleteDbModal(false); setDeleteDbConfirmText(''); try { await window.SecureDB.deleteAllTests(); alert('Database cleared. Clinic settings preserved.'); resetForm(); setTimeout(() => { if (document.activeElement) document.activeElement.blur(); document.body.focus(); document.body.click(); }, 150); } catch (e) { console.error(e); alert('Failed to delete database.'); } } else { alert('Please type DELETE to confirm.'); } }} className="px-4 py-2 bg-red-600 text-white rounded">Delete Database</button>
                                 </div>
                             </div>
                         </div>
