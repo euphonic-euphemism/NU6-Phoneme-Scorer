@@ -1491,13 +1491,13 @@
                             ))}
                         </div>
 
-                        <div className="flex gap-2 justify-end">
-                            <button onClick={() => { onImportAppend(); }} className="px-4 py-2 bg-slate-100 rounded text-slate-700">Import (Append as New IDs)</button>
-                            <button onClick={() => { onImportSkip(); }} className="px-4 py-2 bg-yellow-100 rounded text-yellow-800">Import (Skip duplicates)</button>
-                            <button onClick={() => { onImportMerge(); }} className="px-4 py-2 bg-emerald-100 rounded text-emerald-800">Import (Merge duplicates)</button>
-                            <button onClick={() => { onImportOverwrite(); }} className="px-4 py-2 bg-blue-600 rounded text-white">Import (Overwrite by ID)</button>
-                            <button onClick={() => onImportUseSelected()} className="px-4 py-2 bg-green-600 rounded text-white">Import (Use Selected: {selectedLabel})</button>
-                            <button onClick={() => { onClose(); if (fileInputRef && fileInputRef.current) fileInputRef.current.value = ''; }} className="px-4 py-2 bg-white border rounded">Cancel</button>
+                        <div className="flex flex-wrap gap-2 justify-end">
+                            <button onClick={() => { onImportAppend(); }} className="px-4 py-2 bg-slate-100 rounded text-slate-700 text-sm">Import (Append as New IDs)</button>
+                            <button onClick={() => { onImportSkip(); }} className="px-4 py-2 bg-yellow-100 rounded text-yellow-800 text-sm">Import (Skip duplicates)</button>
+                            <button onClick={() => { onImportMerge(); }} className="px-4 py-2 bg-emerald-100 rounded text-emerald-800 text-sm">Import (Merge duplicates)</button>
+                            <button onClick={() => { onImportOverwrite(); }} className="px-4 py-2 bg-blue-600 rounded text-white text-sm">Import (Overwrite by ID)</button>
+                            <button onClick={() => onImportUseSelected()} className="px-4 py-2 bg-green-600 rounded text-white text-sm">Import (Use Selected: {selectedLabel})</button>
+                            <button onClick={() => { onClose(); if (fileInputRef && fileInputRef.current) fileInputRef.current.value = ''; }} className="px-4 py-2 bg-white border rounded text-sm">Cancel</button>
                         </div>
                     </div>
                 </div>
@@ -1890,6 +1890,7 @@
             const [lastSaved, setLastSaved] = useState(null);
             const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
             const [showExportModal, setShowExportModal] = useState(false);
+            const [showFileMenu, setShowFileMenu] = useState(false);
             const [exportStartDate, setExportStartDate] = useState('');
             const [exportEndDate, setExportEndDate] = useState('');
             const [showEncryptedImportModal, setShowEncryptedImportModal] = useState(false);
@@ -1897,8 +1898,8 @@
             const [encryptedImportFile, setEncryptedImportFile] = useState(null);
 
             const [tests, setTests] = useState({
-                A: { id: 'A', listId: '3A', section: 'second_10', scoringMode: 'word', condition: 'Unaided', deviceModel: '', level: '', snr: '', stimulusPresentation: 'MLV', scores: {}, limitTo10: false, askedContinue: false },
-                B: { id: 'B', listId: '4A', section: 'second_10', scoringMode: 'word', condition: 'New Tech', deviceModel: '', level: '', snr: '', stimulusPresentation: 'MLV', scores: {}, limitTo10: false, askedContinue: false },
+                A: { id: 'A', listId: 'HF1', section: 'second_10', scoringMode: 'phoneme', condition: 'Unaided', deviceModel: '', level: '', snr: '', stimulusPresentation: 'Recording', scores: {}, limitTo10: false, askedContinue: false },
+                B: { id: 'B', listId: 'HF2', section: 'second_10', scoringMode: 'phoneme', condition: 'New Tech', deviceModel: '', level: '', snr: '', stimulusPresentation: 'Recording', scores: {}, limitTo10: false, askedContinue: false },
                 comparativeEase: 5
             });
 
@@ -2062,8 +2063,8 @@
                 setDateOfBirth('');
                 setTestDate(new Date().toISOString().split('T')[0]);
                 setTests({
-                    A: { id: 'A', listId: '3A', section: 'second_10', scoringMode: 'word', condition: 'Unaided', deviceModel: '', level: '', snr: '', scores: {}, limitTo10: false, askedContinue: false },
-                    B: { id: 'B', listId: '4A', section: 'second_10', scoringMode: 'word', condition: 'New Tech', deviceModel: '', level: '', snr: '', scores: {}, limitTo10: false, askedContinue: false },
+                    A: { id: 'A', listId: 'HF1', section: 'second_10', scoringMode: 'phoneme', condition: 'Unaided', deviceModel: '', level: '', snr: '', stimulusPresentation: 'Recording', scores: {}, limitTo10: false, askedContinue: false },
+                    B: { id: 'B', listId: 'HF2', section: 'second_10', scoringMode: 'phoneme', condition: 'New Tech', deviceModel: '', level: '', snr: '', stimulusPresentation: 'Recording', scores: {}, limitTo10: false, askedContinue: false },
                     comparativeEase: 5
                 });
                 setActiveTestId('A');
@@ -2263,7 +2264,7 @@
                     });
                     return flatData;
                 } else if (mode === 'aggregate') {
-                    // Group by List and calculate statistics
+                    // Group by comparison type (Unaided vs New Tech, Current Tech vs New Tech)
                     const grouped = {};
                     
                     data.forEach(record => {
@@ -2284,78 +2285,88 @@
                             // Get outcome
                             const outcome = record.outcome || null;
                             
-                            // Add data for both tests
-                            ['A', 'B'].forEach(testId => {
-                                const test = record.tests[testId];
-                                const listId = test.listId;
-                                const stats = testId === 'A' ? statsA : statsB;
-                                const otherStats = testId === 'A' ? statsB : statsA;
-                                
-                                // Calculate critical limits and significance for word scores
-                                const wordCriticalLimits = stats.totalWords > 0 
-                                    ? getCriticalLimits(stats.wordPercent, stats.totalWords, confidenceLevel)
-                                    : { lower: 0, upper: 100 };
-                                const isWordSignificant = otherStats.wordPercent < wordCriticalLimits.lower || otherStats.wordPercent > wordCriticalLimits.upper;
-                                
-                                // Calculate critical limits and significance for phoneme scores (if both use phoneme scoring)
-                                let isPhonemeSignificant = null;
-                                if (record.tests.A.scoringMode === 'phoneme' && record.tests.B.scoringMode === 'phoneme' && stats.totalPhonemes > 0) {
-                                    const rawPercent = (stats.correctPhonemes / stats.totalPhonemes) * 100;
-                                    const phonemeCriticalLimits = getCriticalLimits(rawPercent, stats.totalPhonemes, confidenceLevel, true);
-                                    isPhonemeSignificant = otherStats.phonemePercent < phonemeCriticalLimits.lower || otherStats.phonemePercent > phonemeCriticalLimits.upper;
-                                }
-                                
-                                if (!grouped[listId]) {
-                                    grouped[listId] = {
-                                        wordScores: [],
-                                        phonemeScores: [],
-                                        wordDifferences: [],
-                                        phonemeDifferences: [],
-                                        wordSignificant: [],
-                                        phonemeSignificant: [],
-                                        comparativeEase: [],
-                                        outcomes: [],
-                                        dates: []
-                                    };
-                                }
-                                
-                                grouped[listId].wordScores.push(stats.wordPercent);
-                                grouped[listId].phonemeScores.push(stats.phonemePercent);
-                                grouped[listId].wordSignificant.push(isWordSignificant ? 1 : 0);
-                                if (isPhonemeSignificant !== null) {
-                                    grouped[listId].phonemeSignificant.push(isPhonemeSignificant ? 1 : 0);
-                                }
-                                if (comparativeEase !== null) {
-                                    grouped[listId].comparativeEase.push(comparativeEase);
-                                }
-                                if (outcome !== null) {
-                                    grouped[listId].outcomes.push(outcome);
-                                }
-                                // Track dates and differences for this list (only once per record, not per test)
-                                if (testId === 'A' && record.testDate) {
-                                    grouped[listId].dates.push(record.testDate);
-                                    grouped[listId].wordDifferences.push(wordDifference);
-                                    grouped[listId].phonemeDifferences.push(phonemeDifference);
-                                }
-                            });
+                            // Determine comparison type
+                            const condA = record.tests.A.condition || 'Unaided';
+                            const condB = record.tests.B.condition || 'New Tech';
+                            const comparisonKey = `${condA} vs ${condB}`;
+                            
+                            // Calculate critical limits and significance for word scores
+                            const wordCriticalLimits = statsA.totalWords > 0 
+                                ? getCriticalLimits(statsA.wordPercent, statsA.totalWords, confidenceLevel)
+                                : { lower: 0, upper: 100 };
+                            const isWordSignificant = statsB.wordPercent < wordCriticalLimits.lower || statsB.wordPercent > wordCriticalLimits.upper;
+                            
+                            // Calculate critical limits and significance for phoneme scores (if both use phoneme scoring)
+                            let isPhonemeSignificant = null;
+                            if (record.tests.A.scoringMode === 'phoneme' && record.tests.B.scoringMode === 'phoneme' && statsA.totalPhonemes > 0) {
+                                const rawPercent = (statsA.correctPhonemes / statsA.totalPhonemes) * 100;
+                                const phonemeCriticalLimits = getCriticalLimits(rawPercent, statsA.totalPhonemes, confidenceLevel, true);
+                                isPhonemeSignificant = statsB.phonemePercent < phonemeCriticalLimits.lower || statsB.phonemePercent > phonemeCriticalLimits.upper;
+                            }
+                            
+                            if (!grouped[comparisonKey]) {
+                                grouped[comparisonKey] = {
+                                    wordScoresA: [],
+                                    wordScoresB: [],
+                                    phonemeScoresA: [],
+                                    phonemeScoresB: [],
+                                    wordDifferences: [],
+                                    phonemeDifferences: [],
+                                    wordSignificant: [],
+                                    phonemeSignificant: [],
+                                    comparativeEase: [],
+                                    outcomes: [],
+                                    dates: [],
+                                    timerDurations: []
+                                };
+                            }
+                            
+                            grouped[comparisonKey].wordScoresA.push(statsA.wordPercent);
+                            grouped[comparisonKey].wordScoresB.push(statsB.wordPercent);
+                            grouped[comparisonKey].phonemeScoresA.push(statsA.phonemePercent);
+                            grouped[comparisonKey].phonemeScoresB.push(statsB.phonemePercent);
+                            grouped[comparisonKey].wordDifferences.push(wordDifference);
+                            grouped[comparisonKey].phonemeDifferences.push(phonemeDifference);
+                            grouped[comparisonKey].wordSignificant.push(isWordSignificant ? 1 : 0);
+                            
+                            if (isPhonemeSignificant !== null) {
+                                grouped[comparisonKey].phonemeSignificant.push(isPhonemeSignificant ? 1 : 0);
+                            }
+                            if (comparativeEase !== null) {
+                                grouped[comparisonKey].comparativeEase.push(comparativeEase);
+                            }
+                            if (outcome !== null) {
+                                grouped[comparisonKey].outcomes.push(outcome);
+                            }
+                            if (record.testDate) {
+                                grouped[comparisonKey].dates.push(record.testDate);
+                            }
+                            if (record.timerElapsed) {
+                                grouped[comparisonKey].timerDurations.push(record.timerElapsed);
+                            }
                         }
                     });
                     
-                    // Calculate statistics for each list
-                    const aggregateData = Object.keys(grouped).map(listId => {
-                        const wordScores = grouped[listId].wordScores;
-                        const phonemeScores = grouped[listId].phonemeScores;
-                        const wordDiffs = grouped[listId].wordDifferences;
-                        const phonemeDiffs = grouped[listId].phonemeDifferences;
-                        const wordSig = grouped[listId].wordSignificant;
-                        const phonemeSig = grouped[listId].phonemeSignificant;
-                        const compEase = grouped[listId].comparativeEase;
-                        const outcomes = grouped[listId].outcomes;
-                        const dates = grouped[listId].dates;
+                    // Calculate statistics for each comparison type
+                    const aggregateData = Object.keys(grouped).map(comparisonKey => {
+                        const wordScoresA = grouped[comparisonKey].wordScoresA;
+                        const wordScoresB = grouped[comparisonKey].wordScoresB;
+                        const phonemeScoresA = grouped[comparisonKey].phonemeScoresA;
+                        const phonemeScoresB = grouped[comparisonKey].phonemeScoresB;
+                        const wordDiffs = grouped[comparisonKey].wordDifferences;
+                        const phonemeDiffs = grouped[comparisonKey].phonemeDifferences;
+                        const wordSig = grouped[comparisonKey].wordSignificant;
+                        const phonemeSig = grouped[comparisonKey].phonemeSignificant;
+                        const compEase = grouped[comparisonKey].comparativeEase;
+                        const outcomes = grouped[comparisonKey].outcomes;
+                        const dates = grouped[comparisonKey].dates;
+                        const timerDurations = grouped[comparisonKey].timerDurations;
                         
                         // Calculate mean scores
-                        const meanWord = wordScores.reduce((a, b) => a + b, 0) / wordScores.length;
-                        const meanPhoneme = phonemeScores.reduce((a, b) => a + b, 0) / phonemeScores.length;
+                        const meanWordA = wordScoresA.length > 0 ? wordScoresA.reduce((a, b) => a + b, 0) / wordScoresA.length : 0;
+                        const meanWordB = wordScoresB.length > 0 ? wordScoresB.reduce((a, b) => a + b, 0) / wordScoresB.length : 0;
+                        const meanPhonemeA = phonemeScoresA.length > 0 ? phonemeScoresA.reduce((a, b) => a + b, 0) / phonemeScoresA.length : 0;
+                        const meanPhonemeB = phonemeScoresB.length > 0 ? phonemeScoresB.reduce((a, b) => a + b, 0) / phonemeScoresB.length : 0;
                         
                         // Calculate mean differences (B - A)
                         const meanWordDiff = wordDiffs.length > 0
@@ -2396,17 +2407,27 @@
                             dateRange = earliest === latest ? earliest : `${earliest} to ${latest}`;
                         }
                         
+                        // Calculate average timer duration
+                        let avgTimerDuration = null;
+                        if (timerDurations.length > 0) {
+                            const avgMs = timerDurations.reduce((a, b) => a + b, 0) / timerDurations.length;
+                            avgTimerDuration = formatTimerDisplay(avgMs);
+                        }
+                        
                         return {
-                            List: listId,
-                            Count: wordScores.length,
+                            Comparison: comparisonKey,
+                            Count: wordScoresA.length,
                             DateRange: dateRange,
-                            MeanWordScore: Number(meanWord.toFixed(2)),
+                            MeanWordScoreA: Number(meanWordA.toFixed(2)),
+                            MeanWordScoreB: Number(meanWordB.toFixed(2)),
                             MeanWordDifference: meanWordDiff,
                             WordSignificantPercent: wordSigPercent,
-                            MeanPhonemeScore: Number(meanPhoneme.toFixed(2)),
+                            MeanPhonemeScoreA: Number(meanPhonemeA.toFixed(2)),
+                            MeanPhonemeScoreB: Number(meanPhonemeB.toFixed(2)),
                             MeanPhonemeDifference: meanPhonemeDiff,
                             PhonemeSignificantPercent: phonemeSigPercent,
                             MeanComparativeEase: meanCompEase,
+                            AvgTimerDuration: avgTimerDuration,
                             Outcomes: outcomeStr
                         };
                     });
@@ -3317,16 +3338,46 @@
                                     <p className="text-slate-500 text-sm">Comparison Mode & Multi-list Support</p>
                                 </div>
                                 <div className="flex flex-wrap gap-2 justify-end">
-                                    <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition text-sm font-medium"><SettingsIcon className="w-4 h-4"/></button>
-                                    {/* Delete DB (moved up) */}
-                                    <button onClick={() => setShowDeleteDbModal(true)} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium bg-red-50 text-red-700 hover:bg-red-200`}><Trash2 className="w-4 h-4" /> Delete DB</button>
-                                    <button onClick={handleExportDB} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><Download className="w-4 h-4" /> Export DB</button>
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={handleImportDB} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-sm font-medium"><FileUp className="w-4 h-4" /> Import DB (JSON)</button>
+                                    {/* File Menu Dropdown */}
+                                    <div className="relative">
+                                        <button 
+                                            onClick={() => setShowFileMenu(!showFileMenu)} 
+                                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-sm font-medium"
+                                        >
+                                            <Database className="w-4 h-4" /> File {showFileMenu ? '▲' : '▼'}
+                                        </button>
+                                        {showFileMenu && (
+                                            <div className="absolute top-full mt-1 left-0 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[200px]">
+                                                <button 
+                                                    onClick={() => { setShowLoadModal(true); setShowFileMenu(false); }} 
+                                                    className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-slate-700 border-b border-slate-100"
+                                                >
+                                                    <Database className="w-4 h-4" /> Load Patient
+                                                </button>
+                                                <button 
+                                                    onClick={() => { handleImportDB(); setShowFileMenu(false); }} 
+                                                    className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-slate-700 border-b border-slate-100"
+                                                >
+                                                    <FileUp className="w-4 h-4" /> Import Database
+                                                </button>
+                                                <button 
+                                                    onClick={() => { handleExportDB(); setShowFileMenu(false); }} 
+                                                    className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-slate-700 border-b border-slate-100"
+                                                >
+                                                    <Download className="w-4 h-4" /> Export Database
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setShowDeleteDbModal(true); setShowFileMenu(false); }} 
+                                                    className="w-full text-left px-4 py-2 hover:bg-red-50 flex items-center gap-2 text-sm text-red-700 rounded-b-lg"
+                                                >
+                                                    <Trash2 className="w-4 h-4" /> Delete Database
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                     <input type="file" accept=".json,application/json" ref={fileInputRef} style={{display:'none'}} onChange={handleImportFile} />
-                                    <button onClick={() => setShowLoadModal(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium"><Database className="w-4 h-4" /> Load Patient</button>
-
+                                    
+                                    <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition text-sm font-medium"><SettingsIcon className="w-4 h-4"/></button>
                                     <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm font-medium"><FileText className="w-4 h-4" /> PDF Report</button>
                                     <div className="flex flex-col gap-1">
                                         <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"><Save className="w-4 h-4" /> Save (Local)</button>
