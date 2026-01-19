@@ -20,10 +20,8 @@ jobs:
           - os: ubuntu-latest
             os-name: Linux
             args: --linux deb appimage
-            # Match both .deb and .AppImage
-            upload_pattern: |
-              dist/*.deb
-              dist/*.AppImage
+            # Match both .deb and .AppImage (glob pattern)
+            upload_pattern: dist/*.{deb,AppImage}
 
           - os: windows-latest
             os-name: Windows
