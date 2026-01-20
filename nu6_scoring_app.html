@@ -199,69 +199,74 @@
                 const patientKey = (data.cNumber || data.patientName || '').toString();
                 const testDate = data.testDate || '';
 
+                // If caller provided an explicit id, treat as an update (overwrite)
+                if (data.id) {
+                    // Encrypt BEFORE creating transaction
+                    const encryptedData = await CryptoService.encryptData(data, window.SecureDB.sessionPassword);
+                    return new Promise((resolve, reject) => {
+                        const tx = db.transaction([STORE_NAME], "readwrite");
+                        const store = tx.objectStore(STORE_NAME);
+                        const req = store.put({ id: String(data.id), ...encryptedData });
+                        req.onsuccess = () => resolve(String(data.id));
+                        req.onerror = (e) => reject(e.target.error);
+                        tx.onerror = (e) => reject(e.target.error);
+                    });
+                }
+
+                // No explicit id: check for same-patient + same-date duplicates
+                // First, read all records in a separate transaction
+                const allRecords = await new Promise((resolve, reject) => {
+                    const tx = db.transaction([STORE_NAME], "readonly");
+                    const req = tx.objectStore(STORE_NAME).getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => reject(req.error);
+                });
+
+                // Decrypt records to inspect patient/testDate (outside transaction)
+                for (const rec of allRecords) {
+                    try {
+                        const dec = await CryptoService.decryptData(rec, window.SecureDB.sessionPassword);
+                        const existingPatientKey = (dec.cNumber || dec.patientName || '').toString();
+                        const existingDate = dec.testDate || '';
+                        if (existingPatientKey === patientKey && existingDate === testDate) {
+                            // Found a same-patient same-date record
+                            if (options.overwriteExistingSameDate) {
+                                // Encrypt BEFORE creating transaction
+                                const encryptedData = await CryptoService.encryptData(data, window.SecureDB.sessionPassword);
+                                // Now create transaction for the put operation
+                                return new Promise((resolve, reject) => {
+                                    const tx = db.transaction([STORE_NAME], "readwrite");
+                                    const store = tx.objectStore(STORE_NAME);
+                                    const req = store.put({ id: String(rec.id), ...encryptedData });
+                                    req.onsuccess = () => resolve(String(rec.id));
+                                    req.onerror = (e) => reject(e.target.error);
+                                    tx.onerror = (e) => reject(e.target.error);
+                                });
+                            } else {
+                                // Inform caller that a duplicate exists
+                                const err = new Error('A record for this patient on the same date already exists.');
+                                err.code = 'DUPLICATE_DATE';
+                                err.existingId = rec.id;
+                                throw err;
+                            }
+                        }
+                    } catch (e) {
+                        // If it's our DUPLICATE_DATE error, re-throw it
+                        if (e.code === 'DUPLICATE_DATE') throw e;
+                        // Otherwise ignore decrypt failures for individual records
+                    }
+                }
+
+                // No duplicate found: encrypt BEFORE creating transaction
+                const encryptedData = await CryptoService.encryptData(data, window.SecureDB.sessionPassword);
+                const recordId = Date.now().toString();
                 return new Promise((resolve, reject) => {
                     const tx = db.transaction([STORE_NAME], "readwrite");
                     const store = tx.objectStore(STORE_NAME);
-
-                    // If caller provided an explicit id, treat as an update (overwrite)
-                    if (data.id) {
-                        (async () => {
-                            try {
-                                const encryptedData = await CryptoService.encryptData(data, window.SecureDB.sessionPassword);
-                                store.put({ id: String(data.id), ...encryptedData });
-                                tx.oncomplete = () => resolve(String(data.id));
-                                tx.onerror = (e) => reject(e.target.error);
-                            } catch (e) { reject(e); }
-                        })();
-                        return;
-                    }
-
-                    // No explicit id: check for same-patient + same-date duplicates
-                    const getAllReq = store.getAll();
-                    getAllReq.onsuccess = async () => {
-                        try {
-                            const raw = getAllReq.result || [];
-                            // Decrypt records to inspect patient/testDate (skip records that fail to decrypt)
-                            for (const rec of raw) {
-                                try {
-                                    const dec = await CryptoService.decryptData(rec, window.SecureDB.sessionPassword);
-                                    const existingPatientKey = (dec.cNumber || dec.patientName || '').toString();
-                                    const existingDate = dec.testDate || '';
-                                    if (existingPatientKey === patientKey && existingDate === testDate) {
-                                        // Found a same-patient same-date record
-                                        if (options.overwriteExistingSameDate) {
-                                            const encryptedData = await CryptoService.encryptData(data, window.SecureDB.sessionPassword);
-                                            // overwrite using the existing record id
-                                            store.put({ id: String(rec.id), ...encryptedData });
-                                            tx.oncomplete = () => resolve(String(rec.id));
-                                            tx.onerror = (e) => reject(e.target.error);
-                                            return;
-                                        } else {
-                                            // Inform caller that a duplicate exists
-                                            const err = new Error('A record for this patient on the same date already exists.');
-                                            err.code = 'DUPLICATE_DATE';
-                                            err.existingId = rec.id;
-                                            reject(err);
-                                            return;
-                                        }
-                                    }
-                                } catch (e) {
-                                    // ignore decrypt failures for individual records
-                                }
-                            }
-
-                            // No duplicate found: create a new record id and save
-                            try {
-                                const encryptedData = await CryptoService.encryptData(data, window.SecureDB.sessionPassword);
-                                const recordId = Date.now().toString();
-                                store.put({ id: String(recordId), ...encryptedData });
-                                tx.oncomplete = () => resolve(recordId);
-                                tx.onerror = (e) => reject(e.target.error);
-                            } catch (e) { reject(e); }
-                        } catch (e) { reject(e); }
-                    };
-
-                    getAllReq.onerror = () => reject(getAllReq.error);
+                    const req = store.put({ id: String(recordId), ...encryptedData });
+                    req.onsuccess = () => resolve(recordId);
+                    req.onerror = (e) => reject(e.target.error);
+                    tx.onerror = (e) => reject(e.target.error);
                 });
             },
             getAllTests: async () => {
@@ -732,6 +737,13 @@
                 
                 // Generate stimulus presentation
                 const stimulusPresentation = rand() < 0.7 ? 'MLV' : 'Recording';
+                
+                // Generate TNT values (some records have them, some don't)
+                const hasTNT = rand() < 0.6; // 60% of records have TNT data
+                const tntA = hasTNT ? `${randInt(3, 8)} dB` : '';
+                const tntExcursionA = hasTNT ? `${randInt(1, 4)} dB` : '';
+                const tntB = hasTNT ? `${randInt(3, 8)} dB` : '';
+                const tntExcursionB = hasTNT ? `${randInt(1, 4)} dB` : '';
 
                 records.push({
                     id: `sim-${String(i + 1).padStart(3, '0')}`,
@@ -747,8 +759,8 @@
                     notSoldReason: notSoldReason,
                     timerElapsed: timerElapsed,
                     tests: {
-                        A: { id: 'A', listId: listA, section: 'second_10', scoringMode: scoringModeA, condition: condA, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, tnt: `${(Math.random() * 10 + 3).toFixed(1)} dB`, stimulusPresentation: stimulusPresentation, scores: scoresA, limitTo10: limitA, askedContinue: false },
-                        B: { id: 'B', listId: listB, section: 'second_10', scoringMode: scoringModeB, condition: condB, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, tnt: `${(Math.random() * 10 + 3).toFixed(1)} dB`, stimulusPresentation: stimulusPresentation, scores: scoresB, limitTo10: limitB, askedContinue: false },
+                        A: { id: 'A', listId: listA, section: 'second_10', scoringMode: scoringModeA, condition: condA, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, stimulusPresentation: stimulusPresentation, tnt: tntA, scores: scoresA, limitTo10: limitA, askedContinue: false },
+                        B: { id: 'B', listId: listB, section: 'second_10', scoringMode: scoringModeB, condition: condB, deviceModel: rand() < 0.3 ? `Model-${randInt(1,5)}` : '', level: level, snr: snrValue, stimulusPresentation: stimulusPresentation, tnt: tntB, scores: scoresB, limitTo10: limitB, askedContinue: false },
                         comparativeEase: comparativeEase
                     }
                 });
@@ -1917,8 +1929,25 @@
 
             // ... (Helper memos: activeTest, statsA, statsB, limits ...) ...
             const activeTest = tests[activeTestId];
-            const statsA = useMemo(() => calculateStats(tests.A.listId, tests.A.section, tests.A.scores, tests.A.limitTo10), [tests.A]);
-            const statsB = useMemo(() => calculateStats(tests.B.listId, tests.B.section, tests.B.scores, tests.B.limitTo10), [tests.B]);
+            
+            // Ensure HF lists use 'full' section (fix for initial load issue)
+            const normalizeTestForStats = (test) => {
+                if ((test.listId === 'HF1' || test.listId === 'HF2') && test.section !== 'full') {
+                    return { ...test, section: 'full' };
+                }
+                return test;
+            };
+            
+            const statsA = useMemo(() => {
+                const normalizedTest = normalizeTestForStats(tests.A);
+                return calculateStats(normalizedTest.listId, normalizedTest.section, normalizedTest.scores, normalizedTest.limitTo10);
+            }, [tests.A.listId, tests.A.section, tests.A.scores, tests.A.limitTo10]);
+            
+            const statsB = useMemo(() => {
+                const normalizedTest = normalizeTestForStats(tests.B);
+                return calculateStats(normalizedTest.listId, normalizedTest.section, normalizedTest.scores, normalizedTest.limitTo10);
+            }, [tests.B.listId, tests.B.section, tests.B.scores, tests.B.limitTo10]);
+            
             const activeStats = activeTestId === 'A' ? statsA : statsB;
             const ageYears = useMemo(() => computeAgeYears(dateOfBirth, testDate), [dateOfBirth, testDate]);
             const wordCriticalLimits = useMemo(() => { if (statsA.totalWords === 0) return { lower: 0, upper: 100 }; return getCriticalLimits(statsA.wordPercent, statsA.totalWords, confidenceLevel); }, [statsA.wordPercent, statsA.totalWords, confidenceLevel]);
@@ -1931,7 +1960,7 @@
             const isWordDiffSig = statsB.wordPercent < wordCriticalLimits.lower || statsB.wordPercent > wordCriticalLimits.upper;
             const isPhonemeDiffSig = statsB.phonemePercent < phonemeCriticalLimits.lower || statsB.phonemePercent > phonemeCriticalLimits.upper;
             
-            // TNT significance calculation (difference > 1.5 dB is significant)
+            // TNT Significance: Parse aTNT values and check if difference > 2.8 dB
             const parseTNT = (tntString) => {
                 if (!tntString) return null;
                 const match = tntString.match(/([+-]?\d+\.?\d*)/);
@@ -1940,7 +1969,8 @@
             const tntA = parseTNT(tests.A.tnt);
             const tntB = parseTNT(tests.B.tnt);
             const tntDifference = (tntA !== null && tntB !== null) ? Math.abs(tntB - tntA) : null;
-            const isTNTDiffSig = tntDifference !== null && tntDifference > 1.5;
+            const tntCriticalValue = confidenceLevel === 95 ? 2.8 : 1.8;
+            const isTNTDiffSig = tntDifference !== null && tntDifference > tntCriticalValue;
             
             const getSectionOptions = (testId) => { 
                 const test = tests[testId];
@@ -2058,7 +2088,7 @@
                     if (interval) clearInterval(interval);
                 };
             }, [timerIsRunning, timerStartTime, timerElapsed, timerPausedAt]);
-            const togglePhoneme = (wordIndex, pIndex) => { setHasUnsavedChanges(true); const listId = activeTest.listId; const key = `${listId}_${wordIndex}_${pIndex}`; setTests(prev => { const currentScores = prev[activeTestId].scores; const newScores = { ...currentScores, [key]: !currentScores[key] }; return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores } }; }); };
+            const togglePhoneme = (wordIndex, pIndex) => { setHasUnsavedChanges(true); const listId = activeTest.listId; const key = `${listId}_${wordIndex}_${pIndex}`; const wordData = activeStats.visibleWords.find(w => w.i === wordIndex); if (!wordData) return; setTests(prev => { const currentScores = prev[activeTestId].scores; const newScores = { ...currentScores }; const currentState = currentScores[key]; if (currentState === true) { newScores[key] = false; } else if (currentState === false) { newScores[key] = true; } else { newScores[key] = true; wordData.p.forEach((p, idx) => { if (p !== '-' && idx !== pIndex) { newScores[`${listId}_${wordIndex}_${idx}`] = false; } }); } return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores } }; }); };
             const setWordScore = (wordIndex, isCorrect) => { setHasUnsavedChanges(true); const listId = activeTest.listId; const wordData = activeStats.visibleWords.find(w => w.i === wordIndex); if (!wordData) return; setTests(prev => { const currentScores = { ...prev[activeTestId].scores }; let shouldClear = false; let currentIsAllCorrect = true; let currentIsAllIncorrect = true; let hasAnyScore = false; wordData.p.forEach((p, idx) => { if (p !== '-') { const val = currentScores[`${listId}_${wordIndex}_${idx}`]; if (val !== undefined) hasAnyScore = true; if (val !== true) currentIsAllCorrect = false; if (val !== false) currentIsAllIncorrect = false; } }); if (isCorrect && currentIsAllCorrect && hasAnyScore) shouldClear = true; if (!isCorrect && currentIsAllIncorrect && hasAnyScore) shouldClear = true; wordData.p.forEach((p, idx) => { if (p !== '-') { if (shouldClear) { delete currentScores[`${listId}_${wordIndex}_${idx}`]; } else { currentScores[`${listId}_${wordIndex}_${idx}`] = isCorrect; } } }); return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } }; }); };
             const toggleWordCorrect = (wordIndex) => { setHasUnsavedChanges(true); const listId = activeTest.listId; const wordData = activeStats.visibleWords.find(w => w.i === wordIndex); if (!wordData) return; setTests(prev => { const currentScores = { ...prev[activeTestId].scores }; let isFullyCorrect = true; wordData.p.forEach((p, idx) => { if (p !== '-' && !currentScores[`${listId}_${wordIndex}_${idx}`]) { isFullyCorrect = false; } }); wordData.p.forEach((p, idx) => { if (p !== '-') { if (isFullyCorrect) { delete currentScores[`${listId}_${wordIndex}_${idx}`]; } else { currentScores[`${listId}_${wordIndex}_${idx}`] = true; } } }); return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } }; }); };
             const markAll = (correct) => { setHasUnsavedChanges(true); const listData = activeStats.visibleWords; const listId = activeTest.listId; setTests(prev => { const newScores = { ...prev[activeTestId].scores }; listData.forEach(word => { word.p.forEach((phoneme, pIndex) => { if (phoneme === '-') return; const key = `${listId}_${word.i}_${pIndex}`; if(correct) newScores[key] = true; else delete newScores[key]; }); }); return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores, askedContinue: true } }; }); };
@@ -2222,18 +2252,16 @@
                             const wordDifference = statsB.wordPercent - statsA.wordPercent;
                             const phonemeDifference = statsB.phonemePercent - statsA.phonemePercent;
                             
-                            // TNT values and significance
-                            const tntA_export = record.tests.A.tnt || 'N/A';
-                            const tntB_export = record.tests.B.tnt || 'N/A';
-                            const parseTNT_export = (tntString) => {
-                                if (!tntString || tntString === 'N/A') return null;
+                            // TNT calculations
+                            const parseTNTForExport = (tntString) => {
+                                if (!tntString) return null;
                                 const match = tntString.match(/([+-]?\d+\.?\d*)/);
                                 return match ? parseFloat(match[1]) : null;
                             };
-                            const tntValA = parseTNT_export(tntA_export);
-                            const tntValB = parseTNT_export(tntB_export);
-                            const tntDiff = (tntValA !== null && tntValB !== null) ? Math.abs(tntValB - tntValA) : null;
-                            const tntSignificant = tntDiff !== null && tntDiff > 1.5 ? 'Yes' : (tntDiff !== null ? 'No' : 'N/A');
+                            const tntAVal = parseTNTForExport(record.tests.A.tnt);
+                            const tntBVal = parseTNTForExport(record.tests.B.tnt);
+                            const tntDiff = (tntAVal !== null && tntBVal !== null) ? Math.abs(tntBVal - tntAVal) : null;
+                            const tntSig = tntDiff !== null && tntDiff > 1.5 ? 'Yes' : (tntDiff !== null ? 'No' : 'N/A');
                             
                             // Comparative ease of listening
                             const comparativeEase = record.tests.comparativeEase !== undefined ? record.tests.comparativeEase : 'N/A';
@@ -2253,12 +2281,10 @@
                                 PhonemeSignificant: isPhonemeDiffSig,
                                 PhonemeCriticalLower: phonemeCriticalLower,
                                 PhonemeCriticalUpper: phonemeCriticalUpper,
+                                TNTDifference: tntDiff !== null ? tntDiff.toFixed(2) : 'N/A',
+                                TNTSignificant: tntSig,
                                 ComparativeEase: comparativeEase,
                                 EaseDelta: easeDelta,
-                                TNT_A: tntA_export,
-                                TNT_B: tntB_export,
-                                TNT_Difference: tntDiff !== null ? tntDiff.toFixed(2) : 'N/A',
-                                TNT_Significant: tntSignificant,
                                 ConfidenceLevel: confidenceLevel + '%',
                                 Outcome: record.outcome || 'N/A',
                                 SoldType: record.soldType || 'N/A',
@@ -2275,7 +2301,8 @@
                                 WordScore: statsA.wordPercent,
                                 PhonemeScore: statsA.phonemePercent,
                                 StimulusPresentation: record.tests.A.stimulusPresentation || 'N/A',
-                                ScoringMode: record.tests.A.scoringMode || 'N/A'
+                                ScoringMode: record.tests.A.scoringMode || 'N/A',
+                                TNT: record.tests.A.tnt || 'N/A'
                             });
                             
                             // Test B
@@ -2287,7 +2314,8 @@
                                 WordScore: statsB.wordPercent,
                                 PhonemeScore: statsB.phonemePercent,
                                 StimulusPresentation: record.tests.B.stimulusPresentation || 'N/A',
-                                ScoringMode: record.tests.B.scoringMode || 'N/A'
+                                ScoringMode: record.tests.B.scoringMode || 'N/A',
+                                TNT: record.tests.B.tnt || 'N/A'
                             });
                         }
                     });
@@ -3071,7 +3099,7 @@
                 // Summary Table
                 doc.autoTable({
                     startY: lineY + 4,
-                    head: [['Test', 'Condition', 'List', 'Level', 'SNR', 'TNT', 'Word Score', 'Phoneme Score']],
+                    head: [['Test', 'Condition', 'List', 'Level', 'SNR', 'aTNT', 'Word Score', 'Phoneme Score']],
                     body: [
                         ['Test A', formatCondition(tests.A), tests.A.listId, `${tests.A.level || '--'}`, `${tests.A.snr || '--'}`, `${tests.A.tnt || '--'}`, `${statsA.wordPercent}%`, `${statsA.phonemePercent}%`],
                         ['Test B', formatCondition(tests.B), tests.B.listId, `${tests.B.level || '--'}`, `${tests.B.snr || '--'}`, `${tests.B.tnt || '--'}`, `${statsB.wordPercent}%`, `${statsB.phonemePercent}%`]
@@ -3096,24 +3124,22 @@
                     finalY += 5;
                     const isPhonSig = isPhonemeDiffSig ? "YES - Significant Difference" : "NO - Within Critical Limits";
                     doc.text(`Phoneme Score Difference: ${isPhonSig}`, 20, finalY);
-                }
-                
-                // Add TNT Significance to PDF if applicable
-                if (tntA !== null || tntB !== null) {
-                    finalY += 5;
-                    if (tntDifference !== null) {
-                        const isTNTSig = isTNTDiffSig ? `YES - Significant (${tntDifference.toFixed(1)} dB > 1.5 dB)` : `NO - Not Significant (${tntDifference.toFixed(1)} dB ≤ 1.5 dB)`;
-                        doc.text(`TNT Difference: ${isTNTSig}`, 20, finalY);
-                    } else {
-                        doc.text(`TNT: A=${tntA !== null ? tntA.toFixed(1) + ' dB' : 'N/A'}, B=${tntB !== null ? tntB.toFixed(1) + ' dB' : 'N/A'}`, 20, finalY);
-                    }
-                }
-                
-                if (tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') {
+                    
                     // Add Error Pattern Analysis for phoneme scoring
                     finalY += 10;
                     doc.setFontSize(11);
                     doc.text("Error Pattern Analysis:", 20, finalY);
+                }
+                
+                // Add TNT Significance if both tests have TNT data
+                if (tntDifference !== null) {
+                    finalY += 5;
+                    const tntSig = isTNTDiffSig ? "YES - Significant Difference" : "NO - Within Critical Limits";
+                    const tntCI = confidenceLevel === 95 ? 2.8 : 1.8;
+                    doc.text(`aTNT Difference: ${tntDifference.toFixed(2)} dB - ${tntSig} (${confidenceLevel}% CI: >${tntCI} dB)`, 20, finalY);
+                }
+                
+                if (tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') {
                     doc.setFontSize(10);
                     
                     // Calculate manner, place, and voicing errors for both tests
@@ -3376,6 +3402,7 @@
                                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                                         <Calculator className="w-6 h-6 text-blue-600" />
                                         Hearing Aid Demo Word and Phoneme Scorer
+                                        <span className="text-sm font-normal text-slate-400">v1.0.33</span>
                                     </h1>
                                     <p className="text-slate-500 text-sm">Comparison Mode & Multi-list Support</p>
                                 </div>
@@ -3511,7 +3538,7 @@
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Section</label><select value={activeTest.section} onChange={(e) => updateActiveTest('section', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">{getSectionOptions(activeTestId).map(opt => (<option key={opt.val} value={opt.val}>{opt.label}</option>))}</select></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Level (e.g., MLV-avg or 65 dBC)</label><input type="text" value={activeTest.level} onChange={(e) => updateActiveTest('level', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Noise (e.g., +10 dB SNR or 55 dBC)</label><input type="text" value={activeTest.snr} onChange={(e) => updateActiveTest('snr', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
-                                            <div><label className="block text-xs font-medium text-slate-500 mb-1">TNT (e.g., 5 dB or 5.5 dB)</label><input type="text" value={activeTest.tnt || ''} onChange={(e) => updateActiveTest('tnt', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="Test No Test" /></div>
+                                            {(activeTest.condition === 'Current Tech' || activeTest.condition === 'New Tech') && (<div><label className="block text-xs font-medium text-slate-500 mb-1">aTNT (Tracking Noise Tolerance)</label><input type="text" value={activeTest.tnt || ''} onChange={(e) => updateActiveTest('tnt', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="e.g., 5 dB" /></div>)}
                                         </div>
                                     </div>
                                 </div>
@@ -3527,7 +3554,7 @@
                                                 const listId = activeTest.listId; const phonemeScores = word.p.map((p, idx) => { if (p === '-') return null; return activeTest.scores[`${listId}_${word.i}_${idx}`]; }).filter(val => val !== null); const isWordCorrect = phonemeScores.every(s => s === true); const isWordFullyIncorrect = phonemeScores.every(s => s === false);
                                                 return (
                                                     <tr key={word.i} className="hover:bg-slate-50"><td className="px-4 py-2 text-slate-400 font-mono text-xs">{word.i}</td><td className="px-4 py-2 font-bold text-slate-800">{word.w}</td>
-                                                        {activeTest.scoringMode === 'phoneme' ? (<React.Fragment>{word.p.map((phoneme, pIndex) => { const isCorrect = !!activeTest.scores[`${listId}_${word.i}_${pIndex}`]; const isPlaceholder = phoneme === '-'; return (<td key={pIndex} className="px-1 py-1 text-center">{!isPlaceholder ? (<button onClick={() => togglePhoneme(word.i, pIndex)} className={`w-10 h-8 rounded flex items-center justify-center font-medium text-base border transition-colors ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 print:border-none print:text-black print:font-bold' : 'bg-white border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 hover:bg-red-50'}`}><span className="ipa-text">{phoneme}</span></button>) : <span className="text-slate-300">—</span>}</td>); })}<td className="px-4 py-2 text-center print:hidden"><div className="flex items-center justify-center gap-2"><button onClick={() => toggleWordCorrect(word.i)} title={isWordCorrect ? "Clear Word" : "Mark Whole Word Correct"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordCorrect ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200'}`}><Check className="w-4 h-4" /></button></div></td></React.Fragment>) : (<td className="px-4 py-2 text-center"><div className="flex gap-2 justify-center"><button onClick={() => setWordScore(word.i, true)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordCorrect ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Check className="w-3 h-3" /> Correct</button><button onClick={() => setWordScore(word.i, false)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordFullyIncorrect ? 'bg-red-600 text-white border-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600'}`}><X className="w-3 h-3" /> Incorrect</button></div></td>)}
+                                                        {activeTest.scoringMode === 'phoneme' ? (<React.Fragment>{word.p.map((phoneme, pIndex) => { const phonemeScore = activeTest.scores[`${listId}_${word.i}_${pIndex}`]; const isCorrect = phonemeScore === true; const isIncorrect = phonemeScore === false; const isPlaceholder = phoneme === '-'; return (<td key={pIndex} className="px-1 py-1 text-center">{!isPlaceholder ? (<button onClick={() => togglePhoneme(word.i, pIndex)} className={`w-10 h-8 rounded flex items-center justify-center font-medium text-base border transition-colors ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 print:border-none print:text-black print:font-bold' : isIncorrect ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100 print:border-none print:text-black print:font-normal' : 'bg-white border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 hover:bg-red-50'}`}><span className="ipa-text">{phoneme}</span></button>) : <span className="text-slate-300">—</span>}</td>); })}<td className="px-4 py-2 text-center print:hidden"><div className="flex items-center justify-center gap-2"><button onClick={() => toggleWordCorrect(word.i)} title={isWordCorrect ? "Clear Word" : "Mark Whole Word Correct"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordCorrect ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200'}`}><Check className="w-4 h-4" /></button></div></td></React.Fragment>) : (<td className="px-4 py-2 text-center"><div className="flex gap-2 justify-center"><button onClick={() => setWordScore(word.i, true)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordCorrect ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Check className="w-3 h-3" /> Correct</button><button onClick={() => setWordScore(word.i, false)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordFullyIncorrect ? 'bg-red-600 text-white border-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600'}`}><X className="w-3 h-3" /> Incorrect</button></div></td>)}
                                                     </tr>
                                                 );
                                             })}
@@ -3548,7 +3575,7 @@
                                     <div className="p-6">
                                         <div className="flex justify-end mb-4 print:hidden"><div className="bg-slate-100 p-1 rounded-lg flex items-center gap-2 text-sm"><span className="px-2 text-xs font-semibold text-slate-500 uppercase">Critical Difference Level</span><button onClick={() => setConfidenceLevel(95)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 95 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>95%</button><button onClick={() => setConfidenceLevel(80)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 80 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>80%</button><button onClick={() => setShowChartModal(true)} className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> View Tables</button></div></div>
                                         <div className="grid grid-cols-3 gap-8 mb-8">
-                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test A (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{tests.A.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {tests.A.listId}</div><div>Level: {tests.A.level || '--'}</div><div>Noise: {tests.A.snr || '--'}</div><div>TNT: {tests.A.tnt || '--'}</div></div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsA.wordPercent}%</span></div>{tests.A.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsA.phonemePercent}%</span></div>)}</div></div>
+                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test A (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{tests.A.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {tests.A.listId}</div><div>Level: {tests.A.level || '--'}</div><div>Noise: {tests.A.snr || '--'}</div>{tests.A.tnt && <div>aTNT: {tests.A.tnt}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsA.wordPercent}%</span></div>{tests.A.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsA.phonemePercent}%</span></div>)}</div></div>
 
                                             <div className="flex flex-col items-center justify-center text-center">
                                                 {/* Word recognition difference - label above, styled like Ease label */}
@@ -3571,7 +3598,7 @@
                                                 )}
                                             </div>
 
-                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test B (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{tests.B.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {tests.B.listId}</div><div>Level: {tests.B.level || '--'}</div><div>Noise: {tests.B.snr || '--'}</div><div>TNT: {tests.B.tnt || '--'}</div></div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsB.wordPercent}%</span></div>{tests.B.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsB.phonemePercent}%</span></div>)}</div></div>
+                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test B (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{tests.B.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {tests.B.listId}</div><div>Level: {tests.B.level || '--'}</div><div>Noise: {tests.B.snr || '--'}</div>{tests.B.tnt && <div>aTNT: {tests.B.tnt}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsB.wordPercent}%</span></div>{tests.B.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsB.phonemePercent}%</span></div>)}</div></div>
                                         </div>
 
                                         {/* Comparative Ease Slider */}
@@ -3609,7 +3636,7 @@
                                             </div>
                                         )}
 
-                                        <div className="border border-slate-200 rounded-lg overflow-hidden mb-6"><table className="w-full text-sm"><thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200"><tr><th className="px-4 py-2 text-left">Metric (N)</th><th className="px-4 py-2 text-center w-24">Test A</th><th className="px-4 py-2 text-center w-32 bg-slate-50">Critical Range <span className="text-[10px] text-slate-400 block font-normal">({confidenceLevel}%)</span></th><th className="px-4 py-2 text-center w-24">Test B</th><th className="px-4 py-2 text-center w-32">Significant?</th></tr></thead><tbody className="divide-y divide-slate-100"><tr><td className="px-4 py-3 font-medium text-slate-800">Word Score <span className="block text-xs text-slate-400 font-normal">N = {statsA.totalWords}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.wordPercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.wordPercent}%</td><td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>{(tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') && (<tr><td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {statsA.totalPhonemes}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.phonemePercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{Number(phonemeCriticalLimits.lower).toFixed(1)}% - {Number(phonemeCriticalLimits.upper).toFixed(1)}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.phonemePercent}%</td><td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}{(tntA !== null || tntB !== null) && (<tr><td className="px-4 py-3 font-medium text-slate-800">TNT (Test No Test) <span className="block text-xs text-slate-400 font-normal">Threshold {'>'} 1.5 dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{tntA !== null ? tntA.toFixed(1) + ' dB' : '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{tntDifference !== null ? '±1.5 dB' : 'N/A'}</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{tntB !== null ? tntB.toFixed(1) + ' dB' : '--'}</td><td className="px-4 py-3 text-center">{tntDifference !== null ? (isTNTDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes ({tntDifference.toFixed(1)} dB)</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No ({tntDifference.toFixed(1)} dB)</span>) : <span className="text-slate-400 text-xs">N/A</span>}</td></tr>)}</tbody></table></div>
+                                        <div className="border border-slate-200 rounded-lg overflow-hidden mb-6"><table className="w-full text-sm"><thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200"><tr><th className="px-4 py-2 text-left">Metric (N)</th><th className="px-4 py-2 text-center w-24">Test A</th><th className="px-4 py-2 text-center w-32 bg-slate-50">Critical Range <span className="text-[10px] text-slate-400 block font-normal">({confidenceLevel}%)</span></th><th className="px-4 py-2 text-center w-24">Test B</th><th className="px-4 py-2 text-center w-32">Significant?</th></tr></thead><tbody className="divide-y divide-slate-100"><tr><td className="px-4 py-3 font-medium text-slate-800">Word Score <span className="block text-xs text-slate-400 font-normal">N = {statsA.totalWords}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.wordPercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.wordPercent}%</td><td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>{(tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') && (<tr><td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {statsA.totalPhonemes}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.phonemePercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{Number(phonemeCriticalLimits.lower).toFixed(1)}% - {Number(phonemeCriticalLimits.upper).toFixed(1)}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.phonemePercent}%</td><td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}{tntDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">aTNT Difference (Tracking Noise Tolerance) <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 2.8 : 1.8} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{tests.A.tnt || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">±{confidenceLevel === 95 ? 2.8 : 1.8} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{tests.B.tnt || '--'}</td><td className="px-4 py-3 text-center">{isTNTDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}</tbody></table></div>
 
                                         {/* Visual Critical Range Comparison */}
                                         <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-6">
