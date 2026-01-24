@@ -27,11 +27,13 @@
       "main.js",
       "nu6_scoring_app.html",
       "tailwind.min.css",
-      "*.csv"
+      "*.csv",
+      "audio/**/*"
     ],
     "asarUnpack": [
       "*.csv",
-      "tailwind.min.css"
+      "tailwind.min.css",
+      "audio/**/*"
     ],
     "directories": {
       "output": "dist"
