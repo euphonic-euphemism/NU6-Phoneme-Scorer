@@ -1,7 +1,7 @@
 {
-  "name": "nu6-phoneme-scorer",
-  "productName": "NU-6-Phoneme-Scorer",
-  "version": "1.0.35",
+  "name": "hearing-aid-demonstration-app",
+  "productName": "Hearing-Aid-Demonstration-App",
+  "version": "1.1.0",
   "description": "NU-6 Whole Word and Phoneme Scoring Application",
   "main": "main.js",
   "homepage": "https://github.com/euphonic-euphemism/NU6-Phoneme-Scorer",
@@ -21,8 +21,8 @@
     "dmg-license": "^1.0.11"
   },
   "build": {
-    "appId": "com.audiology.nu6scorer",
-    "productName": "NU-6-Phoneme-Scorer",
+    "appId": "com.audiology.hearingaiddemo",
+    "productName": "Hearing-Aid-Demonstration-App",
     "files": [
       "main.js",
       "nu6_scoring_app.html",
@@ -43,7 +43,7 @@
       ],
       "maintainer": "Mark Shaver <mark.shaver@posteo.net>",
       "category": "Science",
-      "executableName": "nu6-phoneme-scorer",
+      "executableName": "hearing-aid-demonstration-app",
       "synopsis": "Phoneme scoring utility for audiology tests",
       "description": "A scoring application for NU-6 word lists with phoneme-level analysis."
     },
