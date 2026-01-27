@@ -181,6 +181,10 @@
                 if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: "id" });
                 if (!db.objectStoreNames.contains(CONFIG_STORE)) db.createObjectStore(CONFIG_STORE, { keyPath: "id" });
             };
+            request.onblocked = (event) => {
+                console.error("IndexedDB blocked: another tab has the database open.");
+                alert("Database upgrade blocked. Please close other tabs of this app and reload.");
+            };
         });
 
         // --- SECURE DB INTERFACE ---
@@ -420,6 +424,7 @@
         const ListChecks = (props) => (<IconBase {...props}><path d="m3 17 2 2 4-4" /><path d="m3 7 2 2 4-4" /><path d="M13 6h8" /><path d="M13 12h8" /><path d="M13 18h8" /></IconBase>);
         const WholeWord = (props) => (<IconBase {...props}><rect width="20" height="14" x="2" y="5" rx="2" /><path d="M2 10h20" /></IconBase>);
         const AlertCircle = (props) => (<IconBase {...props}><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></IconBase>);
+        const AlertOctagon = (props) => (<IconBase {...props}><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></IconBase>);
         const HelpCircle = (props) => (<IconBase {...props}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></IconBase>);
         const Download = (props) => (<IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></IconBase>);
         const TrendingUp = (props) => (<IconBase {...props}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></IconBase>);
@@ -1902,6 +1907,9 @@
             const [snrLevel, setSnrLevel] = useState(10); // Default 10 dB SNR
             const noiseAudioRef = useRef(null);
 
+            // Comparison Mode State
+            const [reversedComparison, setReversedComparison] = useState(false);
+
             // Audio Routing State
             const [channelSwap, setChannelSwap] = useState(false); // false: Speech=L, Noise=R
             const audioContextRef = useRef(null);
@@ -1910,9 +1918,13 @@
                 if (!audioContextRef.current) {
                     const AudioContext = window.AudioContext || window.webkitAudioContext;
                     audioContextRef.current = new AudioContext();
+                    console.log("Created AudioContext. State:", audioContextRef.current.state);
                 }
                 if (audioContextRef.current.state === 'suspended') {
-                    audioContextRef.current.resume();
+                    console.log("AudioContext suspended, attempting resume...");
+                    audioContextRef.current.resume().then(() => {
+                        console.log("AudioContext resumed. State:", audioContextRef.current.state);
+                    });
                 }
                 return audioContextRef.current;
             };
@@ -1920,10 +1932,14 @@
             const playSoundWithPan = (audioElement, panValue) => {
                 try {
                     const ctx = getAudioContext();
+                    // Fix: Check if element already has a source node (though difficult to check directly, we can wrap in error handler)
+                    // Note: ensure we don't create multiple sources for same element if cached? 
+                    // But we create new Audio() every time in playAudio, so it's fine.
                     const source = ctx.createMediaElementSource(audioElement);
                     const panner = ctx.createStereoPanner();
                     panner.pan.value = panValue;
                     source.connect(panner).connect(ctx.destination);
+                    console.log(`Connected Web Audio: pan=${panValue}, ctxState=${ctx.state}`);
                 } catch (e) {
                     console.error("Web Audio API Error:", e);
                 }
@@ -1937,13 +1953,19 @@
             const [isLocked, setIsLocked] = useState(true);
             const [hasPassword, setHasPassword] = useState(false);
             const [dbReady, setDbReady] = useState(false);
+            const [dbError, setDbError] = useState(null);
 
             // --- AUTH INIT & SETTINGS LOAD ---
             useEffect(() => {
                 const init = async () => {
-                    const isSetup = await window.SecureDB.isSetup();
-                    setHasPassword(isSetup);
-                    setDbReady(true);
+                    try {
+                        const isSetup = await window.SecureDB.isSetup();
+                        setHasPassword(isSetup);
+                        setDbReady(true);
+                    } catch (e) {
+                        console.error("DB Init Error:", e);
+                        setDbError(e.message || "Failed to load secure storage");
+                    }
                 };
                 init();
             }, []);
@@ -2020,15 +2042,22 @@
 
             const activeStats = activeTestId === 'A' ? statsA : statsB;
             const ageYears = useMemo(() => computeAgeYears(dateOfBirth, testDate), [dateOfBirth, testDate]);
-            const wordCriticalLimits = useMemo(() => { if (statsA.totalWords === 0) return { lower: 0, upper: 100 }; return getCriticalLimits(statsA.wordPercent, statsA.totalWords, confidenceLevel); }, [statsA.wordPercent, statsA.totalWords, confidenceLevel]);
+
+            // Reverse Comparison Logic
+            const baselineStats = reversedComparison ? statsB : statsA;
+            const comparisonStats = reversedComparison ? statsA : statsB;
+            const baselineTest = reversedComparison ? tests.B : tests.A;
+            const comparisonTest = reversedComparison ? tests.A : tests.B;
+
+            const wordCriticalLimits = useMemo(() => { if (baselineStats.totalWords === 0) return { lower: 0, upper: 100 }; return getCriticalLimits(baselineStats.wordPercent, baselineStats.totalWords, confidenceLevel); }, [baselineStats.wordPercent, baselineStats.totalWords, confidenceLevel]);
             const phonemeCriticalLimits = useMemo(() => {
-                if (statsA.totalPhonemes === 0) return { lower: 0, upper: 100 };
+                if (baselineStats.totalPhonemes === 0) return { lower: 0, upper: 100 };
                 // CRITICAL FIX: Use unrounded percentage for table lookup
-                const rawPercent = (statsA.correctPhonemes / statsA.totalPhonemes) * 100;
-                return getCriticalLimits(rawPercent, statsA.totalPhonemes, confidenceLevel, true);
-            }, [statsA.correctPhonemes, statsA.totalPhonemes, confidenceLevel]);
-            const isWordDiffSig = statsB.wordPercent < wordCriticalLimits.lower || statsB.wordPercent > wordCriticalLimits.upper;
-            const isPhonemeDiffSig = statsB.phonemePercent < phonemeCriticalLimits.lower || statsB.phonemePercent > phonemeCriticalLimits.upper;
+                const rawPercent = (baselineStats.correctPhonemes / baselineStats.totalPhonemes) * 100;
+                return getCriticalLimits(rawPercent, baselineStats.totalPhonemes, confidenceLevel, true);
+            }, [baselineStats.correctPhonemes, baselineStats.totalPhonemes, confidenceLevel]);
+            const isWordDiffSig = comparisonStats.wordPercent < wordCriticalLimits.lower || comparisonStats.wordPercent > wordCriticalLimits.upper;
+            const isPhonemeDiffSig = comparisonStats.phonemePercent < phonemeCriticalLimits.lower || comparisonStats.phonemePercent > phonemeCriticalLimits.upper;
 
             // TNT Significance: Parse aTNT values and check if difference > 2.8 dB
             const parseTNT = (tntString) => {
@@ -3329,8 +3358,8 @@
                     startY: lineY + 4,
                     head: [['Test', 'Condition', 'List', 'Level', 'SNR', 'aTNT', 'TNT Exc Width', 'Word Score', 'Phoneme Score']],
                     body: [
-                        ['Test A', formatCondition(tests.A), tests.A.listId, `${tests.A.level || '--'}`, `${tests.A.snr || '--'}`, `${tests.A.tnt || '--'}`, `${tests.A.tntExcursionWidth || '--'}`, `${statsA.wordPercent}%`, `${statsA.phonemePercent}%`],
-                        ['Test B', formatCondition(tests.B), tests.B.listId, `${tests.B.level || '--'}`, `${tests.B.snr || '--'}`, `${tests.B.tnt || '--'}`, `${tests.B.tntExcursionWidth || '--'}`, `${statsB.wordPercent}%`, `${statsB.phonemePercent}%`]
+                        [`Test ${baselineTest.id}`, formatCondition(baselineTest), baselineTest.listId, `${baselineTest.level || '--'}`, `${baselineTest.snr || '--'}`, `${baselineTest.tnt || '--'}`, `${baselineTest.tntExcursionWidth || '--'}`, `${baselineStats.wordPercent}%`, `${baselineStats.phonemePercent}%`],
+                        [`Test ${comparisonTest.id}`, formatCondition(comparisonTest), comparisonTest.listId, `${comparisonTest.level || '--'}`, `${comparisonTest.snr || '--'}`, `${comparisonTest.tnt || '--'}`, `${comparisonTest.tntExcursionWidth || '--'}`, `${comparisonStats.wordPercent}%`, `${comparisonStats.phonemePercent}%`]
                     ],
                     theme: 'striped',
                     headStyles: { fillColor: [66, 135, 245] }
@@ -3429,23 +3458,27 @@
                         };
                     };
 
-                    const errorsA = calculateFeatureErrors(tests.A);
-                    const errorsB = calculateFeatureErrors(tests.B);
+                    const errorsBaseline = calculateFeatureErrors(baselineTest);
+                    const errorsComparison = calculateFeatureErrors(comparisonTest);
 
                     finalY += 6;
-                    doc.text(`Test A - Manner: ${errorsA.manner}%  |  Place: ${errorsA.place}%  |  Voicing: ${errorsA.voicing}%`, 25, finalY);
+                    doc.text(`Test ${baselineTest.id} - Manner: ${errorsBaseline.manner}%  |  Place: ${errorsBaseline.place}%  |  Voicing: ${errorsBaseline.voicing}%`, 25, finalY);
                     finalY += 5;
-                    doc.text(`Test B - Manner: ${errorsB.manner}%  |  Place: ${errorsB.place}%  |  Voicing: ${errorsB.voicing}%`, 25, finalY);
+                    doc.text(`Test ${comparisonTest.id} - Manner: ${errorsComparison.manner}%  |  Place: ${errorsComparison.place}%  |  Voicing: ${errorsComparison.voicing}%`, 25, finalY);
                 }
 
                 // Add Comparative Ease if applicable
-                if (!isWordDiffSig && !(tests.A.scoringMode === 'phoneme' && isPhonemeDiffSig)) {
+                // Add Comparative Ease if applicable
+                if (!isWordDiffSig && !(baselineTest.scoringMode === 'phoneme' && isPhonemeDiffSig)) {
                     finalY += 5;
-                    const ratingText = `Comparative Ease of Listening Rating: ${tests.comparativeEase}/10`;
+                    const rawEase = tests.comparativeEase;
+                    const displayedEase = reversedComparison ? (10 - rawEase) : rawEase;
+
+                    const ratingText = `Comparative Ease of Listening Rating: ${displayedEase}/10`;
                     doc.text(ratingText, 20, finalY);
 
                     // Ease delta relative to neutral (5) — moved to next line with label, smaller font
-                    const easeDelta = tests.comparativeEase - 5;
+                    const easeDelta = displayedEase - 5;
                     const deltaText = `${easeDelta > 0 ? ('+' + easeDelta) : easeDelta}`;
                     finalY += 5;
                     doc.setFontSize(9);
@@ -3454,8 +3487,8 @@
 
                     finalY += 6;
                     let easeDesc = "No Difference";
-                    if (tests.comparativeEase > 5) easeDesc = "New condition is Easier";
-                    if (tests.comparativeEase < 5) easeDesc = "New condition is Harder";
+                    if (displayedEase > 5) easeDesc = `Test ${comparisonTest.id} is Easier`;
+                    if (displayedEase < 5) easeDesc = `Test ${comparisonTest.id} is Harder`;
                     doc.setFontSize(9);
                     doc.text(`(${easeDesc})`, 25, finalY);
                     doc.setFontSize(10);
@@ -3498,12 +3531,32 @@
 
             const getEffortColor = (val) => { if (val <= 4) return 'text-emerald-600'; if (val >= 6) return 'text-red-600'; return 'text-blue-600'; };
 
-            if (!dbReady) return <div className="min-h-screen flex items-center justify-center text-slate-500"><Loader className="w-8 h-8 mr-2" /> Initializing secure storage...</div>;
+            if (!dbReady) {
+                if (dbError) {
+                    return (
+                        <div className="min-h-screen flex flex-col items-center justify-center text-red-600 p-4">
+                            <AlertOctagon className="w-12 h-12 mb-4" />
+                            <h2 className="text-xl font-bold mb-2">Initialization Error</h2>
+                            <p className="text-center mb-4">{dbError}</p>
+                            <div className="text-sm text-slate-600 max-w-md text-center">
+                                <p className="mb-2">This may happen if:</p>
+                                <ul className="list-disc text-left pl-6 mb-4">
+                                    <li>You are in a Private/Incognito window</li>
+                                    <li>Storage permissions are denied</li>
+                                    <li>Another tab is blocking the database update</li>
+                                </ul>
+                                <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Reload App</button>
+                            </div>
+                        </div>
+                    );
+                }
+                return <div className="min-h-screen flex items-center justify-center text-slate-500"><Loader className="w-8 h-8 mr-2" /> Initializing secure storage...</div>;
+            }
             if (isLocked) return <LoginModal isSetup={hasPassword} onLogin={() => setIsLocked(false)} />;
 
             // Determine if we show comparative ease scale
             // Logic: Show if Word Diff is NOT Significant AND (Phoneme Diff is NOT Significant OR not in phoneme mode)
-            const showComparativeEase = !isWordDiffSig && !(tests.A.scoringMode === 'phoneme' && isPhonemeDiffSig);
+            const showComparativeEase = !isWordDiffSig && !(baselineTest.scoringMode === 'phoneme' && isPhonemeDiffSig);
 
             return (
                 <div className="min-h-screen bg-slate-100 text-slate-900 p-4 md:p-8 print:p-0 print:bg-white">
@@ -3646,7 +3699,7 @@
                                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                                         <Calculator className="w-6 h-6 text-blue-600" />
                                         Hearing Aid Demonstration App
-                                        <span className="text-sm font-normal text-slate-400">v1.1.0</span>
+                                        <span className="text-sm font-normal text-slate-400">v1.1.2</span>
                                     </h1>
                                     <p className="text-slate-500 text-sm">Comparison Mode & Multi-list Support</p>
                                 </div>
@@ -3876,32 +3929,32 @@
                                         <div className="text-right"><div className="text-xs opacity-75 font-mono">{testDate} • {patientName} • #{cNumber}</div><div className="hidden">Thornton & Raffin (1978) Model</div></div>
                                     </div>
                                     <div className="p-6">
-                                        <div className="flex justify-end mb-4 print:hidden"><div className="bg-slate-100 p-1 rounded-lg flex items-center gap-2 text-sm"><span className="px-2 text-xs font-semibold text-slate-500 uppercase">Critical Difference Level</span><button onClick={() => setConfidenceLevel(95)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 95 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>95%</button><button onClick={() => setConfidenceLevel(80)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 80 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>80%</button><button onClick={() => setShowChartModal(true)} className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> View Tables</button></div></div>
+                                        <div className="flex justify-end mb-4 print:hidden"><div className="bg-slate-100 p-1 rounded-lg flex items-center gap-2 text-sm"><span className="px-2 text-xs font-semibold text-slate-500 uppercase">Critical Difference Level</span><button onClick={() => setConfidenceLevel(95)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 95 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>95%</button><button onClick={() => setConfidenceLevel(80)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 80 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>80%</button><button onClick={() => setShowChartModal(true)} className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> View Tables</button><button onClick={() => setReversedComparison(!reversedComparison)} className="ml-2 px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><ArrowRightLeft className="w-3 h-3" /> {reversedComparison ? "Reset Order" : "Reverse"}</button></div></div>
                                         <div className="grid grid-cols-3 gap-8 mb-8">
-                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test A (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{tests.A.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {tests.A.listId}</div><div>Level: {tests.A.level || '--'}</div><div>Noise: {tests.A.snr || '--'}</div>{tests.A.tnt && <div>aTNT: {tests.A.tnt}</div>}{tests.A.tntExcursionWidth && <div>TNT Excursion Width: {tests.A.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsA.wordPercent}%</span></div>{tests.A.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsA.phonemePercent}%</span></div>)}</div></div>
+                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {baselineTest.id} (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{baselineTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {baselineTest.listId}</div><div>Level: {baselineTest.level || '--'}</div><div>Noise: {baselineTest.snr || '--'}</div>{baselineTest.tnt && <div>aTNT: {baselineTest.tnt}</div>}{baselineTest.tntExcursionWidth && <div>TNT Excursion Width: {baselineTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{baselineStats.wordPercent}%</span></div>{baselineTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{baselineStats.phonemePercent}%</span></div>)}</div></div>
 
                                             <div className="flex flex-col items-center justify-center text-center">
                                                 {/* Word recognition difference - label above, styled like Ease label */}
                                                 <div className="text-sm font-bold text-slate-500">Word Recognition Difference</div>
-                                                <div className={`text-3xl font-bold mb-1 ${statsB.wordPercent - statsA.wordPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{statsB.wordPercent - statsA.wordPercent > 0 ? '+' : ''}{statsB.wordPercent - statsA.wordPercent}%</div>
+                                                <div className={`text-3xl font-bold mb-1 ${comparisonStats.wordPercent - baselineStats.wordPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{comparisonStats.wordPercent - baselineStats.wordPercent > 0 ? '+' : ''}{comparisonStats.wordPercent - baselineStats.wordPercent}%</div>
 
-                                                {(tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') && (
+                                                {(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme') && (
                                                     <React.Fragment>
                                                         {/* Phoneme recognition difference - label above, styled like Ease label */}
                                                         <div className="text-sm font-bold text-slate-500 mt-4">Phoneme Recognition Difference</div>
-                                                        <div className={`text-3xl font-bold mt-1 ${statsB.phonemePercent - statsA.phonemePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{statsB.phonemePercent - statsA.phonemePercent > 0 ? '+' : ''}{statsB.phonemePercent - statsA.phonemePercent}%</div>
+                                                        <div className={`text-3xl font-bold mt-1 ${comparisonStats.phonemePercent - baselineStats.phonemePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{comparisonStats.phonemePercent - baselineStats.phonemePercent > 0 ? '+' : ''}{comparisonStats.phonemePercent - baselineStats.phonemePercent}%</div>
                                                     </React.Fragment>
                                                 )}
 
                                                 {showComparativeEase && (
                                                     <div className="mt-2 text-center">
                                                         <div className="text-sm font-bold text-slate-500">Ease of Listening Delta</div>
-                                                        <div className={`text-3xl font-bold mt-1 ${tests.comparativeEase - 5 >= 2 ? 'text-emerald-600' : tests.comparativeEase - 5 <= -2 ? 'text-red-600' : 'text-slate-600'}`} aria-live="polite">{(tests.comparativeEase - 5) >= 0 ? '+' : ''}{tests.comparativeEase - 5}</div>
+                                                        <div className={`text-3xl font-bold mt-1 ${(reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) - 5 >= 2 ? 'text-emerald-600' : (reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) - 5 <= -2 ? 'text-red-600' : 'text-slate-600'}`} aria-live="polite">{((reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) - 5) >= 0 ? '+' : ''}{(reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) - 5}</div>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test B (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{tests.B.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {tests.B.listId}</div><div>Level: {tests.B.level || '--'}</div><div>Noise: {tests.B.snr || '--'}</div>{tests.B.tnt && <div>aTNT: {tests.B.tnt}</div>}{tests.B.tntExcursionWidth && <div>TNT Excursion Width: {tests.B.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{statsB.wordPercent}%</span></div>{tests.B.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{statsB.phonemePercent}%</span></div>)}</div></div>
+                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {comparisonTest.id} (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{comparisonTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {comparisonTest.listId}</div><div>Level: {comparisonTest.level || '--'}</div><div>Noise: {comparisonTest.snr || '--'}</div>{comparisonTest.tnt && <div>aTNT: {comparisonTest.tnt}</div>}{comparisonTest.tntExcursionWidth && <div>TNT Excursion Width: {comparisonTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{comparisonStats.wordPercent}%</span></div>{comparisonTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{comparisonStats.phonemePercent}%</span></div>)}</div></div>
                                         </div>
 
                                         {/* Comparative Ease Slider */}
@@ -3914,7 +3967,7 @@
                                                             <HelpCircle className="w-3 h-3" /> View Scale
                                                         </button>
                                                     </div>
-                                                    <span className="text-xs text-slate-500 italic">Rate how much easier/harder Condition B is compared to A</span>
+                                                    <span className="text-xs text-slate-500 italic">Rate how much easier/harder Condition {comparisonTest.id} is compared to {baselineTest.id}</span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <span className="text-xs font-bold text-slate-500 uppercase">Harder</span>
@@ -3923,8 +3976,8 @@
                                                             type="range"
                                                             min="0"
                                                             max="10"
-                                                            value={tests.comparativeEase}
-                                                            onChange={(e) => updateComparativeEase(parseInt(e.target.value))}
+                                                            value={reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase}
+                                                            onChange={(e) => updateComparativeEase(reversedComparison ? (10 - parseInt(e.target.value)) : parseInt(e.target.value))}
                                                             className="w-full h-2 bg-gradient-to-r from-red-300 via-slate-300 to-emerald-300 rounded-lg appearance-none cursor-pointer"
                                                         />
                                                         <div className="flex justify-between text-[10px] text-slate-400 mt-1 px-1">
@@ -3934,12 +3987,12 @@
                                                         </div>
                                                     </div>
                                                     <span className="text-xs font-bold text-slate-500 uppercase">Easier</span>
-                                                    <span className={`font-bold text-lg w-8 text-center ${tests.comparativeEase > 5 ? 'text-emerald-600' : tests.comparativeEase < 5 ? 'text-red-600' : 'text-slate-600'}`}>{tests.comparativeEase}</span>
+                                                    <span className={`font-bold text-lg w-8 text-center ${(reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) > 5 ? 'text-emerald-600' : (reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) < 5 ? 'text-red-600' : 'text-slate-600'}`}>{(reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase)}</span>
                                                 </div>
                                             </div>
                                         )}
 
-                                        <div className="border border-slate-200 rounded-lg overflow-hidden mb-6"><table className="w-full text-sm"><thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200"><tr><th className="px-4 py-2 text-left">Metric (N)</th><th className="px-4 py-2 text-center w-24">Test A</th><th className="px-4 py-2 text-center w-32 bg-slate-50">Critical Range <span className="text-[10px] text-slate-400 block font-normal">({confidenceLevel}%)</span></th><th className="px-4 py-2 text-center w-24">Test B</th><th className="px-4 py-2 text-center w-32">Significant?</th></tr></thead><tbody className="divide-y divide-slate-100"><tr><td className="px-4 py-3 font-medium text-slate-800">Word Score <span className="block text-xs text-slate-400 font-normal">N = {statsA.totalWords}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.wordPercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.wordPercent}%</td><td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>{(tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') && (<tr><td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {statsA.totalPhonemes}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsA.phonemePercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{Number(phonemeCriticalLimits.lower).toFixed(1)}% - {Number(phonemeCriticalLimits.upper).toFixed(1)}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{statsB.phonemePercent}%</td><td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}{tntDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">aTNT Difference (Tracking Noise Tolerance) <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 2.8 : 1.8} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{tests.A.tnt || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">±{confidenceLevel === 95 ? 2.8 : 1.8} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{tests.B.tnt || '--'}</td><td className="px-4 py-3 text-center">{isTNTDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}{tntExcursionWidthDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">TNT Excursion Width <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 1.0 : 0.7} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{tests.A.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">±{confidenceLevel === 95 ? 1.0 : 0.7} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{tests.B.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center">{isTNTExcursionWidthDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}</tbody></table></div>
+                                        <div className="border border-slate-200 rounded-lg overflow-hidden mb-6"><table className="w-full text-sm"><thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200"><tr><th className="px-4 py-2 text-left">Metric (N)</th><th className="px-4 py-2 text-center w-24">Test {baselineTest.id}</th><th className="px-4 py-2 text-center w-32 bg-slate-50">Critical Range <span className="text-[10px] text-slate-400 block font-normal">({confidenceLevel}%)</span></th><th className="px-4 py-2 text-center w-24">Test {comparisonTest.id}</th><th className="px-4 py-2 text-center w-32">Significant?</th></tr></thead><tbody className="divide-y divide-slate-100"><tr><td className="px-4 py-3 font-medium text-slate-800">Word Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalWords}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.wordPercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.wordPercent}%</td><td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>{(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme') && (<tr><td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalPhonemes}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.phonemePercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{Number(phonemeCriticalLimits.lower).toFixed(1)}% - {Number(phonemeCriticalLimits.upper).toFixed(1)}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.phonemePercent}%</td><td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}{tntDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">aTNT Difference (Tracking Noise Tolerance) <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 2.8 : 1.8} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineTest.tnt || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">±{confidenceLevel === 95 ? 2.8 : 1.8} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonTest.tnt || '--'}</td><td className="px-4 py-3 text-center">{isTNTDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}{tntExcursionWidthDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">TNT Excursion Width <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 1.0 : 0.7} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">±{confidenceLevel === 95 ? 1.0 : 0.7} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center">{isTNTExcursionWidthDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}</tbody></table></div>
 
                                         {/* Visual Critical Range Comparison */}
                                         <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-6">
@@ -3968,37 +4021,37 @@
                                                     >
                                                     </div>
 
-                                                    {/* Test A marker */}
+                                                    {/* Baseline marker */}
                                                     <div
                                                         className="absolute top-8 w-1.5 h-8 bg-purple-600 z-10 shadow-lg"
-                                                        style={{ left: `calc(${statsA.wordPercent}% - 3px)` }}
-                                                        title={`Test A: ${statsA.wordPercent}%`}
+                                                        style={{ left: `calc(${baselineStats.wordPercent}% - 3px)` }}
+                                                        title={`Test ${baselineTest.id}: ${baselineStats.wordPercent}%`}
                                                     >
                                                         <div className="absolute top-9 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold text-purple-600">
-                                                            A: {statsA.wordPercent}%
+                                                            {baselineTest.id}: {baselineStats.wordPercent}%
                                                         </div>
                                                     </div>
 
-                                                    {/* Test B marker */}
+                                                    {/* Comparison marker */}
                                                     <div
                                                         className={`absolute top-8 w-1.5 h-8 z-10 shadow-lg ${isWordDiffSig ? 'bg-emerald-600' : 'bg-orange-500'}`}
-                                                        style={{ left: `calc(${statsB.wordPercent}% - 3px)` }}
-                                                        title={`Test B: ${statsB.wordPercent}%`}
+                                                        style={{ left: `calc(${comparisonStats.wordPercent}% - 3px)` }}
+                                                        title={`Test ${comparisonTest.id}: ${comparisonStats.wordPercent}%`}
                                                     >
                                                         <div className={`absolute top-9 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold ${isWordDiffSig ? 'text-emerald-600' : 'text-orange-600'}`}>
-                                                            B: {statsB.wordPercent}%
+                                                            {comparisonTest.id}: {comparisonStats.wordPercent}%
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div className="mt-2 text-xs text-slate-500 flex items-center gap-3">
-                                                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-600 rounded-sm"></span> Test A</span>
-                                                    <span className="flex items-center gap-1"><span className={`w-3 h-3 rounded-sm ${isWordDiffSig ? 'bg-emerald-600' : 'bg-orange-500'}`}></span> Test B {isWordDiffSig ? '(Significant)' : '(Not Significant)'}</span>
+                                                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-600 rounded-sm"></span> Test {baselineTest.id}</span>
+                                                    <span className="flex items-center gap-1"><span className={`w-3 h-3 rounded-sm ${isWordDiffSig ? 'bg-emerald-600' : 'bg-orange-500'}`}></span> Test {comparisonTest.id} {isWordDiffSig ? '(Significant)' : '(Not Significant)'}</span>
                                                     <span className="flex items-center gap-1"><span className="w-3 h-3 bg-blue-100 border border-blue-400 rounded-sm"></span> Critical Range ({confidenceLevel}%)</span>
                                                 </div>
                                             </div>
 
                                             {/* Phoneme Score Visualization - only show if both tests use phoneme mode */}
-                                            {(tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') && (
+                                            {(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme') && (
                                                 <div>
                                                     <div className="text-xs font-semibold text-slate-600 mb-2">Phoneme Score Range</div>
                                                     <div className="relative h-20 bg-white border border-slate-300 rounded-lg px-3">
@@ -4021,31 +4074,31 @@
                                                         >
                                                         </div>
 
-                                                        {/* Test A marker */}
+                                                        {/* Baseline marker */}
                                                         <div
                                                             className="absolute top-8 w-1.5 h-8 bg-purple-600 z-10 shadow-lg"
-                                                            style={{ left: `calc(${statsA.phonemePercent}% - 3px)` }}
-                                                            title={`Test A: ${statsA.phonemePercent}%`}
+                                                            style={{ left: `calc(${baselineStats.phonemePercent}% - 3px)` }}
+                                                            title={`Test ${baselineTest.id}: ${baselineStats.phonemePercent}%`}
                                                         >
                                                             <div className="absolute top-9 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold text-purple-600">
-                                                                A: {statsA.phonemePercent}%
+                                                                {baselineTest.id}: {baselineStats.phonemePercent}%
                                                             </div>
                                                         </div>
 
-                                                        {/* Test B marker */}
+                                                        {/* Comparison marker */}
                                                         <div
                                                             className={`absolute top-8 w-1.5 h-8 z-10 shadow-lg ${isPhonemeDiffSig ? 'bg-emerald-600' : 'bg-orange-500'}`}
-                                                            style={{ left: `calc(${statsB.phonemePercent}% - 3px)` }}
-                                                            title={`Test B: ${statsB.phonemePercent}%`}
+                                                            style={{ left: `calc(${comparisonStats.phonemePercent}% - 3px)` }}
+                                                            title={`Test ${comparisonTest.id}: ${comparisonStats.phonemePercent}%`}
                                                         >
                                                             <div className={`absolute top-9 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold ${isPhonemeDiffSig ? 'text-emerald-600' : 'text-orange-600'}`}>
-                                                                B: {statsB.phonemePercent}%
+                                                                {comparisonTest.id}: {comparisonStats.phonemePercent}%
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div className="mt-2 text-xs text-slate-500 flex items-center gap-3">
-                                                        <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-600 rounded-sm"></span> Test A</span>
-                                                        <span className="flex items-center gap-1"><span className={`w-3 h-3 rounded-sm ${isPhonemeDiffSig ? 'bg-emerald-600' : 'bg-orange-500'}`}></span> Test B {isPhonemeDiffSig ? '(Significant)' : '(Not Significant)'}</span>
+                                                        <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-600 rounded-sm"></span> Test {baselineTest.id}</span>
+                                                        <span className="flex items-center gap-1"><span className={`w-3 h-3 rounded-sm ${isPhonemeDiffSig ? 'bg-emerald-600' : 'bg-orange-500'}`}></span> Test {comparisonTest.id} {isPhonemeDiffSig ? '(Significant)' : '(Not Significant)'}</span>
                                                         <span className="flex items-center gap-1"><span className="w-3 h-3 bg-indigo-100 border border-indigo-400 rounded-sm"></span> Critical Range ({confidenceLevel}%)</span>
                                                     </div>
                                                 </div>
