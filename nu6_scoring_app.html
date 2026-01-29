@@ -118,9 +118,16 @@
         // --- CRYPTOGRAPHY SERVICE ---
         const CryptoService = {
             deriveKey: async (password, salt) => {
+                if (!window.crypto || !window.crypto.subtle) {
+                    throw new Error("Secure Context Required: Cryptography API is unavailable. Please access this app via HTTPS or localhost (not 0.0.0.0 or plain IP).");
+                }
                 const enc = new TextEncoder();
                 const keyMaterial = await window.crypto.subtle.importKey(
-                    "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
+                    "raw",
+                    enc.encode(password),
+                    "PBKDF2",
+                    false,
+                    ["deriveKey"]
                 );
                 return window.crypto.subtle.deriveKey(
                     { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
@@ -1902,6 +1909,7 @@
             const [showComparativeScaleModal, setShowComparativeScaleModal] = useState(false);
             const [clinicalNotes, setClinicalNotes] = useState('');
             const [calibrationMode, setCalibrationMode] = useState('none'); // 'none', 'left', 'right'
+            const [calibrationSignal, setCalibrationSignal] = useState('tone'); // 'tone' or 'noise'
             const calibrationAudioRef = useRef(null);
             const [isPlayingNoise, setIsPlayingNoise] = useState(false);
             const [snrLevel, setSnrLevel] = useState(10); // Default 10 dB SNR
@@ -2043,11 +2051,11 @@
             const activeStats = activeTestId === 'A' ? statsA : statsB;
             const ageYears = useMemo(() => computeAgeYears(dateOfBirth, testDate), [dateOfBirth, testDate]);
 
-            // Reverse Comparison Logic
-            const baselineStats = reversedComparison ? statsB : statsA;
-            const comparisonStats = reversedComparison ? statsA : statsB;
-            const baselineTest = reversedComparison ? tests.B : tests.A;
-            const comparisonTest = reversedComparison ? tests.A : tests.B;
+            // Comparison Logic (Always A vs B)
+            const baselineStats = statsA;
+            const comparisonStats = statsB;
+            const baselineTest = tests.A;
+            const comparisonTest = tests.B;
 
             const wordCriticalLimits = useMemo(() => { if (baselineStats.totalWords === 0) return { lower: 0, upper: 100 }; return getCriticalLimits(baselineStats.wordPercent, baselineStats.totalWords, confidenceLevel); }, [baselineStats.wordPercent, baselineStats.totalWords, confidenceLevel]);
             const phonemeCriticalLimits = useMemo(() => {
@@ -2203,10 +2211,13 @@
                     if (interval) clearInterval(interval);
                 };
             }, [timerIsRunning, timerStartTime, timerElapsed, timerPausedAt]);
+
             const togglePhoneme = (wordIndex, pIndex) => { setHasUnsavedChanges(true); const listId = activeTest.listId; const key = `${listId}_${wordIndex}_${pIndex}`; const wordData = activeStats.visibleWords.find(w => w.i === wordIndex); if (!wordData) return; setTests(prev => { const currentScores = prev[activeTestId].scores; const newScores = { ...currentScores }; const currentState = currentScores[key]; if (currentState === true) { newScores[key] = false; } else if (currentState === false) { newScores[key] = true; } else { newScores[key] = true; wordData.p.forEach((p, idx) => { if (p !== '-' && idx !== pIndex) { newScores[`${listId}_${wordIndex}_${idx}`] = false; } }); } return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores } }; }); };
             const setWordScore = (wordIndex, isCorrect) => { setHasUnsavedChanges(true); const listId = activeTest.listId; const wordData = activeStats.visibleWords.find(w => w.i === wordIndex); if (!wordData) return; setTests(prev => { const currentScores = { ...prev[activeTestId].scores }; let shouldClear = false; let currentIsAllCorrect = true; let currentIsAllIncorrect = true; let hasAnyScore = false; wordData.p.forEach((p, idx) => { if (p !== '-') { const val = currentScores[`${listId}_${wordIndex}_${idx}`]; if (val !== undefined) hasAnyScore = true; if (val !== true) currentIsAllCorrect = false; if (val !== false) currentIsAllIncorrect = false; } }); if (isCorrect && currentIsAllCorrect && hasAnyScore) shouldClear = true; if (!isCorrect && currentIsAllIncorrect && hasAnyScore) shouldClear = true; wordData.p.forEach((p, idx) => { if (p !== '-') { if (shouldClear) { delete currentScores[`${listId}_${wordIndex}_${idx}`]; } else { currentScores[`${listId}_${wordIndex}_${idx}`] = isCorrect; } } }); return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } }; }); };
             const toggleWordCorrect = (wordIndex) => { setHasUnsavedChanges(true); const listId = activeTest.listId; const wordData = activeStats.visibleWords.find(w => w.i === wordIndex); if (!wordData) return; setTests(prev => { const currentScores = { ...prev[activeTestId].scores }; let isFullyCorrect = true; wordData.p.forEach((p, idx) => { if (p !== '-' && !currentScores[`${listId}_${wordIndex}_${idx}`]) { isFullyCorrect = false; } }); wordData.p.forEach((p, idx) => { if (p !== '-') { if (isFullyCorrect) { delete currentScores[`${listId}_${wordIndex}_${idx}`]; } else { currentScores[`${listId}_${wordIndex}_${idx}`] = true; } } }); return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } }; }); };
             const markAll = (correct) => { setHasUnsavedChanges(true); const listData = activeStats.visibleWords; const listId = activeTest.listId; setTests(prev => { const newScores = { ...prev[activeTestId].scores }; listData.forEach(word => { word.p.forEach((phoneme, pIndex) => { if (phoneme === '-') return; const key = `${listId}_${word.i}_${pIndex}`; if (correct) newScores[key] = true; else delete newScores[key]; }); }); return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: newScores, askedContinue: true } }; }); };
+
+
 
             const playAudio = (listId, wordIndex, wordText) => {
                 const indexStr = String(wordIndex).padStart(2, '0');
@@ -2242,7 +2253,10 @@
                     calibrationAudioRef.current.currentTime = 0;
                 }
 
-                const audioPath = 'audio/calibration/000_Master_Calibration_1kHz.wav';
+                const audioPath = calibrationSignal === 'noise'
+                    ? 'audio/noise/HF1_MasterNoise.wav'
+                    : 'audio/calibration/000_Master_Calibration_1kHz.wav';
+
                 const audio = new Audio(audioPath);
                 audio.loop = true;
 
@@ -2880,7 +2894,7 @@
                     alert('Encrypted export complete. Keep your password safe!');
                 } catch (err) {
                     console.error('Encrypted export failed:', err);
-                    alert('Failed to export encrypted database.');
+                    alert('Failed to export encrypted database: ' + (err.message || 'Unknown error'));
                 }
             };
 
@@ -3323,12 +3337,16 @@
             const handleExportPDF = () => {
                 const doc = new window.jspdf.jsPDF();
 
-                // Format Condition Helper
-                const formatCondition = (test) => test.deviceModel ? `${test.condition}\n(${test.deviceModel})` : test.condition;
+                // Format List ID Helper
+                const formatListId = (id) => {
+                    if (id === 'HF1') return 'Rose Hill HF Form 1';
+                    if (id === 'HF2') return 'Rose Hill HF Form 2';
+                    return id;
+                };
 
                 // Header (Clinic Info)
                 doc.setFontSize(18);
-                doc.text("NU-6 Speech Recognition Report", 105, 20, { align: 'center' });
+                doc.text("Speech Recognition Report", 105, 20, { align: 'center' });
 
                 doc.setFontSize(12);
                 if (clinicSettings) {
@@ -3358,8 +3376,8 @@
                     startY: lineY + 4,
                     head: [['Test', 'Condition', 'List', 'Level', 'SNR', 'aTNT', 'TNT Exc Width', 'Word Score', 'Phoneme Score']],
                     body: [
-                        [`Test ${baselineTest.id}`, formatCondition(baselineTest), baselineTest.listId, `${baselineTest.level || '--'}`, `${baselineTest.snr || '--'}`, `${baselineTest.tnt || '--'}`, `${baselineTest.tntExcursionWidth || '--'}`, `${baselineStats.wordPercent}%`, `${baselineStats.phonemePercent}%`],
-                        [`Test ${comparisonTest.id}`, formatCondition(comparisonTest), comparisonTest.listId, `${comparisonTest.level || '--'}`, `${comparisonTest.snr || '--'}`, `${comparisonTest.tnt || '--'}`, `${comparisonTest.tntExcursionWidth || '--'}`, `${comparisonStats.wordPercent}%`, `${comparisonStats.phonemePercent}%`]
+                        [`Test ${baselineTest.id}`, formatCondition(baselineTest), formatListId(baselineTest.listId), `${baselineTest.level || '--'}`, `${baselineTest.snr || '--'}`, `${baselineTest.tnt || '--'}`, `${baselineTest.tntExcursionWidth || '--'}`, `${baselineStats.wordPercent}%`, `${baselineStats.phonemePercent}%`],
+                        [`Test ${comparisonTest.id}`, formatCondition(comparisonTest), formatListId(comparisonTest.listId), `${comparisonTest.level || '--'}`, `${comparisonTest.snr || '--'}`, `${comparisonTest.tnt || '--'}`, `${comparisonTest.tntExcursionWidth || '--'}`, `${comparisonStats.wordPercent}%`, `${comparisonStats.phonemePercent}%`]
                     ],
                     theme: 'striped',
                     headStyles: { fillColor: [66, 135, 245] }
@@ -3699,7 +3717,7 @@
                                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                                         <Calculator className="w-6 h-6 text-blue-600" />
                                         Hearing Aid Demonstration App
-                                        <span className="text-sm font-normal text-slate-400">v1.1.2</span>
+                                        <span className="text-sm font-normal text-slate-400">v1.1.3</span>
                                     </h1>
                                     <p className="text-slate-500 text-sm">Comparison Mode & Multi-list Support</p>
                                 </div>
@@ -3830,15 +3848,53 @@
                                             <div><label className="block text-xs font-medium text-slate-500 mb-2">Stimulus Presentation</label><div className="flex rounded-lg overflow-hidden border border-slate-200"><button onClick={() => activeTestId === 'A' && updateActiveTest('stimulusPresentation', 'MLV')} disabled={activeTestId === 'B'} className={`flex-1 py-2 text-xs font-bold transition ${activeTest.stimulusPresentation === 'MLV' ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'} ${activeTestId === 'B' ? 'cursor-not-allowed opacity-60' : ''}`}>MLV</button><button onClick={() => activeTestId === 'A' && updateActiveTest('stimulusPresentation', 'Recording')} disabled={activeTestId === 'B'} className={`flex-1 py-2 text-xs font-bold transition ${activeTest.stimulusPresentation === 'Recording' ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'} ${activeTestId === 'B' ? 'cursor-not-allowed opacity-60' : ''}`}>Recording</button></div>{activeTestId === 'B' && <div className="text-[10px] text-slate-400 mt-1 italic">Locked to match Test A</div>}
                                                 {activeTest.stimulusPresentation === 'Recording' && (
                                                     <div className="mt-2 space-y-2">
-                                                        <div className="flex gap-2">
-                                                            <button onClick={() => toggleCalibration('left')} className={`flex-1 py-2 text-xs font-bold rounded flex items-center justify-center gap-2 transition ${calibrationMode === 'left' ? 'bg-amber-100 text-amber-700 border border-amber-300 animate-pulse' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'}`}>
-                                                                {calibrationMode === 'left' ? <Square className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
-                                                                {calibrationMode === 'left' ? 'Stop L' : 'Calibrate L'}
-                                                            </button>
-                                                            <button onClick={() => toggleCalibration('right')} className={`flex-1 py-2 text-xs font-bold rounded flex items-center justify-center gap-2 transition ${calibrationMode === 'right' ? 'bg-amber-100 text-amber-700 border border-amber-300 animate-pulse' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'}`}>
-                                                                {calibrationMode === 'right' ? <Square className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
-                                                                {calibrationMode === 'right' ? 'Stop R' : 'Calibrate R'}
-                                                            </button>
+                                                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                                                            <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2"><SettingsIcon className="w-4 h-4" /> Calibration</h4>
+
+                                                            <div className="flex gap-4 mb-3 text-sm">
+                                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="calSignal"
+                                                                        value="tone"
+                                                                        checked={calibrationSignal === 'tone'}
+                                                                        onChange={() => setCalibrationSignal('tone')}
+                                                                        className="text-blue-600 focus:ring-blue-500"
+                                                                    />
+                                                                    <span>1kHz Tone</span>
+                                                                </label>
+                                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="calSignal"
+                                                                        value="noise"
+                                                                        checked={calibrationSignal === 'noise'}
+                                                                        onChange={() => setCalibrationSignal('noise')}
+                                                                        className="text-blue-600 focus:ring-blue-500"
+                                                                    />
+                                                                    <span>Speech Shaped Noise</span>
+                                                                </label>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                <button
+                                                                    onClick={() => toggleCalibration('left')}
+                                                                    className={`py-2 px-3 rounded text-sm font-bold border transition flex items-center justify-center gap-2 ${calibrationMode === 'left' ? 'bg-red-600 text-white border-red-700 animate-pulse shadow-lg' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-300'}`}
+                                                                >
+                                                                    {calibrationMode === 'left' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                                                                    Calibrate L
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => toggleCalibration('right')}
+                                                                    className={`py-2 px-3 rounded text-sm font-bold border transition flex items-center justify-center gap-2 ${calibrationMode === 'right' ? 'bg-blue-600 text-white border-blue-700 animate-pulse shadow-lg' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-300'}`}
+                                                                >
+                                                                    {calibrationMode === 'right' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                                                                    Calibrate R
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-xs text-slate-400 mt-2 text-center">
+                                                                {calibrationMode !== 'none' ? 'Playing calibration signal...' : 'Click to start/stop calibration tone'}
+                                                            </p>
                                                         </div>
 
                                                         {(activeTest.listId === 'HF1' || activeTest.listId === 'HF2') && (
@@ -3929,7 +3985,7 @@
                                         <div className="text-right"><div className="text-xs opacity-75 font-mono">{testDate} • {patientName} • #{cNumber}</div><div className="hidden">Thornton & Raffin (1978) Model</div></div>
                                     </div>
                                     <div className="p-6">
-                                        <div className="flex justify-end mb-4 print:hidden"><div className="bg-slate-100 p-1 rounded-lg flex items-center gap-2 text-sm"><span className="px-2 text-xs font-semibold text-slate-500 uppercase">Critical Difference Level</span><button onClick={() => setConfidenceLevel(95)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 95 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>95%</button><button onClick={() => setConfidenceLevel(80)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 80 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>80%</button><button onClick={() => setShowChartModal(true)} className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> View Tables</button><button onClick={() => setReversedComparison(!reversedComparison)} className="ml-2 px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><ArrowRightLeft className="w-3 h-3" /> {reversedComparison ? "Reset Order" : "Reverse"}</button></div></div>
+                                        <div className="flex justify-end mb-4 print:hidden"><div className="bg-slate-100 p-1 rounded-lg flex items-center gap-2 text-sm"><span className="px-2 text-xs font-semibold text-slate-500 uppercase">Critical Difference Level</span><button onClick={() => setConfidenceLevel(95)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 95 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>95%</button><button onClick={() => setConfidenceLevel(80)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 80 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>80%</button><button onClick={() => setShowChartModal(true)} className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> View Tables</button></div></div>
                                         <div className="grid grid-cols-3 gap-8 mb-8">
                                             <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {baselineTest.id} (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{baselineTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {baselineTest.listId}</div><div>Level: {baselineTest.level || '--'}</div><div>Noise: {baselineTest.snr || '--'}</div>{baselineTest.tnt && <div>aTNT: {baselineTest.tnt}</div>}{baselineTest.tntExcursionWidth && <div>TNT Excursion Width: {baselineTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{baselineStats.wordPercent}%</span></div>{baselineTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{baselineStats.phonemePercent}%</span></div>)}</div></div>
 
@@ -3949,7 +4005,7 @@
                                                 {showComparativeEase && (
                                                     <div className="mt-2 text-center">
                                                         <div className="text-sm font-bold text-slate-500">Ease of Listening Delta</div>
-                                                        <div className={`text-3xl font-bold mt-1 ${(reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) - 5 >= 2 ? 'text-emerald-600' : (reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) - 5 <= -2 ? 'text-red-600' : 'text-slate-600'}`} aria-live="polite">{((reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) - 5) >= 0 ? '+' : ''}{(reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) - 5}</div>
+                                                        <div className={`text-3xl font-bold mt-1 ${(tests.comparativeEase - 5) >= 2 ? 'text-emerald-600' : (tests.comparativeEase - 5) <= -2 ? 'text-red-600' : 'text-slate-600'}`} aria-live="polite">{(tests.comparativeEase - 5) >= 0 ? '+' : ''}{tests.comparativeEase - 5}</div>
                                                     </div>
                                                 )}
                                             </div>
@@ -3976,8 +4032,8 @@
                                                             type="range"
                                                             min="0"
                                                             max="10"
-                                                            value={reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase}
-                                                            onChange={(e) => updateComparativeEase(reversedComparison ? (10 - parseInt(e.target.value)) : parseInt(e.target.value))}
+                                                            value={tests.comparativeEase}
+                                                            onChange={(e) => updateComparativeEase(parseInt(e.target.value))}
                                                             className="w-full h-2 bg-gradient-to-r from-red-300 via-slate-300 to-emerald-300 rounded-lg appearance-none cursor-pointer"
                                                         />
                                                         <div className="flex justify-between text-[10px] text-slate-400 mt-1 px-1">
@@ -3987,7 +4043,7 @@
                                                         </div>
                                                     </div>
                                                     <span className="text-xs font-bold text-slate-500 uppercase">Easier</span>
-                                                    <span className={`font-bold text-lg w-8 text-center ${(reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) > 5 ? 'text-emerald-600' : (reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase) < 5 ? 'text-red-600' : 'text-slate-600'}`}>{(reversedComparison ? (10 - tests.comparativeEase) : tests.comparativeEase)}</span>
+                                                    <span className={`font-bold text-lg w-8 text-center ${tests.comparativeEase > 5 ? 'text-emerald-600' : tests.comparativeEase < 5 ? 'text-red-600' : 'text-slate-600'}`}>{tests.comparativeEase}</span>
                                                 </div>
                                             </div>
                                         )}
