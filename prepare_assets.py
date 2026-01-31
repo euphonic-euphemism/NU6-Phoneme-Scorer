@@ -3,9 +3,18 @@ import shutil
 from pydub import AudioSegment
 
 # Configuration
-INPUT_FOLDER = "/home/marks/Development/Rose Hill HF Word Lists/Form_1"
-NOISE_FILE_NAME = "Form_1_Python_MasterNoise.wav"
-OUTPUT_FOLDER = "App_Assets_Normalized"
+# Mapping of Source Directory -> Target Directory
+# (relative to this script's location)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+AUDIO_DIR = os.path.join(BASE_DIR, "audio")
+
+FORM_MAPPING = {
+    "Form_1": "HF1",
+    "Form_2": "HF2",
+    "Form_3": "HF3",
+    "Form_4": "HF4"
+}
+
 TARGET_DBFS = -23.0
 
 def match_target_amplitude(sound, target_dBFS):
@@ -25,93 +34,69 @@ def trim_silence(sound, silence_threshold=-50.0, chunk_size=10):
         
     return sound[trim_start:trim_end]
 
-def main():
-    if not os.path.exists(OUTPUT_FOLDER):
-        os.makedirs(OUTPUT_FOLDER)
-        print(f"Created output folder: {OUTPUT_FOLDER}")
+def process_folder(input_dir, output_dir):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        print(f"Created output folder: {output_dir}")
 
-    # 1. Process Noise File
-    noise_path = os.path.join(INPUT_FOLDER, NOISE_FILE_NAME)
-    if os.path.exists(noise_path):
-        print(f"Processing Noise: {NOISE_FILE_NAME}")
-        try:
-            noise = AudioSegment.from_file(noise_path)
-            # Normalize only
-            normalized_noise = match_target_amplitude(noise, TARGET_DBFS)
-            
-            out_path = os.path.join(OUTPUT_FOLDER, NOISE_FILE_NAME)
-            normalized_noise.export(out_path, format="wav")
-            print(f"   Saved: {out_path}")
-        except Exception as e:
-            print(f"   Error processing noise: {e}")
-    else:
-        print(f"WARNING: Noise file not found at {noise_path}")
+    # Process Speech Files
+    if not os.path.exists(input_dir):
+        print(f"Skipping missing input folder: {input_dir}")
+        return
 
-    # 1b. Process Calibration Tone
-    cal_file_name = "000_Master_Calibration_1kHz.wav"
-    # Assuming it's in the root of Rose Hill folder, which is one level up from INPUT_FOLDER (Form_1)
-    # OR simply defined by user as "in the root folder".
-    # Based on find_by_name: /home/marks/Development/Rose Hill HF Word Lists/000_Master_Calibration_1kHz.wav
-    cal_path = "/home/marks/Development/Rose Hill HF Word Lists/000_Master_Calibration_1kHz.wav"
-    
-    if os.path.exists(cal_path):
-        print(f"Processing Calibration: {cal_file_name}")
-        try:
-            cal_audio = AudioSegment.from_file(cal_path)
-            # Normalize only (Do NOT trim)
-            normalized_cal = match_target_amplitude(cal_audio, TARGET_DBFS)
-            
-            out_path = os.path.join(OUTPUT_FOLDER, cal_file_name)
-            normalized_cal.export(out_path, format="wav")
-            print(f"   Saved: {out_path}")
-        except Exception as e:
-            print(f"   Error processing calibration: {e}")
-    else:
-        print(f"WARNING: Calibration file not found at {cal_path}")
-
-    # 2. Process Speech Files
-    files = sorted([f for f in os.listdir(INPUT_FOLDER) if f.endswith(".wav")])
+    files = sorted([f for f in os.listdir(input_dir) if f.endswith(".wav")])
     for filename in files:
-        # Filter Logic
-        if filename == NOISE_FILE_NAME:
-            continue # Already handled
-        if "Final" in filename or "Master" in filename or "Stereo" in filename:
+        # Filter Logic - we want numbered files and Intro
+        # Skip noise files if they are in there (usually they are separate)
+        if "MasterNoise" in filename or "Calibration" in filename:
             continue
-        if not (filename[0].isdigit() or filename.startswith("00_Intro")):
-            continue
-        
-        # Check for numeric start 01-25 or 00
-        # A simple digit check is likely enough based on prompt, but let's be safe
-        is_valid_start = False
+            
+        is_valid_file = False
         if filename.startswith("00_Intro"):
-            is_valid_start = True
+            is_valid_file = True
         else:
             # check if starts with number
-            prefix = filename.split('_')[0]
-            if prefix.isdigit() and 1 <= int(prefix) <= 25:
-                is_valid_start = True
+            parts = filename.split('_')
+            if len(parts) > 0 and parts[0].isdigit():
+                is_valid_file = True
         
-        if not is_valid_start:
-            print(f"Skipping filter-out: {filename}")
+        if not is_valid_file:
+            print(f"Skipping non-speech file: {filename}")
             continue
 
-        filepath = os.path.join(INPUT_FOLDER, filename)
-        print(f"Processing Speech: {filename}")
+        input_path = os.path.join(input_dir, filename)
+        output_path = os.path.join(output_dir, filename)
+        
+        print(f"Processing: {filename} -> {os.path.basename(output_dir)}")
         try:
-            audio = AudioSegment.from_file(filepath)
+            audio = AudioSegment.from_file(input_path)
             
-            # Normalize
-            normalized_audio = match_target_amplitude(audio, TARGET_DBFS)
+            # 1. Trim Silence FIRST
+            # We want the active speech to be at the target level.
+            # Trimming does not change the amplitude of samples, just duration.
+            trimmed_audio = trim_silence(audio)
+
+            # 2. Normalize trimmed audio
+            # Now RMS calculation is based mostly on speech energy.
+            normalized_audio = match_target_amplitude(trimmed_audio, TARGET_DBFS)
             
-            # Trim Silence
-            trimmed_audio = trim_silence(normalized_audio)
-            
-            out_path = os.path.join(OUTPUT_FOLDER, filename)
-            trimmed_audio.export(out_path, format="wav")
-            print(f"   Saved: {out_path}")
+            normalized_audio.export(output_path, format="wav")
+            # print(f"   Saved: {output_path}")
             
         except Exception as e:
             print(f"   Error processing {filename}: {e}")
+
+def main():
+    print("Starting normalization of Rose Hill HF Forms...")
+    
+    for src_name, dst_name in FORM_MAPPING.items():
+        src_path = os.path.join(AUDIO_DIR, src_name)
+        dst_path = os.path.join(AUDIO_DIR, dst_name)
+        
+        print(f"\nProcessing {src_name} -> {dst_name}")
+        process_folder(src_path, dst_path)
+        
+    print("\nNormalization complete.")
 
 if __name__ == "__main__":
     main()
