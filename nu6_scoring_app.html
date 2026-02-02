@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hearing Aid Demonstration App</title>
+    <title>Hearing Aid Demonstration App v1.2.0</title>
 
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -514,8 +514,8 @@
         const LIST_HF1 = [{ i: 1, w: "CHECK", p: ["tʃ", "ɛ", "k"] }, { i: 2, w: "PUSH", p: ["p", "ʊ", "ʃ"] }, { i: 3, w: "VOICE", p: ["v", "ɔɪ", "s"] }, { i: 4, w: "SIT", p: ["s", "ɪ", "t"] }, { i: 5, w: "THUMB", p: ["θ", "ʌ", "m"] }, { i: 6, w: "SHAPE", p: ["ʃ", "eɪ", "p"] }, { i: 7, w: "YOUTH", p: ["j", "u", "θ"] }, { i: 8, w: "FACE", p: ["f", "eɪ", "s"] }, { i: 9, w: "GAS", p: ["g", "æ", "s"] }, { i: 10, w: "TEACH", p: ["t", "i", "tʃ"] }, { i: 11, w: "SAFE", p: ["s", "eɪ", "f"] }, { i: 12, w: "HISS", p: ["h", "ɪ", "s"] }, { i: 13, w: "BUS", p: ["b", "ʌ", "s"] }, { i: 14, w: "CHIEF", p: ["tʃ", "i", "f"] }, { i: 15, w: "PATH", p: ["p", "æ", "θ"] }, { i: 16, w: "VOTE", p: ["v", "oʊ", "t"] }, { i: 17, w: "RICH", p: ["r", "ɪ", "tʃ"] }, { i: 18, w: "CATCH", p: ["k", "æ", "tʃ"] }, { i: 19, w: "KEEP", p: ["k", "i", "p"] }, { i: 20, w: "FISH", p: ["f", "ɪ", "ʃ"] }, { i: 21, w: "SOUTH", p: ["s", "aʊ", "θ"] }, { i: 22, w: "CHOOSE", p: ["tʃ", "u", "z"] }, { i: 23, w: "TIP", p: ["t", "ɪ", "p"] }, { i: 24, w: "SHAKE", p: ["ʃ", "eɪ", "k"] }, { i: 25, w: "NOISE", p: ["n", "ɔɪ", "z"] }];
 
         const LIST_HF2 = [{ i: 1, w: "TOUCH", p: ["t", "ʌ", "tʃ"] }, { i: 2, w: "LIFE", p: ["l", "aɪ", "f"] }, { i: 3, w: "FIT", p: ["f", "ɪ", "t"] }, { i: 4, w: "SUM", p: ["s", "ʌ", "m"] }, { i: 5, w: "SHOES", p: ["ʃ", "u", "z"] }, { i: 6, w: "NECK", p: ["n", "ɛ", "k"] }, { i: 7, w: "MOUTH", p: ["m", "aʊ", "θ"] }, { i: 8, w: "DEEP", p: ["d", "i", "p"] }, { i: 9, w: "PASS", p: ["p", "æ", "s"] }, { i: 10, w: "CHOICE", p: ["tʃ", "ɔɪ", "s"] }, { i: 11, w: "NOTE", p: ["n", "oʊ", "t"] }, { i: 12, w: "BATH", p: ["b", "æ", "θ"] }, { i: 13, w: "SHIP", p: ["ʃ", "ɪ", "p"] }, { i: 14, w: "KISS", p: ["k", "ɪ", "s"] }, { i: 15, w: "REACH", p: ["r", "i", "tʃ"] }, { i: 16, w: "FUSS", p: ["f", "ʌ", "s"] }, { i: 17, w: "BEEF", p: ["b", "i", "f"] }, { i: 18, w: "CASE", p: ["k", "eɪ", "s"] }, { i: 19, w: "WISH", p: ["w", "ɪ", "ʃ"] }, { i: 20, w: "DIP", p: ["d", "ɪ", "p"] }, { i: 21, w: "TAKE", p: ["t", "eɪ", "k"] }, { i: 22, w: "SIZE", p: ["s", "aɪ", "z"] }, { i: 23, w: "MATCH", p: ["m", "æ", "tʃ"] }, { i: 24, w: "TOOTH", p: ["t", "u", "θ"] }, { i: 25, w: "BUSH", p: ["b", "ʊ", "ʃ"] }];
-        const LIST_HF3 = [{ i: 1, w: "SICK", p: ["s", "ɪ", "k"] }, { i: 2, w: "SIP", p: ["s", "ɪ", "p"] }, { i: 3, w: "SHOP", p: ["ʃ", "ɑ", "p"] }, { i: 4, w: "HUSH", p: ["h", "ʌ", "ʃ"] }, { i: 5, w: "PEAK", p: ["p", "i", "k"] }, { i: 6, w: "SHEET", p: ["ʃ", "i", "t"] }, { i: 7, w: "THICK", p: ["θ", "ɪ", "k"] }, { i: 8, w: "SIGHT", p: ["s", "aɪ", "t"] }, { i: 9, w: "MUCH", p: ["m", "ʌ", "tʃ"] }, { i: 10, w: "MOSS", p: ["m", "ɔ", "s"] }, { i: 11, w: "CHASE", p: ["tʃ", "eɪ", "s"] }, { i: 12, w: "BOOTH", p: ["b", "u", "θ"] }, { i: 13, w: "TOUGH", p: ["t", "ʌ", "f"] }, { i: 14, w: "SACK", p: ["s", "æ", "k"] }, { i: 15, w: "CHIP", p: ["tʃ", "ɪ", "p"] }, { i: 16, w: "CASH", p: ["k", "æ", "ʃ"] }, { i: 17, w: "FIGHT", p: ["f", "aɪ", "t"] }, { i: 18, w: "VICE", p: ["v", "aɪ", "s"] }, { i: 19, w: "PUSS", p: ["p", "ʊ", "s"] }, { i: 20, w: "PITCH", p: ["p", "ɪ", "tʃ"] }, { i: 21, w: "FETCH", p: ["f", "ɛ", "tʃ"] }, { i: 22, w: "SHOCK", p: ["ʃ", "ɑ", "k"] }, { i: 23, w: "SAKE", p: ["s", "eɪ", "k"] }, { i: 24, w: "MESH", p: ["m", "ɛ", "ʃ"] }, { i: 25, w: "SET", p: ["s", "ɛ", "t"] }];
-        const LIST_HF4 = [{ i: 1, w: "SOCK", p: ["s", "ɑ", "k"] }, { i: 2, w: "SOUP", p: ["s", "u", "p"] }, { i: 3, w: "SHOT", p: ["ʃ", "ɑ", "t"] }, { i: 4, w: "HASH", p: ["h", "æ", "ʃ"] }, { i: 5, w: "PICK", p: ["p", "ɪ", "k"] }, { i: 6, w: "SHOOT", p: ["ʃ", "u", "t"] }, { i: 7, w: "THUD", p: ["θ", "ʌ", "d"] }, { i: 8, w: "SIDE", p: ["s", "aɪ", "d"] }, { i: 9, w: "SUCH", p: ["s", "ʌ", "tʃ"] }, { i: 10, w: "LOSS", p: ["l", "ɔ", "s"] }, { i: 11, w: "CHAT", p: ["tʃ", "æ", "t"] }, { i: 12, w: "BOTH", p: ["b", "oʊ", "θ"] }, { i: 13, w: "ROOF", p: ["r", "u", "f"] }, { i: 14, w: "BACK", p: ["b", "æ", "k"] }, { i: 15, w: "CHOP", p: ["tʃ", "ɑ", "p"] }, { i: 16, w: "DASH", p: ["d", "æ", "ʃ"] }, { i: 17, w: "TIGHT", p: ["t", "aɪ", "t"] }, { i: 18, w: "VASE", p: ["v", "eɪ", "s"] }, { i: 19, w: "POSH", p: ["p", "ɑ", "ʃ"] }, { i: 20, w: "POACH", p: ["p", "oʊ", "tʃ"] }, { i: 21, w: "HATCH", p: ["h", "æ", "tʃ"] }, { i: 22, w: "SHACK", p: ["ʃ", "æ", "k"] }, { i: 23, w: "SEEK", p: ["s", "i", "k"] }, { i: 24, w: "MUSH", p: ["m", "ʌ", "ʃ"] }, { i: 25, w: "SAT", p: ["s", "æ", "t"] }];
+        const LIST_HF3 = [{ "i": 1, "w": "FIGHT", "p": ["f", "aɪ", "t"] }, { "i": 2, "w": "TOUGH", "p": ["t", "ʌ", "f"] }, { "i": 3, "w": "MOSS", "p": ["m", "ɔ", "s"] }, { "i": 4, "w": "PITCH", "p": ["p", "ɪ", "tʃ"] }, { "i": 5, "w": "PUSS", "p": ["p", "ʊ", "s"] }, { "i": 6, "w": "THICK", "p": ["θ", "ɪ", "k"] }, { "i": 7, "w": "SHEET", "p": ["ʃ", "i", "t"] }, { "i": 8, "w": "CHASE", "p": ["tʃ", "eɪ", "s"] }, { "i": 9, "w": "CASH", "p": ["k", "æ", "ʃ"] }, { "i": 10, "w": "SHOCK", "p": ["ʃ", "ɑ", "k"] }, { "i": 11, "w": "BOOTH", "p": ["b", "u", "θ"] }, { "i": 12, "w": "VICE", "p": ["v", "aɪ", "s"] }, { "i": 13, "w": "SIP", "p": ["s", "ɪ", "p"] }, { "i": 14, "w": "CHIP", "p": ["tʃ", "ɪ", "p"] }, { "i": 15, "w": "SAKE", "p": ["s", "eɪ", "k"] }, { "i": 16, "w": "SACK", "p": ["s", "æ", "k"] }, { "i": 17, "w": "SHOP", "p": ["ʃ", "ɑ", "p"] }, { "i": 18, "w": "MESH", "p": ["m", "ɛ", "ʃ"] }, { "i": 19, "w": "PEAK", "p": ["p", "i", "k"] }, { "i": 20, "w": "SET", "p": ["s", "ɛ", "t"] }, { "i": 21, "w": "SIGHT", "p": ["s", "aɪ", "t"] }, { "i": 22, "w": "MUCH", "p": ["m", "ʌ", "tʃ"] }, { "i": 23, "w": "SICK", "p": ["s", "ɪ", "k"] }, { "i": 24, "w": "HUSH", "p": ["h", "ʌ", "ʃ"] }, { "i": 25, "w": "FETCH", "p": ["f", "ɛ", "tʃ"] }];
+        const LIST_HF4 = [{ "i": 1, "w": "BACK", "p": ["b", "æ", "k"] }, { "i": 2, "w": "CHOP", "p": ["tʃ", "ɑ", "p"] }, { "i": 3, "w": "THUD", "p": ["θ", "ʌ", "d"] }, { "i": 4, "w": "SAT", "p": ["s", "æ", "t"] }, { "i": 5, "w": "SOCK", "p": ["s", "ɑ", "k"] }, { "i": 6, "w": "DASH", "p": ["d", "æ", "ʃ"] }, { "i": 7, "w": "SUCH", "p": ["s", "ʌ", "tʃ"] }, { "i": 8, "w": "TIGHT", "p": ["t", "aɪ", "t"] }, { "i": 9, "w": "POACH", "p": ["p", "oʊ", "tʃ"] }, { "i": 10, "w": "BOTH", "p": ["b", "oʊ", "θ"] }, { "i": 11, "w": "POSH", "p": ["p", "ɑ", "ʃ"] }, { "i": 12, "w": "SHOOT", "p": ["ʃ", "u", "t"] }, { "i": 13, "w": "CHAT", "p": ["tʃ", "æ", "t"] }, { "i": 14, "w": "VASE", "p": ["v", "eɪ", "s"] }, { "i": 15, "w": "PICK", "p": ["p", "ɪ", "k"] }, { "i": 16, "w": "ROOF", "p": ["r", "u", "f"] }, { "i": 17, "w": "HASH", "p": ["h", "æ", "ʃ"] }, { "i": 18, "w": "HATCH", "p": ["h", "æ", "tʃ"] }, { "i": 19, "w": "MUSH", "p": ["m", "ʌ", "ʃ"] }, { "i": 20, "w": "LOSS", "p": ["l", "ɔ", "s"] }, { "i": 21, "w": "SIDE", "p": ["s", "aɪ", "d"] }, { "i": 22, "w": "SHACK", "p": ["ʃ", "æ", "k"] }, { "i": 23, "w": "SOUP", "p": ["s", "u", "p"] }, { "i": 24, "w": "SHOT", "p": ["ʃ", "ɑ", "t"] }, { "i": 25, "w": "SEEK", "p": ["s", "i", "k"] }];
 
         // --- PAIRWISE MONTE CARLO WORD TABLES (N=10,25,50 | 80%,95%) ---
 
@@ -1921,7 +1921,8 @@
             const [reversedComparison, setReversedComparison] = useState(false);
 
             // Audio Routing State
-            const [channelSwap, setChannelSwap] = useState(false); // false: Speech=L, Noise=R
+            const [channelSwap, setChannelSwap] = useState(true); // true: Speech=R, Noise=L (default)
+            const [speechToBoth, setSpeechToBoth] = useState(false); // Play speech to both L and R
             const audioContextRef = useRef(null);
 
             const getAudioContext = () => {
@@ -2234,8 +2235,11 @@
                 // Set Volume to -5 dB (0.5623) to allow headroom for Noise at -5 SNR
                 audio.volume = 0.5623;
 
-                // Speech panning: Default Left (-1), Swapped Right (1)
-                const pan = channelSwap ? 1 : -1;
+                // Speech panning:
+                // If "Speech to Both" is active, pan = 0 (Center)
+                // Otherwise: Default (channelSwap=true) is Right (1), Swapped (channelSwap=false) is Left (-1)
+                const pan = speechToBoth ? 0 : (channelSwap ? 1 : -1);
+                console.log(`Speech Playing: ${wordText}, Pan: ${pan} (Both: ${speechToBoth}, Swap: ${channelSwap})`);
                 playSoundWithPan(audio, pan);
 
                 audio.play().catch(e => {
@@ -2332,8 +2336,11 @@
                     audio.loop = true;
                     audio.volume = calculateVolumeFromSNR(snrLevel);
 
-                    // Noise panning: Default Right (1), Swapped Left (-1)
+                    // Noise panning:
+                    // Default (channelSwap=true) is Left (-1)
+                    // Swapped (channelSwap=false) is Right (1)
                     const pan = channelSwap ? -1 : 1;
+                    console.log(`Noise Playing: ${listId}, Pan: ${pan} (Swap: ${channelSwap})`);
                     playSoundWithPan(audio, pan);
 
                     noiseAudioRef.current = audio;
@@ -3970,6 +3977,10 @@
                                                                         </div>
                                                                     </div>
                                                                 )}
+                                                                <button onClick={() => setSpeechToBoth(!speechToBoth)} className={`w-full py-1.5 text-[10px] font-bold border border-slate-300 rounded hover:bg-slate-200 flex items-center justify-center gap-1 mb-1 transition ${speechToBoth ? 'bg-indigo-100 text-indigo-700 border-indigo-300' : 'bg-slate-100 text-slate-600'}`}>
+                                                                    <ArrowRightLeft className="w-3 h-3" />
+                                                                    {speechToBoth ? 'Speech: L+R (Both)' : 'Speech: Single Channel'}
+                                                                </button>
                                                                 <button onClick={() => setChannelSwap(!channelSwap)} className="w-full py-1.5 text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300 rounded hover:bg-slate-200 flex items-center justify-center gap-1">
                                                                     <ArrowRightLeft className="w-3 h-3" />
                                                                     {channelSwap ? 'Speech: R | Noise: L' : 'Speech: L | Noise: R'}
