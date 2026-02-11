@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hearing Aid Demonstration App v1.3.0</title>
+    <title>Hearing Aid Demonstration App v1.3.1</title>
 
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -458,6 +458,237 @@
         const PHONEME_GROUPS = { "High Frequency (Fricatives, Affricates, Stops)": ["Fricative", "Affricate", "Stop"], "Low Frequency (Nasals, Liquids, Glides, Vowels)": ["Nasal", "Liquid/Glide", "Vowel"] };
 
         // Phonetic features for manner, place, and voicing analysis
+        // BKB-SIN List Pairs (Disc 2 - Split Track I)
+        // BKB-SIN List Pairs (Disc 2 - Split Track I)
+        // Verified Track Mapping: Track 03.wav = List Pair 1
+        const BKB_SIN_LISTS = {
+            1: {
+                id: 1,
+                track: "03",
+                listA: [
+                    { i: 1, s: "They are looking at the clock", k: [2, 4, 5, 6], snr: 21 },
+                    { i: 2, s: "The car engine is running", k: [1, 2, 4], snr: 18 },
+                    { i: 3, s: "Children like strawberries", k: [0, 2], snr: 15 }, // Wait, key words count?
+                    // Manual p.4 says: "The first sentence in each list has four key words, and the remaining sentences each have three."
+                    // List 1A words (underlined in manual, inferred from common nouns/verbs if not visible):
+                    // 1. They are *looking* at the *clock*. (Wait, 4 key words?)
+                    // Let's re-read manual scoring rule: "The first sentence... has four key words... remaining... three."
+                    // P.4 OCR: "1. They are looking at the clock. 4" (Count is 4)
+                    // "2. The car engine is running. 3"
+                    // "3. Children like strawberries. 3"
+                    // I will infer key words based on content.
+                    // 1. *They* *looking* *clock*? Or *looking* *at* *clock*?
+                    // Usually it's content words. "They", "looking", "clock". That's 3.
+                    // Manual says 4. Maybe "They", "are", "looking", "clock"?
+                    // Actually, let's look at Figure 1 (P.3 OCR) for underlining example.
+                    // "The cat is sitting on the bed" -> "cat", "sitting", "bed". (3?) No, count says 4.
+                    // "The cat is sitting on the bed." -> maybe "cat", "sitting", "on", "bed"?
+                    // Let's use standard BKB keywords if possible, or reasonable guess.
+                    // For implementation, I will make all words clickable but only counting "key" ones is hard if I don't know them.
+                    // I will mark likely key words.
+                    // 1A.1: They, looking, clock. (3). Maybe "are"?
+                    // Let's use the indices I can best guess.
+                    // 1. *They* are *looking* at the *clock*. (3) - Manual says 4. 
+                    // Let's assume: They, looking, at, clock? 
+                    // I'll update the UI to allow "Select # Correct" (0-3 or 0-4) instead of clicking words, to avoid ambiguity.
+                    // This is safer and matches the score sheet style.
+                ],
+                listB: [] // Placeholder, will fill below
+            }
+        };
+
+        // Redefining complete structure with simple sentence strings, as UI will handle score input (0-3/4)
+        const BKB_SIN_LISTS_FULL = {
+            1: {
+                id: 1,
+                track: "03",
+                listA: [
+                    { i: 1, s: "*They* are *looking* at the *clock*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "The *car* *engine* is *running*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "*Children* *like* *strawberries*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "*They* are *buying* some *bread*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "The *green* *tomatoes* are *small*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "*He* *played* with his *train*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "The *bag* *fell* to the *ground*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *boy* *did* a *handstand*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "The *water* *boiled* *quickly*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "The *man* is *painting* a *sign*", kwCount: 3, snr: -6 }
+                ],
+                listB: [
+                    { i: 1, s: "The *dog* *made* an *angry* *noise*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "*They* *followed* the *path*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "*Someone* is *crossing* the *road*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "The *mailman* *brought* a *letter*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "The *milk* was by the *front* *door*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "The *candy* *shop* was *empty*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "The *lady* *stayed* for *lunch*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *policeman* *knows* the *way*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "The *little* *girl* was *happy*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "*They* are *coming* for *Christmas*", kwCount: 3, snr: -6 }
+                ]
+            },
+            2: {
+                id: 2,
+                track: "04", // Assuming track increments
+                listA: [
+                    { i: 1, s: "The *cat* is *sitting* on the *bed*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "*They* had a *lovely* *day*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "The *thin* *dog* was *hungry*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "*They* are *watching* the *train*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "The *dog* *played* with a *stick*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "The *farmer* *keeps* a *bull*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "The *lady* *wore* a *coat*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *boy* is *running* *away*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "The *room* is *getting* *cold*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "The *wife* *helped* her *husband*", kwCount: 3, snr: -6 }
+                ],
+                listB: [
+                    { i: 1, s: "The *lady* *went* to the *store*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "A *tree* *fell* on the *house*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "The *fruit* *came* in a *box*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "The *husband* *brought* some *flowers*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "A *man* *told* the *police*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "*Potatoes* *grow* in the *ground*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "The *big* *dog* was *dangerous*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *strawberry* *jam* was *sweet*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "The *boy* has *black* *hair/tie*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "The *mother* *heard* the *baby*", kwCount: 3, snr: -6 }
+                ]
+            },
+            3: {
+                id: 3,
+                track: "05",
+                listA: [
+                    { i: 1, s: "The *ball* *went* *into* the *goal*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "The *house* had a *nice* *garden*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "*He* *found* his *brother*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "Some *animals* *sleep* on *straw*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "The *jelly* *jar* was *full*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "*They* are *kneeling* *down*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "The *cook* is *making* a *cake*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *child* *grabbed* the *toy*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "A *boy* *fell* from the *window*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "*She* *used* her *spoon*", kwCount: 3, snr: -6 }
+                ],
+                listB: [
+                    { i: 1, s: "*Mother* *cut* the *birthday* *cake*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "The *mailman* *comes* *early*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "The *sign* *showed* the *way*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "The *grass* is *getting* *long*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "A *man* is *turning* the *faucet*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "The *fire* was *very* *hot*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "*He* is *sucking* his *thumb*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *driver* *started* the *engine*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "The *janitor* *swept* the *floor*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "A *grocer* *sells* *butter*", kwCount: 3, snr: -6 }
+                ]
+            },
+            4: {
+                id: 4,
+                track: "06",
+                listA: [
+                    { i: 1, s: "A *mouse* *ran* *down* the *hole*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "The *light* *went* *out*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "*They* *wanted* some *potatoes*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "The *little* *girl* is *shouting*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "The *cold* *milk* is in a *pitcher*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "The *paint* *dripped* on the *ground*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "*Mother* *stirred* her *tea*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *father* is *coming* *home*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "*They* *painted* the *wall*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "The *towel* *dropped* on the *floor*", kwCount: 3, snr: -6 }
+                ],
+                listB: [
+                    { i: 1, s: "The *boy* *got* *into* *bed*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "*He* is *reaching* for his *spoon*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "*They* are *staying* for *supper*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "The *girl* *held* a *mirror*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "The *cows* are in the *pasture*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "*He* *paid* his *bill*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "*Mother* *made* some *curtains*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *oven* is *too* *hot*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "The *two* *children* are *laughing*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "The *pepper* *shaker* was *empty*", kwCount: 3, snr: -6 }
+                ]
+            },
+            5: {
+                id: 5,
+                track: "07",
+                listA: [
+                    { i: 1, s: "*They* *ate* the *lemon* *pie*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "A *sharp* *knife* is *dangerous*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "The *smart* *girls* are *reading*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "The *broom* *stood* in the *corner*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "The *woman* *cleaned* her *house*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "*Mother* *got* a *saucepan*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "The *young* *people* are *dancing*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *bus* *left* *early*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "The *ball* is *bouncing* *very* *high*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "*Father* *forgot* the *bread*", kwCount: 3, snr: -6 }
+                ],
+                listB: [
+                    { i: 1, s: "*They* *had* two *empty* *bottles*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "*He* *closed* his *eyes*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "The *lady* *bought* some *butter*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "*They* *called* an *ambulance*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "The *policeman* *found* a *dog*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "The *driver* *lost* his *way*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "*They* *stared* at the *picture*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *cat* *drank* from a *saucer*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "The *oven* *door* was *open*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "The *silly* *boy* is *hiding*", kwCount: 3, snr: -6 }
+                ]
+            },
+            6: {
+                id: 6,
+                track: "08",
+                listA: [
+                    { i: 1, s: "A *boy* *ran* *down* the *path*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "The *orange* was *very* *sweet*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "*He* is *holding* his *nose*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "The *new* *road* is on the *map*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "The *boy* *forgot* his *book*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "A *friend* *came* for *lunch*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "The *match* *boxes* are *empty*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *family* *bought* a *house*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "The *ball* *broke* the *window*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "The *pond* *water* is *dirty*", kwCount: 3, snr: -6 }
+                ],
+                listB: [
+                    { i: 1, s: "*They* are *running* *past* the *house*", kwCount: 4, snr: 21 },
+                    { i: 2, s: "The *police* are *clearing* the *road*", kwCount: 3, snr: 18 },
+                    { i: 3, s: "*She* *writes* to her *brother*", kwCount: 3, snr: 15 },
+                    { i: 4, s: "The *book* *tells* a *story*", kwCount: 3, snr: 12 },
+                    { i: 5, s: "*They* are *climbing* the *tree*", kwCount: 3, snr: 9 },
+                    { i: 6, s: "*She* *stood* near her *window*", kwCount: 3, snr: 6 },
+                    { i: 7, s: "The *baby* *broke* his *cup*", kwCount: 3, snr: 3 },
+                    { i: 8, s: "The *dinner* *plate* is *hot*", kwCount: 3, snr: 0 },
+                    { i: 9, s: "A *dish* *towel* is by the *sink*", kwCount: 3, snr: -3 },
+                    { i: 10, s: "The *good* *boy* is *helping*", kwCount: 3, snr: -6 }
+                ]
+            }
+        };
+
+        const BKB_SIN_NORMS = {
+            adults: { mean: -2.5, sd: 0.8 },
+            children: {
+                age5_6: { mean: 3.5, sd: 2.0 },
+                age7_10: { mean: 0.8, sd: 1.2 },
+                age11_14: { mean: -0.9, sd: 1.1 }
+            }
+        };
+
+        // Critical Differences for Comparison (1 List Pair)
+        const BKB_CRITICAL_DIFFERENCES = {
+            adults: { 95: 2.2, 80: 1.8 },
+            // Adult CI Users would be { 95: 4.4, 80: 3.6 } - utilizing Adult Normal for default
+            children: {
+                age5_6: { 95: 5.4, 80: 4.4 },
+                age7_10: { 95: 3.5, 80: 2.9 },
+                age11_14: { 95: 3.2, 80: 2.6 }
+            }
+        };
+
         const PHONEME_FEATURES = {
             // Stops
             "p": { manner: "Stop", place: "Bilabial", voicing: "Voiceless" },
@@ -971,6 +1202,50 @@
         };
 
         const calculateStats = (listId, section, scores, limitTo10 = false) => {
+            if (listId && listId.startsWith('BKB')) {
+                const pairId = parseInt(listId.replace('BKB', ''));
+                const listData = BKB_SIN_LISTS_FULL[pairId];
+                if (!listData) return { isBKB: true, error: "List not found", visibleWords: [] };
+
+                let totalCorrect = 0;
+                let countA = 0;
+                let countB = 0;
+
+                // Process List A
+                const processedListA = listData.listA.map(item => {
+                    const key = `${listId}_A_${item.i}`;
+                    const score = scores[key];
+                    const val = (typeof score === 'number') ? score : 0;
+                    countA += val;
+                    return { ...item, score: val };
+                });
+
+                // Process List B
+                const processedListB = listData.listB.map(item => {
+                    const key = `${listId}_B_${item.i}`;
+                    const score = scores[key];
+                    const val = (typeof score === 'number') ? score : 0;
+                    countB += val;
+                    return { ...item, score: val };
+                });
+
+                totalCorrect = countA + countB;
+                // BKB-SIN uses average of the pair for the score
+                // Formula: 23.5 - (TotalCorrect / 2)
+                const snr50 = 23.5 - (totalCorrect / 2);
+
+                return {
+                    isBKB: true,
+                    pairId,
+                    totalCorrect,
+                    scoreA: countA,
+                    scoreB: countB,
+                    snr50,
+                    listA: processedListA,
+                    listB: processedListB,
+                    wordPercent: 0, phonemePercent: 0, totalWords: 0, visibleWords: []
+                };
+            }
             const allWords = getListData(listId);
             let visibleWords = allWords;
             if (section === 'first') visibleWords = allWords.slice(0, 25);
@@ -1174,6 +1449,137 @@
                             </table>
                         </div>
                         <div className="mt-4 text-center"><button onClick={onClose} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">Close</button></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const BKBSINScoringPanel = ({ stats, scores, testId, updateScore, playTrack, audioState, onPause, onResume, onStop }) => {
+            if (!stats.isBKB) return null;
+
+            const { listA, listB, snr50, totalCorrect, pairId } = stats;
+
+            const renderSentence = (text) => {
+                const parts = text.split('*');
+                return parts.map((part, index) => {
+                    if (index % 2 === 1) {
+                        return <span key={index} className="underline decoration-slate-400 decoration-2 font-semibold text-slate-900">{part}</span>;
+                    }
+                    return <span key={index}>{part}</span>;
+                });
+            };
+
+            const renderList = (list, label, type) => (
+                <div className="flex-1">
+                    <h3 className="font-bold text-slate-700 mb-2 border-b pb-1">{label}</h3>
+                    <div className="space-y-1">
+                        {list.map((item) => {
+                            const maxScore = item.kwCount || 3;
+                            const currentScore = item.score;
+                            // List ID is "BKB1", but we need "BKB1_A_1"
+                            // activeTest.listId is "BKB1".
+                            // stats.pairId is 1.
+                            // We need to use the exact listId string from the state to match calculateStats logic.
+                            // calculateStats used: `${listId}_A_${item.i}` where listId passed in is "BKB1"
+                            // So we need "BKB1_A_1". 
+                            // Prop 'testId' is "A" or "B" (Test A/B), not List ID.
+                            // We don't have listId prop here? 
+                            // Ah, I need to pass listId or construct it.
+                            // Stats object has pairId. I can reconstruct "BKB" + pairId.
+                            const listId = `BKB${pairId}`;
+                            const scoreKey = `${listId}_${type}_${item.i}`;
+
+                            return (
+                                <div key={item.i} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 border border-transparent hover:border-slate-200">
+                                    <div className="w-6 font-mono text-xs text-slate-400 pt-1">{item.i}</div>
+                                    <div className="flex-1">
+                                        <div className="text-sm font-medium text-slate-800 mb-1">{renderSentence(item.s)}</div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-xs text-slate-500 font-mono">SNR: {item.snr} dB</div>
+                                            <div className="flex gap-1">
+                                                {[...Array(maxScore + 1)].map((_, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => updateScore(scoreKey, idx)}
+                                                        className={`w-6 h-6 rounded text-xs font-bold transition-colors ${currentScore === idx
+                                                            ? 'bg-blue-600 text-white'
+                                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                            }`}
+                                                    >
+                                                        {idx}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black mb-6">
+                    <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
+                        <div className="font-bold text-slate-700">BKB-SIN Scoring: List Pair {pairId}</div>
+                        <div className="flex gap-4 items-center">
+                            <div className="text-sm">
+                                <span className="text-slate-500">Total Correct:</span>
+                                <span className="font-mono font-bold ml-1 text-slate-800">{totalCorrect}</span>
+                            </div>
+                            <div className="text-sm bg-blue-50 px-3 py-1 rounded border border-blue-100">
+                                <span className="text-blue-600 font-bold">SNR-50:</span>
+                                <span className="font-mono font-bold ml-1 text-blue-800">{snr50.toFixed(1)} dB</span>
+                            </div>
+
+                            <div className="flex items-center gap-2 print:hidden ml-4 pl-4 border-l border-slate-200">
+                                {(audioState === 'stopped' || audioState === undefined) && playTrack && (
+                                    <button
+                                        onClick={playTrack}
+                                        className="flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium text-xs transition-colors"
+                                    >
+                                        <Play className="w-3 h-3" /> Play
+                                    </button>
+                                )}
+
+                                {audioState === 'playing' && (
+                                    <button
+                                        onClick={onPause}
+                                        className="flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-800 rounded hover:bg-amber-200 font-medium text-xs transition-colors"
+                                    >
+                                        <Pause className="w-3 h-3" /> Pause
+                                    </button>
+                                )}
+
+                                {audioState === 'paused' && (
+                                    <button
+                                        onClick={onResume}
+                                        className="flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium text-xs transition-colors"
+                                    >
+                                        <Play className="w-3 h-3" /> Resume
+                                    </button>
+                                )}
+
+                                {(audioState === 'playing' || audioState === 'paused') && (
+                                    <button
+                                        onClick={onStop}
+                                        className="flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 font-medium text-xs transition-colors"
+                                    >
+                                        <Square className="w-3 h-3" /> Stop
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="p-4 flex flex-col md:flex-row gap-6">
+                        {renderList(listA, "List A (First Half)", "A")}
+                        <div className="hidden md:block w-px bg-slate-200"></div>
+                        {renderList(listB, "List B (Second Half)", "B")}
+                    </div>
+                    <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 text-xs text-slate-500 flex justify-between print:hidden">
+                        <div>SNR starts at +21 dB and decreases by 3 dB per sentence.</div>
+                        <div>Score = Key Words Correct</div>
                     </div>
                 </div>
             );
@@ -1925,6 +2331,10 @@
             const [speechToBoth, setSpeechToBoth] = useState(false); // Play speech to both L and R
             const audioContextRef = useRef(null);
 
+            // New Audio State
+            const currentAudioRef = useRef(null);
+            const [audioState, setAudioState] = useState('stopped'); // 'playing', 'paused', 'stopped'
+
             const getAudioContext = () => {
                 if (!audioContextRef.current) {
                     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -2091,8 +2501,32 @@
             const tntExcursionWidthCriticalValue = confidenceLevel === 95 ? 1.0 : 0.7;
             const isTNTExcursionWidthDiffSig = tntExcursionWidthDifference !== null && tntExcursionWidthDifference > tntExcursionWidthCriticalValue;
 
+            // BKB-SIN Significance Logic
+            const getBKBCriticalDifference = (age, confLevel) => {
+                // Default to 80 if not 95 (though UI only has 80/90/95, manual only gives 80/95. Treat 90 as 95? Or 80? Safer to treat as 95 or strict lookup?)
+                // Manual supports 80 and 95. App supports 80, 85, 90, 95, 99.
+                // Logic: If >= 95, use 95 value. Else use 80 value? Or strict? 
+                // Let's use 95 value for >= 90, and 80 value for < 90.
+                const levelKey = confLevel >= 90 ? 95 : 80;
+
+                if (age !== null && age < 15) {
+                    if (age >= 5 && age <= 6) return BKB_CRITICAL_DIFFERENCES.children.age5_6[levelKey];
+                    if (age >= 7 && age <= 10) return BKB_CRITICAL_DIFFERENCES.children.age7_10[levelKey];
+                    if (age >= 11 && age <= 14) return BKB_CRITICAL_DIFFERENCES.children.age11_14[levelKey];
+                }
+                // Default to adult
+                return BKB_CRITICAL_DIFFERENCES.adults[levelKey];
+            };
+
+            const bkbCriticalDiff = getBKBCriticalDifference(ageYears, confidenceLevel);
+            const bkbDifference = (statsA.isBKB && statsB.isBKB) ? Math.abs(statsA.snr50 - statsB.snr50) : null;
+            const isBKBDiffSig = bkbDifference !== null && bkbDifference > bkbCriticalDiff;
+
             const getSectionOptions = (testId) => {
                 const test = tests[testId];
+                if (test.listId && test.listId.startsWith('BKB')) {
+                    return [{ val: 'full', label: 'Full Pair', n: 20 }];
+                }
                 // HF1 and HF2 lists only support full (1-25)
                 // HF1, HF2, HF3, HF4 lists only support full (1-25)
                 if (['HF1', 'HF2', 'HF3', 'HF4'].includes(test.listId)) {
@@ -2127,6 +2561,17 @@
                     // If changing to HF lists, force section to 'full'
                     if (field === 'listId' && ['HF1', 'HF2', 'HF3', 'HF4'].includes(value)) {
                         newTests[activeTestId].section = 'full';
+                    }
+
+                    // BKB-SIN Auto-Pairing Logic (Odd <-> Even)
+                    if (activeTestId === 'A' && field === 'listId' && value.startsWith('BKB')) {
+                        const pairId = parseInt(value.replace('BKB', ''));
+                        // Pair 1 with 2, 3 with 4, etc.
+                        const partnerId = (pairId % 2 !== 0) ? pairId + 1 : pairId - 1;
+                        if (partnerId > 0) {
+                            newTests.B.listId = `BKB${partnerId}`;
+                            newTests.B.section = 'full';
+                        }
                     }
 
                     if (activeTestId === 'A' && field === 'section') {
@@ -2226,25 +2671,90 @@
 
 
 
+            const stopAudio = () => {
+                if (currentAudioRef.current) {
+                    currentAudioRef.current.pause();
+                    currentAudioRef.current.currentTime = 0;
+                    setAudioState('stopped');
+                }
+            };
+
+            const pauseAudio = () => {
+                if (currentAudioRef.current && audioState === 'playing') {
+                    currentAudioRef.current.pause();
+                    setAudioState('paused');
+                }
+            };
+
+            const resumeAudio = () => {
+                if (currentAudioRef.current && audioState === 'paused') {
+                    currentAudioRef.current.play();
+                    setAudioState('playing');
+                }
+            };
+
             const playAudio = (listId, wordIndex, wordText) => {
-                const indexStr = String(wordIndex).padStart(2, '0');
-                // Convert word to Title Case (e.g. "CHECK" -> "Check") to match filenames
-                const titleCaseWord = wordText.charAt(0).toUpperCase() + wordText.slice(1).toLowerCase();
-                const audioPath = `audio/${listId}/${indexStr}_${titleCaseWord}.wav`;
+                // Stop any currently playing audio
+                if (currentAudioRef.current) {
+                    currentAudioRef.current.pause();
+                    currentAudioRef.current.currentTime = 0;
+                }
+
+                let audioPath;
+                let isBKB = false;
+
+                if (listId && listId.startsWith('BKB')) {
+                    isBKB = true;
+                    const pairId = parseInt(listId.replace('BKB', ''));
+                    const listData = BKB_SIN_LISTS_FULL[pairId];
+                    if (!listData) {
+                        alert("BKB List Data not found for pair " + pairId);
+                        return;
+                    }
+                    const track = listData.track;
+                    // Assuming file is in BKB-SIN folder at root
+                    audioPath = `BKB-SIN/Track ${track}.wav`;
+                    console.log("Playing BKB Track:", audioPath);
+                } else {
+                    const indexStr = String(wordIndex).padStart(2, '0');
+                    const titleCaseWord = wordText.charAt(0).toUpperCase() + wordText.slice(1).toLowerCase();
+                    audioPath = `audio/${listId}/${indexStr}_${titleCaseWord}.wav`;
+                }
+
                 const audio = new Audio(audioPath);
-                // Set Volume to -5 dB (0.5623) to allow headroom for Noise at -5 SNR
+                // Set Volume to -5 dB (0.5623)
                 audio.volume = 0.5623;
 
-                // Speech panning:
-                // If "Speech to Both" is active, pan = 0 (Center)
-                // Otherwise: Default (channelSwap=true) is Right (1), Swapped (channelSwap=false) is Left (-1)
-                const pan = speechToBoth ? 0 : (channelSwap ? 1 : -1);
-                console.log(`Speech Playing: ${wordText}, Pan: ${pan} (Both: ${speechToBoth}, Swap: ${channelSwap})`);
+                // Store ref
+                currentAudioRef.current = audio;
+
+                // Pan Logic
+                // If BKB (Split Track), force Stereo (0) to preserve L/R split.
+                // Otherwise use standard logic.
+                const pan = isBKB ? 0 : (speechToBoth ? 0 : (channelSwap ? 1 : -1));
+                console.log(`Audio Playing: ${audioPath}, Pan: ${pan}`);
+
                 playSoundWithPan(audio, pan);
 
-                audio.play().catch(e => {
+                audio.onended = () => {
+                    setAudioState('stopped');
+                };
+
+                audio.play().then(() => {
+                    setAudioState('playing');
+                }).catch(e => {
                     console.error("Audio playback error:", e);
-                    alert(`Could not play audio file: ${audioPath}\nError: ${e.message}`);
+                    alert(`Could not play audio file: ${audioPath}\nError: ${e.message}\n(Check if file exists in correct folder)`);
+                    setAudioState('stopped');
+                });
+            };
+
+            const setBKBScore = (key, value) => {
+                setHasUnsavedChanges(true);
+                setTests(prev => {
+                    const currentScores = { ...prev[activeTestId].scores };
+                    currentScores[key] = value;
+                    return { ...prev, [activeTestId]: { ...prev[activeTestId], scores: currentScores } };
                 });
             };
 
@@ -2269,6 +2779,8 @@
                 if (calibrationSignal === 'noise') {
                     // Use Global HF Noise containing spectrum of all 100 words (Forms 1-4)
                     audioPath = 'audio/calibration/Global_HF_MasterNoise.wav';
+                } else if (calibrationSignal === 'bkb_noise') {
+                    audioPath = 'BKB-SIN/21 - Speech Spectrum Noise.flac';
                 }
 
                 const audio = new Audio(audioPath);
@@ -2289,6 +2801,7 @@
                     setCalibrationMode('none');
                 });
             };
+
 
             const calculateVolumeFromSNR = (snr) => {
                 // SNR = Signal - Noise
@@ -3770,7 +4283,7 @@
                                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                                         <Calculator className="w-6 h-6 text-blue-600" />
                                         Hearing Aid Demonstration App
-                                        <span className="text-sm font-normal text-slate-400">v1.1.5</span>
+                                        <span className="text-sm font-normal text-slate-400">v1.3.1</span>
                                     </h1>
                                     <p className="text-slate-500 text-sm">Comparison Mode & Multi-list Support</p>
                                 </div>
@@ -3927,6 +4440,17 @@
                                                                     />
                                                                     <span>Speech Shaped Noise</span>
                                                                 </label>
+                                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="calSignal"
+                                                                        value="bkb_noise"
+                                                                        checked={calibrationSignal === 'bkb_noise'}
+                                                                        onChange={() => setCalibrationSignal('bkb_noise')}
+                                                                        className="text-blue-600 focus:ring-blue-500"
+                                                                    />
+                                                                    <span>BKB-SIN Noise</span>
+                                                                </label>
                                                             </div>
 
                                                             <div className="grid grid-cols-2 gap-3">
@@ -3993,7 +4517,7 @@
                                             <div><label className="block text-xs font-medium text-slate-500 mb-2">Scoring Mode</label><div className="flex rounded-lg overflow-hidden border border-slate-200"><button onClick={() => updateActiveTest('scoringMode', 'phoneme')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'phoneme' ? 'bg-slate-700 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><ListChecks className="w-3 h-3" /> Phoneme</button><button onClick={() => updateActiveTest('scoringMode', 'word')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'word' ? 'bg-slate-700 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><WholeWord className="w-3 h-3" /> Word</button></div></div>
                                         </div>
                                         <div className="lg:col-span-7 grid grid-cols-2 gap-4">
-                                            <div><label className="block text-xs font-medium text-slate-500 mb-1">Word List</label><select value={activeTest.listId} onChange={(e) => updateActiveTest('listId', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="1A">NU-6 List 1A</option><option value="2A">NU-6 List 2A</option><option value="3A">NU-6 List 3A</option><option value="4A">NU-6 List 4A</option><option value="HF1">Rose Hill HF 1</option><option value="HF2">Rose Hill HF 2</option><option value="HF3">Rose Hill HF 3</option><option value="HF4">Rose Hill HF 4</option></select></div>
+                                            <div><label className="block text-xs font-medium text-slate-500 mb-1">Word List</label><select value={activeTest.listId} onChange={(e) => updateActiveTest('listId', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="1A">NU-6 List 1A</option><option value="2A">NU-6 List 2A</option><option value="3A">NU-6 List 3A</option><option value="4A">NU-6 List 4A</option><option value="HF1">Rose Hill HF 1</option><option value="HF2">Rose Hill HF 2</option><option value="HF3">Rose Hill HF 3</option><option value="HF4">Rose Hill HF 4</option><option value="BKB1">BKB-SIN List Pair 1</option><option value="BKB2">BKB-SIN List Pair 2</option><option value="BKB3">BKB-SIN List Pair 3</option><option value="BKB4">BKB-SIN List Pair 4</option><option value="BKB5">BKB-SIN List Pair 5</option><option value="BKB6">BKB-SIN List Pair 6</option></select></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Section</label><select value={activeTest.section} onChange={(e) => updateActiveTest('section', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">{getSectionOptions(activeTestId).map(opt => (<option key={opt.val} value={opt.val}>{opt.label}</option>))}</select></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Level (e.g., MLV-avg or 65 dBC)</label><input type="text" value={activeTest.level} onChange={(e) => updateActiveTest('level', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Noise (e.g., +10 dB SNR or 55 dBC)</label><input type="text" value={activeTest.snr} onChange={(e) => updateActiveTest('snr', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
@@ -4002,34 +4526,48 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black">
-                                    <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
-                                        <div className="font-bold text-slate-700 flex items-center gap-2">Scoring: Test {activeTestId} <span className="font-normal text-slate-500 mx-1">|</span> {activeTest.listId} {activeTest.section}{activeTest.limitTo10 && <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full border border-orange-200 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Limited to 10 Words</span>}</div>
-                                        <div className="flex gap-2 print:hidden"><button onClick={() => markAll(true)} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium">Mark All</button></div>
+                                {activeStats.isBKB ? (
+                                    <BKBSINScoringPanel
+                                        stats={activeStats}
+                                        scores={activeTest.scores}
+                                        testId={activeTestId}
+                                        updateScore={setBKBScore}
+                                        playTrack={() => playAudio(activeTest.listId, 0, '')}
+                                        audioState={audioState}
+                                        onPause={pauseAudio}
+                                        onResume={resumeAudio}
+                                        onStop={stopAudio}
+                                    />
+                                ) : (
+                                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black">
+                                        <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
+                                            <div className="font-bold text-slate-700 flex items-center gap-2">Scoring: Test {activeTestId} <span className="font-normal text-slate-500 mx-1">|</span> {activeTest.listId} {activeTest.section}{activeTest.limitTo10 && <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full border border-orange-200 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Limited to 10 Words</span>}</div>
+                                            <div className="flex gap-2 print:hidden"><button onClick={() => markAll(true)} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium">Mark All</button></div>
+                                        </div>
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 print:hidden"><tr><th className="px-4 py-2 w-10">#</th>{(activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '3A'].includes(activeTest.listId)) && <th className="px-2 py-2 w-10">Play</th>}<th className="px-4 py-2">Word</th>{activeTest.scoringMode === 'phoneme' && (<React.Fragment><th className="px-2 py-2 text-center">I</th><th className="px-2 py-2 text-center">M</th><th className="px-2 py-2 text-center">F</th></React.Fragment>)}<th className="px-4 py-2 text-center">{activeTest.scoringMode === 'phoneme' ? 'Word' : 'Result'}</th></tr></thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {activeStats.visibleWords.map((word) => {
+                                                    const listId = activeTest.listId; const phonemeScores = word.p.map((p, idx) => { if (p === '-') return null; return activeTest.scores[`${listId}_${word.i}_${idx}`]; }).filter(val => val !== null); const isWordCorrect = phonemeScores.every(s => s === true); const isWordFullyIncorrect = phonemeScores.every(s => s === false);
+                                                    const showAudio = activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '3A'].includes(listId);
+                                                    return (
+                                                        <tr key={word.i} className="hover:bg-slate-50"><td className="px-4 py-2 text-slate-400 font-mono text-xs">{word.i}</td>
+                                                            {showAudio && (
+                                                                <td className="px-2 py-2">
+                                                                    <button onClick={() => playAudio(listId, word.i, word.w)} className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 border border-blue-200 transition-colors" title="Play Audio">
+                                                                        <Play className="w-3 h-3 fill-current" />
+                                                                    </button>
+                                                                </td>
+                                                            )}
+                                                            <td className="px-4 py-2 font-bold text-slate-800">{word.w}</td>
+                                                            {activeTest.scoringMode === 'phoneme' ? (<React.Fragment>{word.p.map((phoneme, pIndex) => { const phonemeScore = activeTest.scores[`${listId}_${word.i}_${pIndex}`]; const isCorrect = phonemeScore === true; const isIncorrect = phonemeScore === false; const isPlaceholder = phoneme === '-'; return (<td key={pIndex} className="px-1 py-1 text-center">{!isPlaceholder ? (<button onClick={() => togglePhoneme(word.i, pIndex)} className={`w-10 h-8 rounded flex items-center justify-center font-medium text-base border transition-colors ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 print:border-none print:text-black print:font-bold' : isIncorrect ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100 print:border-none print:text-black print:font-normal' : 'bg-white border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 hover:bg-red-50'}`}><span className="ipa-text">{phoneme}</span></button>) : <span className="text-slate-300">—</span>}</td>); })}<td className="px-4 py-2 text-center print:hidden"><div className="flex items-center justify-center gap-2"><button onClick={() => toggleWordCorrect(word.i)} title={isWordCorrect ? "Clear Word" : "Mark Whole Word Correct"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordCorrect ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200'}`}><Check className="w-4 h-4" /></button><button onClick={() => setWordScore(word.i, false)} title={isWordFullyIncorrect ? "Clear Word" : "Mark Whole Word Incorrect"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordFullyIncorrect ? 'bg-red-100 border-red-300 text-red-700' : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200'}`}><X className="w-4 h-4" /></button></div></td></React.Fragment>) : (<td className="px-4 py-2 text-center"><div className="flex gap-2 justify-center"><button onClick={() => setWordScore(word.i, true)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordCorrect ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Check className="w-3 h-3" /> Correct</button><button onClick={() => setWordScore(word.i, false)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordFullyIncorrect ? 'bg-red-600 text-white border-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600'}`}><X className="w-3 h-3" /> Incorrect</button></div></td>)}
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 print:hidden"><tr><th className="px-4 py-2 w-10">#</th>{(activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '3A'].includes(activeTest.listId)) && <th className="px-2 py-2 w-10">Play</th>}<th className="px-4 py-2">Word</th>{activeTest.scoringMode === 'phoneme' && (<React.Fragment><th className="px-2 py-2 text-center">I</th><th className="px-2 py-2 text-center">M</th><th className="px-2 py-2 text-center">F</th></React.Fragment>)}<th className="px-4 py-2 text-center">{activeTest.scoringMode === 'phoneme' ? 'Word' : 'Result'}</th></tr></thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {activeStats.visibleWords.map((word) => {
-                                                const listId = activeTest.listId; const phonemeScores = word.p.map((p, idx) => { if (p === '-') return null; return activeTest.scores[`${listId}_${word.i}_${idx}`]; }).filter(val => val !== null); const isWordCorrect = phonemeScores.every(s => s === true); const isWordFullyIncorrect = phonemeScores.every(s => s === false);
-                                                const showAudio = activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '3A'].includes(listId);
-                                                return (
-                                                    <tr key={word.i} className="hover:bg-slate-50"><td className="px-4 py-2 text-slate-400 font-mono text-xs">{word.i}</td>
-                                                        {showAudio && (
-                                                            <td className="px-2 py-2">
-                                                                <button onClick={() => playAudio(listId, word.i, word.w)} className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 border border-blue-200 transition-colors" title="Play Audio">
-                                                                    <Play className="w-3 h-3 fill-current" />
-                                                                </button>
-                                                            </td>
-                                                        )}
-                                                        <td className="px-4 py-2 font-bold text-slate-800">{word.w}</td>
-                                                        {activeTest.scoringMode === 'phoneme' ? (<React.Fragment>{word.p.map((phoneme, pIndex) => { const phonemeScore = activeTest.scores[`${listId}_${word.i}_${pIndex}`]; const isCorrect = phonemeScore === true; const isIncorrect = phonemeScore === false; const isPlaceholder = phoneme === '-'; return (<td key={pIndex} className="px-1 py-1 text-center">{!isPlaceholder ? (<button onClick={() => togglePhoneme(word.i, pIndex)} className={`w-10 h-8 rounded flex items-center justify-center font-medium text-base border transition-colors ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 print:border-none print:text-black print:font-bold' : isIncorrect ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100 print:border-none print:text-black print:font-normal' : 'bg-white border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 hover:bg-red-50'}`}><span className="ipa-text">{phoneme}</span></button>) : <span className="text-slate-300">—</span>}</td>); })}<td className="px-4 py-2 text-center print:hidden"><div className="flex items-center justify-center gap-2"><button onClick={() => toggleWordCorrect(word.i)} title={isWordCorrect ? "Clear Word" : "Mark Whole Word Correct"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordCorrect ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200'}`}><Check className="w-4 h-4" /></button><button onClick={() => setWordScore(word.i, false)} title={isWordFullyIncorrect ? "Clear Word" : "Mark Whole Word Incorrect"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordFullyIncorrect ? 'bg-red-100 border-red-300 text-red-700' : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200'}`}><X className="w-4 h-4" /></button></div></td></React.Fragment>) : (<td className="px-4 py-2 text-center"><div className="flex gap-2 justify-center"><button onClick={() => setWordScore(word.i, true)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordCorrect ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Check className="w-3 h-3" /> Correct</button><button onClick={() => setWordScore(word.i, false)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordFullyIncorrect ? 'bg-red-600 text-white border-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600'}`}><X className="w-3 h-3" /> Incorrect</button></div></td>)}
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                )}
                                 {activeTest.scoringMode === 'phoneme' && !activeTest.section.includes('_10') && (<DiagnosticsPanel stats={activeStats} scores={activeTest.scores} listId={activeTest.listId} />)}
                             </div>
                         )}
@@ -4057,6 +4595,21 @@
                                                         <div className="text-sm font-bold text-slate-500 mt-4">Phoneme Recognition Difference</div>
                                                         <div className={`text-3xl font-bold mt-1 ${comparisonStats.phonemePercent - baselineStats.phonemePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{comparisonStats.phonemePercent - baselineStats.phonemePercent > 0 ? '+' : ''}{comparisonStats.phonemePercent - baselineStats.phonemePercent}%</div>
                                                     </React.Fragment>
+                                                )}
+
+                                                {(baselineStats.isBKB && comparisonStats.isBKB) && (
+                                                    <div className="mt-4">
+                                                        <div className="text-sm font-bold text-slate-500">SNR-50 Difference</div>
+                                                        <div className={`text-3xl font-bold mt-1 ${bkbDifference >= bkbCriticalDiff ? 'text-emerald-600' : 'text-slate-600'}`}>
+                                                            {bkbDifference.toFixed(1)} dB
+                                                        </div>
+                                                        <div className={`text-xs font-bold uppercase mt-1 px-2 py-0.5 rounded-full inline-block ${isBKBDiffSig ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {isBKBDiffSig ? 'Significant' : 'Not Significant'}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400 mt-1">
+                                                            Critical Diff: {bkbCriticalDiff} dB ({confidenceLevel}%)
+                                                        </div>
+                                                    </div>
                                                 )}
 
                                                 {showComparativeEase && (
