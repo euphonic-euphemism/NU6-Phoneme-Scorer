@@ -1,7 +1,7 @@
 {
   "name": "hearing-aid-demonstration-app",
   "productName": "Hearing-Aid-Demonstration-App",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "NU-6 Whole Word and Phoneme Scoring Application",
   "main": "main.js",
   "homepage": "https://github.com/euphonic-euphemism/NU6-Phoneme-Scorer",
@@ -28,12 +28,14 @@
       "nu6_scoring_app.html",
       "tailwind.min.css",
       "*.csv",
-      "audio/**/*"
+      "audio/**/*",
+      "BKB-SIN/**/*"
     ],
     "asarUnpack": [
       "*.csv",
       "tailwind.min.css",
-      "audio/**/*"
+      "audio/**/*",
+      "BKB-SIN/**/*"
     ],
     "directories": {
       "output": "dist"

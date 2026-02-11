@@ -1,0 +1,133 @@
+127.0.0.1 - - [11/Feb/2026 11:22:09] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:22:10] "GET /tailwind.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:22:15] "GET /80_Word_Recognition_Critical_Differences_Simulated_v2.csv HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:22:15] "GET /95_Word_Recognition_Critical_Differences_Simulated_v2.csv HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:22:16] code 404, message File not found
+127.0.0.1 - - [11/Feb/2026 11:22:16] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [11/Feb/2026 11:26:07] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:28:50] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:29:22] "GET /BKB-SIN/Track%2003.wav HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:32:18] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:32:57] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:37:51] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:41:49] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:45:29] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 11:45:58] "GET /BKB-SIN/Track%2006.wav HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 60602)
+127.0.0.1 - - [11/Feb/2026 12:02:24] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+Traceback (most recent call last):
+  File "/usr/lib/python3.13/socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/http/server.py", line 1320, in finish_request
+    self.RequestHandlerClass(request, client_address, self,
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             directory=args.directory)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/http/server.py", line 672, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/http/server.py", line 436, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/http/server.py", line 424, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "/usr/lib/python3.13/http/server.py", line 679, in do_GET
+    self.copyfile(f, self.wfile)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/http/server.py", line 881, in copyfile
+    shutil.copyfileobj(source, outputfile)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/shutil.py", line 204, in copyfileobj
+    fdst_write(buf)
+    ~~~~~~~~~~^^^^^
+  File "/usr/lib/python3.13/socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionResetError: [Errno 104] Connection reset by peer
+----------------------------------------
+127.0.0.1 - - [11/Feb/2026 12:02:49] "GET /BKB-SIN/Track%2008.wav HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 39622)
+Traceback (most recent call last):
+  File "/usr/lib/python3.13/socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/http/server.py", line 1320, in finish_request
+    self.RequestHandlerClass(request, client_address, self,
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             directory=args.directory)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/http/server.py", line 672, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/http/server.py", line 436, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/http/server.py", line 424, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "/usr/lib/python3.13/http/server.py", line 679, in do_GET
+    self.copyfile(f, self.wfile)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/http/server.py", line 881, in copyfile
+    shutil.copyfileobj(source, outputfile)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/shutil.py", line 204, in copyfileobj
+    fdst_write(buf)
+    ~~~~~~~~~~^^^^^
+  File "/usr/lib/python3.13/socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionResetError: [Errno 104] Connection reset by peer
+----------------------------------------
+127.0.0.1 - - [11/Feb/2026 12:09:41] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 12:10:14] "GET /BKB-SIN/21%20-%20Speech%20Spectrum%20Noise.flac HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 12:15:47] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 12:16:16] "GET /BKB-SIN/Track%2007.wav HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 57942)
+Traceback (most recent call last):
+  File "/usr/lib/python3.13/socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/http/server.py", line 1320, in finish_request
+    self.RequestHandlerClass(request, client_address, self,
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             directory=args.directory)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/http/server.py", line 672, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/http/server.py", line 436, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/http/server.py", line 424, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "/usr/lib/python3.13/http/server.py", line 679, in do_GET
+    self.copyfile(f, self.wfile)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/http/server.py", line 881, in copyfile
+    shutil.copyfileobj(source, outputfile)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/shutil.py", line 204, in copyfileobj
+    fdst_write(buf)
+    ~~~~~~~~~~^^^^^
+  File "/usr/lib/python3.13/socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+127.0.0.1 - - [11/Feb/2026 12:18:29] "GET /nu6_scoring_app.html HTTP/1.1" 200 -
+ConnectionResetError: [Errno 104] Connection reset by peer
+----------------------------------------
