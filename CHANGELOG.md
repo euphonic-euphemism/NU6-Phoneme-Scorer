@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.5] - 2026-02-15
+### Added
+- Speech Spectrum Noise generation based on Rose Hill HF LTASS.
+
 ## [1.3.4] - 2026-02-15
 ### Changed
 - Updated Rose Hill High Frequency Word Lists 1-4 with new words (e.g., CASE, SHOUT, CHESS, TASK, STIFF).
