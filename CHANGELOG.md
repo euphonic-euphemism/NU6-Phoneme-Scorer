@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.6] - 2026-02-15
+### Fixed
+- Restored missing audio files for HF List 1 (e.g., Sit, Shape, Youth) that were accidentally deleted in v1.3.5.
+
 ## [1.3.5] - 2026-02-15
 ### Added
 - Speech Spectrum Noise generation based on Rose Hill HF LTASS.
