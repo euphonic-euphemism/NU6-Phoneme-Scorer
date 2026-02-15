@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.4] - 2026-02-15
+### Changed
+- Updated Rose Hill High Frequency Word Lists 1-4 with new words (e.g., CASE, SHOUT, CHESS, TASK, STIFF).
+- Replaced audio files for all High Frequency lists with high-quality recordings.
+- Corrected phonemes for "MUSH" (List 4) and "CASE" (List 1).
+- Added cache-busting to audio playback to ensure new files are loaded.
+
 ## [1.3.3] - 2026-02-14
 ### Added
 - Added BKB-SIN List Pairs 7, 8, 9, and 10 with corresponding audio and sentence data.
