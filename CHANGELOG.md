@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.7] - 2026-02-18
+### Added
+- **New Test Modal**: Added a dialog when starting a new test to choose between:
+    - **Same Patient**: Clears test data but preserves Patient Name, ID, DOB, and Clinic Settings.
+    - **New Patient**: Clears ALL data for a fresh start.
+
 ## [1.3.6] - 2026-02-15
 ### Fixed
 - Restored missing audio files for HF List 1 (e.g., Sit, Shape, Youth) that were accidentally deleted in v1.3.5.

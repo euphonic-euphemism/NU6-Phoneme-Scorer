@@ -1,7 +1,7 @@
 {
   "name": "hearing-aid-demonstration-app",
   "productName": "Hearing-Aid-Demonstration-App",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "description": "NU-6 Whole Word and Phoneme Scoring Application",
   "main": "main.js",
   "homepage": "https://github.com/euphonic-euphemism/NU6-Phoneme-Scorer",

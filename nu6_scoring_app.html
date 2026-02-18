@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hearing Aid Demonstration App v1.3.6</title>
+    <title>Hearing Aid Demonstration App v1.3.7</title>
 
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -425,6 +425,8 @@
         const Trash2 = (props) => (<IconBase {...props}><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></IconBase>);
         const CheckCircle2 = (props) => (<IconBase {...props}><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></IconBase>);
         const RotateCcw = (props) => (<IconBase {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></IconBase>);
+        const UserCheck = (props) => (<IconBase {...props}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><polyline points="16 11 18 13 22 9" /></IconBase>);
+        const UserPlus = (props) => (<IconBase {...props}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></IconBase>);
         const Check = (props) => (<IconBase {...props}><polyline points="20 6 9 17 4 12" /></IconBase>);
         const X = (props) => (<IconBase {...props}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></IconBase>);
         const BarChart3 = (props) => (<IconBase {...props}><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></IconBase>);
@@ -1964,40 +1966,46 @@
             return (<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"> <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 relative"> <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"> <X className="w-5 h-5" /> </button> <div className="flex flex-col items-center text-center"> <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4 text-blue-600"> <AlertCircle className="w-6 h-6" /> </div> <h3 className="text-lg font-bold text-slate-800 mb-2">Phoneme Scoring Note</h3> <p className="text-sm text-slate-600 mb-6 leading-relaxed"> Phoneme scores are typically about <strong>20% better</strong> than whole word scores. You may want to use a <strong>lower (more difficult) SNR</strong> to avoid ceiling effects. </p> <button onClick={onClose} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium w-full transition-colors"> Got it </button> </div> </div> </div>);
         };
 
+        const Edit = (props) => (<IconBase {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></IconBase>);
         const LoadTestModal = ({ isOpen, onClose, onLoad }) => {
-            const [tests, setTestsList] = useState([]);
-            const [loading, setLoading] = useState(true);
-            const [search, setSearch] = useState("");
+            const [search, setSearch] = useState('');
+            const [historyData, setHistoryData] = useState([]);
+            const [loading, setLoading] = useState(false);
 
             useEffect(() => {
-                if (!isOpen) return;
-                setLoading(true);
-                window.SecureDB.getAllTests().then(data => {
-                    setTestsList(data);
-                    setLoading(false);
-                }).catch(err => {
-                    console.error("Error fetching local tests:", err);
-                    setLoading(false);
-                });
+                if (isOpen) {
+                    setLoading(true);
+                    window.SecureDB.getAllTests().then(data => {
+                        setHistoryData(data);
+                        setLoading(false);
+                    });
+                }
             }, [isOpen]);
 
-            // ImportPreviewModal moved to top-level
-
-            const handleDelete = async (testId, e) => {
+            const handleDelete = async (id, e) => {
                 e.stopPropagation();
-                if (confirm("Are you sure you want to delete this test? This cannot be undone.")) {
+                if (confirm("Are you sure you want to delete this record?")) {
                     try {
-                        await window.SecureDB.deleteTest(testId);
-                        const updated = await window.SecureDB.getAllTests();
-                        setTestsList(updated);
-                    } catch (err) { console.error("Error deleting:", err); alert("Delete failed"); }
+                        await window.SecureDB.deleteTest(id);
+                        setHistoryData(prev => prev.filter(t => t.id !== id));
+                    } catch (err) {
+                        alert("Failed to delete record");
+                    }
                 }
             };
 
-            const filtered = tests.filter(t =>
-                (t.patientName || "").toLowerCase().includes(search.toLowerCase()) ||
-                (t.cNumber || "").toLowerCase().includes(search.toLowerCase())
-            );
+            // Edit handler - same as load but explicit
+            const handleEdit = (test, e) => {
+                e.stopPropagation();
+                onLoad(test);
+                onClose();
+            };
+
+            const filtered = historyData.filter(t => {
+                const s = search.toLowerCase();
+                return (t.patientName && t.patientName.toLowerCase().includes(s)) ||
+                    (t.cNumber && t.cNumber.toLowerCase().includes(s));
+            });
 
             if (!isOpen) return null;
 
@@ -2016,12 +2024,15 @@
                             {loading ? <div className="text-center py-8 text-slate-500"><Loader className="w-8 h-8 mx-auto mb-2 text-blue-600" />Loading records...</div> :
                                 filtered.length === 0 ? <div className="text-center py-8 text-slate-500 italic">No matching records found in secure database.</div> :
                                     filtered.map(test => (
-                                        <div key={test.id} onClick={() => { onLoad(test); onClose(); }} className="p-3 border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-blue-300 cursor-pointer transition group flex justify-between items-center">
-                                            <div>
+                                        <div key={test.id} className="p-3 border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-blue-300 transition group flex justify-between items-center">
+                                            <div onClick={() => { onLoad(test); onClose(); }} className="flex-1 cursor-pointer">
                                                 <div className="font-bold text-slate-800">{test.patientName} <span className="text-slate-400 font-normal">#{test.cNumber}</span></div>
                                                 <div className="text-xs text-slate-500">{test.testDate} • {test.tests.A.condition} vs {test.tests.B.condition}</div>
                                             </div>
-                                            <button onClick={(e) => handleDelete(test.id, e)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                                            <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={(e) => handleEdit(test, e)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition" title="Edit Test"><Edit className="w-4 h-4" /></button>
+                                                <button onClick={(e) => handleDelete(test.id, e)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition" title="Delete Test"><Trash2 className="w-4 h-4" /></button>
+                                            </div>
                                         </div>
                                     ))}
                         </div>
@@ -2029,6 +2040,9 @@
                 </div>
             );
         };
+
+        // ... (Other components) ...
+
 
         // Import Preview Modal (top-level)
         const ImportPreviewModal = ({ isOpen, onClose, fileName, records, invalidCount, onImportOverwrite, onImportAppend, onImportSkip, onImportMerge, onImportUseSelected, defaultMode }) => {
@@ -2088,100 +2102,11 @@
                 if (!cNumber) return;
                 setLoading(true);
                 window.SecureDB.getPatientHistory(cNumber).then(data => {
-                    setHistoryData(data);
+                    const sortedData = [...data].sort((a, b) => new Date(b.testDate) - new Date(a.testDate));
+                    setHistoryData(sortedData);
                     setLoading(false);
                 });
             }, [cNumber]);
-
-            useEffect(() => {
-                if (!canvasRef.current || historyData.length === 0) return;
-
-                const ctx = canvasRef.current.getContext('2d');
-                if (chartRef.current) chartRef.current.destroy();
-
-                // Ensure chronological order (oldest → newest)
-                const sortedHistory = [...historyData].sort((a, b) => {
-                    const da = a && a.testDate ? new Date(a.testDate) : new Date(0);
-                    const db = b && b.testDate ? new Date(b.testDate) : new Date(0);
-                    return da - db;
-                });
-                const labels = sortedHistory.map(t => t.testDate);
-
-                const getWRS = (testObj, listId, section, scores) => {
-                    const result = calculateStats(listId, section, scores, testObj.limitTo10);
-                    return result.wordPercent;
-                };
-
-                const getPRS = (testObj, listId, section, scores) => {
-                    const result = calculateStats(listId, section, scores, testObj.limitTo10);
-                    return result.phonemePercent;
-                };
-
-                const wrsA = sortedHistory.map(r => getWRS(r.tests.A, r.tests.A.listId, r.tests.A.section, r.tests.A.scores));
-                const prsA = sortedHistory.map(r => getPRS(r.tests.A, r.tests.A.listId, r.tests.A.section, r.tests.A.scores));
-                const wrsB = sortedHistory.map(r => getWRS(r.tests.B, r.tests.B.listId, r.tests.B.section, r.tests.B.scores));
-                const prsB = sortedHistory.map(r => getPRS(r.tests.B, r.tests.B.listId, r.tests.B.section, r.tests.B.scores));
-
-                chartRef.current = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                label: 'Test A Word',
-                                data: wrsA,
-                                borderColor: '#2563eb', // Blue-600 (Solid)
-                                backgroundColor: '#2563eb',
-                                tension: 0.1,
-                                pointStyle: 'circle'
-                            },
-                            {
-                                label: 'Test A Phoneme',
-                                data: prsA,
-                                borderColor: '#60a5fa', // Blue-400 (Lighter)
-                                backgroundColor: '#60a5fa',
-                                borderDash: [5, 5], // Dashed
-                                tension: 0.1,
-                                pointStyle: 'rectRot',
-                                pointRadius: 4
-                            },
-                            {
-                                label: 'Test B Word',
-                                data: wrsB,
-                                borderColor: '#9333ea', // Purple-600 (Solid)
-                                backgroundColor: '#9333ea',
-                                tension: 0.1,
-                                pointStyle: 'circle'
-                            },
-                            {
-                                label: 'Test B Phoneme',
-                                data: prsB,
-                                borderColor: '#c084fc', // Purple-400 (Lighter)
-                                backgroundColor: '#c084fc',
-                                borderDash: [5, 5], // Dashed
-                                tension: 0.1,
-                                pointStyle: 'rectRot',
-                                pointRadius: 4
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Score (%)' } }
-                        },
-                        plugins: {
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false
-                            }
-                        }
-                    }
-                });
-
-                return () => { if (chartRef.current) chartRef.current.destroy(); };
-            }, [historyData]);
 
             if (!cNumber) return <div className="text-center text-slate-400 py-10">Enter Patient ID to view history.</div>;
             if (loading) return <div className="text-center text-slate-500 py-10"><Loader className="w-8 h-8 mx-auto mb-2 text-blue-600" />Loading history...</div>;
@@ -2189,39 +2114,108 @@
 
             return (
                 <div className="space-y-6">
-                    <div className="bg-white p-4 rounded-lg border border-slate-200 h-[300px]">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="text-xs text-slate-500">Dates: <span className="font-medium text-slate-700">Old → New</span> <span className="text-[10px] text-slate-400 ml-2">(left → right)</span></div>
-                        </div>
-                        <canvas ref={canvasRef}></canvas>
-                    </div>
+
                     <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                                 <tr>
                                     <th className="px-4 py-2">Date</th>
                                     <th className="px-4 py-2">Test A</th>
-                                    <th className="px-4 py-2">Word A</th>
-                                    <th className="px-4 py-2 text-blue-400">Phon A</th>
-                                    <th className="px-4 py-2 border-l border-slate-100">Test B</th>
-                                    <th className="px-4 py-2">Word B</th>
-                                    <th className="px-4 py-2 text-purple-400">Phon B</th>
+                                    <th className="px-4 py-2">Word / SNR</th>
+                                    <th className="px-4 py-2 text-blue-400">Phon</th>
+                                    <th className="px-4 py-2">Test B</th>
+                                    <th className="px-4 py-2">Word / SNR</th>
+                                    <th className="px-4 py-2 text-purple-400">Phon</th>
+                                    <th className="px-4 py-2 border-l border-slate-100">Diff / Sig</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {historyData.map((record, idx) => {
                                     const statsA = calculateStats(record.tests.A.listId, record.tests.A.section, record.tests.A.scores, record.tests.A.limitTo10);
                                     const statsB = calculateStats(record.tests.B.listId, record.tests.B.section, record.tests.B.scores, record.tests.B.limitTo10);
+
+                                    // Significance Calculation
+                                    let sigDisplay = <span className="text-slate-300">--</span>;
+
+                                    if (statsA.isBKB && statsB.isBKB) {
+                                        if (statsA.snr50 !== undefined && statsB.snr50 !== undefined) {
+                                            const diff = statsB.snr50 - statsA.snr50;
+                                            const critDiff = 1.9;
+                                            const isSig = Math.abs(diff) > critDiff;
+                                            const color = isSig ? 'text-emerald-600 font-bold' : 'text-slate-400';
+                                            sigDisplay = (
+                                                <div className={color}>
+                                                    {diff > 0 ? '+' : ''}{diff.toFixed(1)} dB
+                                                    {isSig && <span className="ml-1 text-xs bg-emerald-100 text-emerald-800 px-1 rounded">Sig</span>}
+                                                </div>
+                                            );
+                                        }
+                                    } else if (!statsA.isBKB && !statsB.isBKB) {
+                                        const n = record.tests.A.limitTo10 ? 10 : (record.tests.A.section === 'full' ? 50 : 25);
+                                        const conf = record.confidenceLevel || 80;
+                                        const limits = getCriticalLimits(statsA.wordPercent, n, conf, false);
+                                        const isSigWord = statsB.wordPercent < limits.lower || statsB.wordPercent > limits.upper;
+                                        const wDiff = statsB.wordPercent - statsA.wordPercent;
+
+                                        let isSigPhon = false;
+                                        let pDiff = 0;
+                                        if (record.tests.A.scoringMode === 'phoneme') {
+                                            const nPhon = n * 3;
+                                            const limitsPhon = getInterpolatedCriticalLimits(statsA.phonemePercent, nPhon, conf);
+                                            isSigPhon = statsB.phonemePercent < limitsPhon.lower || statsB.phonemePercent > limitsPhon.upper;
+                                            pDiff = statsB.phonemePercent - statsA.phonemePercent;
+                                        }
+
+                                        sigDisplay = (
+                                            <div className="flex flex-col text-xs space-y-0.5">
+                                                <div className={isSigWord ? "text-emerald-600 font-bold" : "text-slate-400"}>
+                                                    W: {wDiff > 0 ? '+' : ''}{wDiff}%
+                                                    {isSigWord && " (Sig)"}
+                                                </div>
+                                                {record.tests.A.scoringMode === 'phoneme' && (
+                                                    <div className={isSigPhon ? "text-purple-600 font-bold" : "text-slate-300"}>
+                                                        P: {pDiff > 0 ? '+' : ''}{pDiff}%
+                                                        {isSigPhon && "*"}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+
                                     return (
                                         <tr key={record.id || idx} className="hover:bg-slate-50">
                                             <td className="px-4 py-2">{record.testDate}</td>
-                                            <td className="px-4 py-2 text-slate-600">{record.tests.A.condition}</td>
-                                            <td className="px-4 py-2 font-bold text-blue-600">{statsA.wordPercent}%</td>
-                                            <td className="px-4 py-2 font-medium text-blue-400">{statsA.phonemePercent}%</td>
 
+                                            {/* Test A */}
+                                            <td className="px-4 py-2 text-slate-600">{record.tests.A.condition}</td>
+                                            {statsA.isBKB ? (
+                                                <td colSpan={2} className="px-4 py-2 font-bold text-blue-700 bg-blue-50/30">
+                                                    SNR-50: {statsA.snr50?.toFixed(1)} dB
+                                                </td>
+                                            ) : (
+                                                <>
+                                                    <td className="px-4 py-2 font-bold text-blue-600">{statsA.wordPercent}%</td>
+                                                    <td className="px-4 py-2 font-medium text-blue-400">{statsA.phonemePercent}%</td>
+                                                </>
+                                            )}
+
+                                            {/* Test B */}
                                             <td className="px-4 py-2 text-slate-600 border-l border-slate-100">{record.tests.B.condition}</td>
-                                            <td className="px-4 py-2 font-bold text-purple-600">{statsB.wordPercent}%</td>
-                                            <td className="px-4 py-2 font-medium text-purple-400">{statsB.phonemePercent}%</td>
+                                            {statsB.isBKB ? (
+                                                <td colSpan={2} className="px-4 py-2 font-bold text-purple-700 bg-purple-50/30">
+                                                    SNR-50: {statsB.snr50?.toFixed(1)} dB
+                                                </td>
+                                            ) : (
+                                                <>
+                                                    <td className="px-4 py-2 font-bold text-purple-600">{statsB.wordPercent}%</td>
+                                                    <td className="px-4 py-2 font-medium text-purple-400">{statsB.phonemePercent}%</td>
+                                                </>
+                                            )}
+
+                                            {/* Diff / Sig */}
+                                            <td className="px-4 py-2 border-l border-slate-100">
+                                                {sigDisplay}
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -2526,6 +2520,7 @@
             const [showEncryptedImportModal, setShowEncryptedImportModal] = useState(false);
             const [encryptedImportPassword, setEncryptedImportPassword] = useState('');
             const [showExportPasswordModal, setShowExportPasswordModal] = useState(false);
+            const [showNewTestModal, setShowNewTestModal] = useState(false);
             const [exportPassword, setExportPassword] = useState('');
             const [encryptedImportFile, setEncryptedImportFile] = useState(null);
 
@@ -2546,6 +2541,8 @@
             const [outcome, setOutcome] = useState('Sold');
             const [notSoldReason, setNotSoldReason] = useState('Price');
             const [soldType, setSoldType] = useState('Private Pay');
+            const [outcomeMode, setOutcomeMode] = useState('Demo'); // 'Demo' or 'Validation'
+            const [ioiHaScore, setIoiHaScore] = useState('');
 
             // ... (Helper memos: activeTest, statsA, statsB, limits ...) ...
             const activeTest = tests[activeTestId];
@@ -3008,6 +3005,8 @@
                 setOutcome('Sold');
                 setNotSoldReason('Price');
                 setSoldType('Private Pay');
+                setOutcomeMode('Demo');
+                setIoiHaScore('');
                 setCNumber('');
                 setDateOfBirth('');
                 setTestDate(new Date().toISOString().split('T')[0]);
@@ -3028,7 +3027,8 @@
             const handleSave = async () => {
                 if (!patientName.trim()) { alert("Please enter a Patient Name."); return; }
                 if (!testDate) { alert("Please set a Test Date before saving."); return; }
-                const data = { id: currentTestId, patientName, cNumber, dateOfBirth, testDate, tests, activeTestId, activeTab, confidenceLevel, timerElapsed, outcome, notSoldReason, soldType, clinicalNotes };
+                if (!testDate) { alert("Please set a Test Date before saving."); return; }
+                const data = { id: currentTestId, patientName, cNumber, dateOfBirth, testDate, tests, activeTestId, activeTab, confidenceLevel, timerElapsed, outcome, notSoldReason, soldType, outcomeMode, ioiHaScore, clinicalNotes };
                 try {
                     try {
                         const savedId = await window.SecureDB.saveTest(data);
@@ -3063,7 +3063,7 @@
 
             const handleAutoSave = async () => {
                 if (!patientName.trim() || !testDate || !hasUnsavedChanges) return;
-                const data = { id: currentTestId, patientName, cNumber, dateOfBirth, testDate, tests, activeTestId, activeTab, confidenceLevel, timerElapsed, outcome, notSoldReason, soldType };
+                const data = { id: currentTestId, patientName, cNumber, dateOfBirth, testDate, tests, activeTestId, activeTab, confidenceLevel, timerElapsed, outcome, notSoldReason, soldType, outcomeMode, ioiHaScore };
                 try {
                     const savedId = await window.SecureDB.saveTest(data, currentTestId ? { overwriteExistingSameDate: true } : {});
                     setCurrentTestId(savedId);
@@ -3091,6 +3091,8 @@
                     if (loadedData.outcome !== undefined) setOutcome(loadedData.outcome);
                     if (loadedData.notSoldReason !== undefined) setNotSoldReason(loadedData.notSoldReason);
                     if (loadedData.soldType !== undefined) setSoldType(loadedData.soldType);
+                    if (loadedData.outcomeMode !== undefined) setOutcomeMode(loadedData.outcomeMode);
+                    if (loadedData.ioiHaScore !== undefined) setIoiHaScore(loadedData.ioiHaScore);
                     // Populate first/last name from explicit fields if present, otherwise split existing patientName
                     let lf = '';
                     let ll = '';
@@ -3202,6 +3204,8 @@
                                 Outcome: record.outcome || 'N/A',
                                 SoldType: record.soldType || 'N/A',
                                 NotSoldReason: record.notSoldReason || 'N/A',
+                                OutcomeMode: record.outcomeMode || 'Demo',
+                                IOI_HA_Score: record.ioiHaScore || 'N/A',
                                 TimerDuration: record.timerElapsed ? formatTimerDisplay(record.timerElapsed) : 'N/A'
                             };
 
@@ -3835,8 +3839,48 @@
                 }, 150);
             };
 
+            const resetTestOnly = () => {
+                // Stop audio if playing
+                if (noiseAudioRef.current) {
+                    noiseAudioRef.current.pause();
+                    noiseAudioRef.current.currentTime = 0;
+                }
+                setIsPlayingNoise(false);
+
+                if (calibrationAudioRef.current) {
+                    calibrationAudioRef.current.pause();
+                    calibrationAudioRef.current.currentTime = 0;
+                }
+                setCalibrationMode('none');
+
+                setCurrentTestId(null);
+                // Keep patient info: firstName, lastName, cNumber, dateOfBirth
+                resetTimer();
+                setOutcome('Sold');
+                setNotSoldReason('Price');
+                setSoldType('Private Pay');
+                setOutcomeMode('Demo');
+                setIoiHaScore('');
+                // Keep testDate? Usually same session. 
+                // setTestDate(new Date().toISOString().split('T')[0]); 
+
+                setTests({
+                    A: { id: 'A', listId: 'HF1', section: 'full', scoringMode: 'phoneme', condition: 'Unaided', deviceModel: '', level: '', snr: '', tnt: '', stimulusPresentation: 'Recording', scores: {}, limitTo10: false, askedContinue: false },
+                    B: { id: 'B', listId: 'HF2', section: 'full', scoringMode: 'phoneme', condition: 'New Tech', deviceModel: '', level: '', snr: '', tnt: '', stimulusPresentation: 'Recording', scores: {}, limitTo10: false, askedContinue: false },
+                    comparativeEase: 5
+                });
+                setActiveTestId('A');
+                setActiveTab('scoring');
+                setConfidenceLevel(80);
+                setClinicalNotes('');
+                setClearConfirm(false);
+                setHasUnsavedChanges(false);
+                localStorage.removeItem('nu6_draft_recovery');
+            };
+
             const handleOpenClick = () => fileInputRef.current.click(); // Unused
-            const clearAllData = () => { if (clearConfirm) { if (hasUnsavedChanges && !confirm('You have unsaved changes. Continue without saving?')) { setClearConfirm(false); return; } resetForm(); } else { setClearConfirm(true); setTimeout(() => setClearConfirm(false), 3000); } };
+            // clearAllData now acts as "Start Fresh" for New Patient
+            const clearAllData = () => { resetForm(); };
 
             // Track unsaved changes and expose to Electron main process
             useEffect(() => {
@@ -4026,12 +4070,50 @@
                 doc.line(20, lineY, 190, lineY);
 
                 // Summary Table
+                // Determine headers and data based on test type
+                const isBkbA = baselineStats.isBKB;
+                const isBkbB = comparisonStats.isBKB;
+
+                let headers = [['Test', 'Condition', 'List', 'Level', 'Speech Az', 'SNR', 'Noise Az', 'aTNT', 'TNT Exc Width']];
+                // Append score columns based on type
+                if (isBkbA || isBkbB) {
+                    headers[0].push('SNR-50');
+                } else {
+                    headers[0].push('Word Score');
+                    headers[0].push('Phoneme Score');
+                }
+
+                const getRowData = (test, stats, isBkb) => {
+                    const baseData = [
+                        `Test ${test.id}`,
+                        formatCondition(test),
+                        formatListId(test.listId),
+                        `${test.level || '--'}`,
+                        `${test.speechAzimuth || '--'}`,
+                        `${test.snr || '--'}`,
+                        `${test.noiseAzimuth || '--'}`,
+                        `${test.tnt || '--'}`,
+                        `${test.tntExcursionWidth || '--'}`
+                    ];
+
+                    if (isBkbA || isBkbB) {
+                        // If ANY test is BKB, show SNR-50 column
+                        // If this specific test is BKB, show its SNR-50, else '--'
+                        baseData.push(isBkb ? `${stats.snr50?.toFixed(1)} dB` : '--');
+                    } else {
+                        // Standard NU-6 display
+                        baseData.push(`${stats.wordPercent}%`);
+                        baseData.push(`${stats.phonemePercent}%`);
+                    }
+                    return baseData;
+                };
+
                 doc.autoTable({
                     startY: lineY + 4,
-                    head: [['Test', 'Condition', 'List', 'Level', 'Speech Az', 'SNR', 'Noise Az', 'aTNT', 'TNT Exc Width', 'Word Score', 'Phoneme Score']],
+                    head: headers,
                     body: [
-                        [`Test ${baselineTest.id}`, formatCondition(baselineTest), formatListId(baselineTest.listId), `${baselineTest.level || '--'}`, `${baselineTest.speechAzimuth || '--'}`, `${baselineTest.snr || '--'}`, `${baselineTest.noiseAzimuth || '--'}`, `${baselineTest.tnt || '--'}`, `${baselineTest.tntExcursionWidth || '--'}`, `${baselineStats.wordPercent}%`, `${baselineStats.phonemePercent}%`],
-                        [`Test ${comparisonTest.id}`, formatCondition(comparisonTest), formatListId(comparisonTest.listId), `${comparisonTest.level || '--'}`, `${comparisonTest.speechAzimuth || '--'}`, `${comparisonTest.snr || '--'}`, `${comparisonTest.noiseAzimuth || '--'}`, `${comparisonTest.tnt || '--'}`, `${comparisonTest.tntExcursionWidth || '--'}`, `${comparisonStats.wordPercent}%`, `${comparisonStats.phonemePercent}%`]
+                        getRowData(baselineTest, baselineStats, isBkbA),
+                        getRowData(comparisonTest, comparisonStats, isBkbB)
                     ],
                     theme: 'striped',
                     headStyles: { fillColor: [66, 135, 245] }
@@ -4045,11 +4127,17 @@
                 doc.setFontSize(10);
                 doc.text(`Critical Difference Level: ${confidenceLevel}%`, 20, finalY);
                 finalY += 5;
-                const isSig = isWordDiffSig ? "YES - Significant Difference" : "NO - Within Critical Limits";
-                doc.text(`Word Score Difference: ${isSig}`, 20, finalY);
 
-                // Add Phoneme Significance to PDF if applicable
-                if (tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') {
+                if (isBkbA && isBkbB) {
+                    const isSig = isBKBDiffSig ? "YES - Significant Difference" : "NO - Within Critical Limits";
+                    doc.text(`SNR-50 Difference: ${isSig}`, 20, finalY);
+                } else if (!isBkbA && !isBkbB) {
+                    const isSig = isWordDiffSig ? "YES - Significant Difference" : "NO - Within Critical Limits";
+                    doc.text(`Word Score Difference: ${isSig}`, 20, finalY);
+                }
+
+                // Add Phoneme Significance to PDF if applicable (Only if NOT BKB)
+                if (tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme' && !isBkbA && !isBkbB) {
                     finalY += 5;
                     const isPhonSig = isPhonemeDiffSig ? "YES - Significant Difference" : "NO - Within Critical Limits";
                     doc.text(`Phoneme Score Difference: ${isPhonSig}`, 20, finalY);
@@ -4169,15 +4257,24 @@
                 // Outcome
                 finalY += 10;
                 doc.setFontSize(11);
-                doc.text("Outcome:", 20, finalY);
+                doc.text(`Outcome (${outcomeMode || 'Demo'}):`, 20, finalY);
                 doc.setFontSize(10);
                 finalY += 6;
-                if (outcome === 'Sold') {
-                    doc.text(`Sold - Type: ${soldType}`, 20, finalY);
-                } else if (outcome === 'Not Sold') {
-                    doc.text(`Not Sold - Reason: ${notSoldReason}`, 20, finalY);
+
+                if (outcomeMode === 'Validation') {
+                    doc.text(`${outcome}`, 20, finalY);
+                    if (ioiHaScore) {
+                        finalY += 6;
+                        doc.text(`IOI-HA Score: ${ioiHaScore}`, 20, finalY);
+                    }
                 } else {
-                    doc.text(outcome, 20, finalY);
+                    if (outcome === 'Sold') {
+                        doc.text(`Sold - Type: ${soldType}`, 20, finalY);
+                    } else if (outcome === 'Not Sold') {
+                        doc.text(`Not Sold - Reason: ${notSoldReason}`, 20, finalY);
+                    } else {
+                        doc.text(outcome, 20, finalY);
+                    }
                 }
 
                 // Notes
@@ -4227,8 +4324,17 @@
             if (isLocked) return <LoginModal isSetup={hasPassword} onLogin={() => setIsLocked(false)} />;
 
             // Determine if we show comparative ease scale
-            // Logic: Show if Word Diff is NOT Significant AND (Phoneme Diff is NOT Significant OR not in phoneme mode)
-            const showComparativeEase = !isWordDiffSig && !(baselineTest.scoringMode === 'phoneme' && isPhonemeDiffSig);
+            // Logic: Show if Word Diff is NOT Significant AND (Phoneme Diff is NOT Significant OR not in phoneme mode) AND (BKB Diff is NOT Significant)
+            // Determine if we show comparative ease scale
+            // Logic: Show if Word Diff is NOT Significant AND (Phoneme Diff is NOT Significant OR not in phoneme mode) AND (BKB Diff is NOT Significant)
+
+            // Explicitly check for BKB test type
+            const isBkbTest = baselineStats.isBKB && comparisonStats.isBKB;
+            const bkbCondition = isBkbTest ? !isBKBDiffSig : true;
+
+            const showComparativeEase = !isWordDiffSig && !(baselineTest.scoringMode === 'phoneme' && isPhonemeDiffSig) && bkbCondition;
+
+
 
             return (
                 <div className="min-h-screen bg-slate-100 text-slate-900 p-4 md:p-8 print:p-0 print:bg-white">
@@ -4300,6 +4406,35 @@
                                     </button>
                                 </div>
                                 <button onClick={() => setShowExportModal(false)} className="w-full mt-3 px-4 py-2 bg-slate-100 rounded text-slate-700">Cancel</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* New Test Modal: New Patient vs Same Patient */}
+                    {showNewTestModal && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
+                                <button onClick={() => setShowNewTestModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                                <h3 className="text-lg font-bold text-slate-800 mb-3">Start New Test</h3>
+                                <p className="text-sm text-slate-600 mb-4">Would you like to start a test for a <strong>New Patient</strong> (clear all data) or keep the <strong>Same Patient</strong> (keep name/ID)?</p>
+                                <div className="space-y-3">
+                                    <button onClick={() => {
+                                        if (hasUnsavedChanges && !confirm('You have unsaved changes. Continue without saving?')) return;
+                                        resetTestOnly();
+                                        setShowNewTestModal(false);
+                                    }} className="w-full px-4 py-3 bg-green-50 border border-green-200 hover:bg-green-100 rounded-lg text-green-800 font-semibold flex items-center justify-center gap-2">
+                                        <UserCheck className="w-5 h-5" /> Same Patient
+                                        <span className="text-xs font-normal opacity-75">(Keep Name/ID)</span>
+                                    </button>
+                                    <button onClick={() => {
+                                        if (hasUnsavedChanges && !confirm('You have unsaved changes. Continue without saving?')) return;
+                                        clearAllData();
+                                        setShowNewTestModal(false);
+                                    }} className="w-full px-4 py-3 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg text-blue-800 font-semibold flex items-center justify-center gap-2">
+                                        <UserPlus className="w-5 h-5" /> New Patient
+                                        <span className="text-xs font-normal opacity-75">(Clear All)</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -4395,7 +4530,7 @@
                                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                                         <Calculator className="w-6 h-6 text-blue-600" />
                                         Hearing Aid Demonstration App
-                                        <span className="text-sm font-normal text-slate-400">v1.3.6</span>
+                                        <span className="text-sm font-normal text-slate-400">v1.3.7</span>
                                     </h1>
                                     <p className="text-slate-500 text-sm">Comparison Mode & Multi-list Support</p>
                                 </div>
@@ -4454,7 +4589,7 @@
                                     )}
 
                                     {/* New Test - make green */}
-                                    <button onClick={clearAllData} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-sm font-medium ${clearConfirm ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}><RotateCcw className="w-4 h-4" /> {clearConfirm ? "Confirm?" : "New Test"}</button>
+                                    <button onClick={() => setShowNewTestModal(true)} className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200 transition text-sm font-medium rounded-lg"><RotateCcw className="w-4 h-4" /> New Test</button>
 
                                     {/* Timer Controls */}
                                     <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg">
@@ -4698,14 +4833,18 @@
                                     <div className="p-6">
                                         <div className="flex justify-end mb-4 print:hidden"><div className="bg-slate-100 p-1 rounded-lg flex items-center gap-2 text-sm"><span className="px-2 text-xs font-semibold text-slate-500 uppercase">Critical Difference Level</span><button onClick={() => setConfidenceLevel(95)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 95 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>95%</button><button onClick={() => setConfidenceLevel(80)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 80 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>80%</button><button onClick={() => setShowChartModal(true)} className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> View Tables</button></div></div>
                                         <div className="grid grid-cols-3 gap-8 mb-8">
-                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {baselineTest.id} (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{baselineTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {baselineTest.listId}</div><div>Level: {baselineTest.level || '--'}</div><div>Noise: {baselineTest.snr || '--'}</div>{baselineTest.tnt && <div>aTNT: {baselineTest.tnt}</div>}{baselineTest.tntExcursionWidth && <div>TNT Excursion Width: {baselineTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{baselineStats.wordPercent}%</span></div>{baselineTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{baselineStats.phonemePercent}%</span></div>)}</div></div>
+                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {baselineTest.id} (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{baselineTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {baselineTest.listId}</div><div>Level: {baselineTest.level || '--'}</div><div>Noise: {baselineTest.snr || '--'}</div>{baselineTest.tnt && <div>aTNT: {baselineTest.tnt}</div>}{baselineTest.tntExcursionWidth && <div>TNT Excursion Width: {baselineTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3">{baselineStats.isBKB ? <div className="flex justify-between items-center"><span className="text-sm text-slate-600">SNR-50</span><span className="text-xl font-bold text-blue-600">{baselineStats.snr50?.toFixed(1)} dB</span></div> : <><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{baselineStats.wordPercent}%</span></div>{baselineTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{baselineStats.phonemePercent}%</span></div>)}</>}</div></div>
 
                                             <div className="flex flex-col items-center justify-center text-center">
                                                 {/* Word recognition difference - label above, styled like Ease label */}
-                                                <div className="text-sm font-bold text-slate-500">Word Recognition Difference</div>
-                                                <div className={`text-3xl font-bold mb-1 ${comparisonStats.wordPercent - baselineStats.wordPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{comparisonStats.wordPercent - baselineStats.wordPercent > 0 ? '+' : ''}{comparisonStats.wordPercent - baselineStats.wordPercent}%</div>
+                                                {!baselineStats.isBKB && !comparisonStats.isBKB && (
+                                                    <>
+                                                        <div className="text-sm font-bold text-slate-500">Word Recognition Difference</div>
+                                                        <div className={`text-3xl font-bold mb-1 ${comparisonStats.wordPercent - baselineStats.wordPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{comparisonStats.wordPercent - baselineStats.wordPercent > 0 ? '+' : ''}{comparisonStats.wordPercent - baselineStats.wordPercent}%</div>
+                                                    </>
+                                                )}
 
-                                                {(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme') && (
+                                                {(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme' && !baselineStats.isBKB) && (
                                                     <React.Fragment>
                                                         {/* Phoneme recognition difference - label above, styled like Ease label */}
                                                         <div className="text-sm font-bold text-slate-500 mt-4">Phoneme Recognition Difference</div>
@@ -4736,7 +4875,7 @@
                                                 )}
                                             </div>
 
-                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {comparisonTest.id} (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{comparisonTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {comparisonTest.listId}</div><div>Level: {comparisonTest.level || '--'}</div><div>Noise: {comparisonTest.snr || '--'}</div>{comparisonTest.tnt && <div>aTNT: {comparisonTest.tnt}</div>}{comparisonTest.tntExcursionWidth && <div>TNT Excursion Width: {comparisonTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{comparisonStats.wordPercent}%</span></div>{comparisonTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{comparisonStats.phonemePercent}%</span></div>)}</div></div>
+                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {comparisonTest.id} (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{comparisonTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {comparisonTest.listId}</div><div>Level: {comparisonTest.level || '--'}</div><div>Noise: {comparisonTest.snr || '--'}</div>{comparisonTest.tnt && <div>aTNT: {comparisonTest.tnt}</div>}{comparisonTest.tntExcursionWidth && <div>TNT Excursion Width: {comparisonTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3">{comparisonStats.isBKB ? <div className="flex justify-between items-center"><span className="text-sm text-slate-600">SNR-50</span><span className="text-xl font-bold text-blue-600">{comparisonStats.snr50?.toFixed(1)} dB</span></div> : <><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{comparisonStats.wordPercent}%</span></div>{comparisonTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{comparisonStats.phonemePercent}%</span></div>)}</>}</div></div>
                                         </div>
 
                                         {/* Comparative Ease Slider */}
@@ -4774,7 +4913,15 @@
                                             </div>
                                         )}
 
-                                        <div className="border border-slate-200 rounded-lg overflow-hidden mb-6"><table className="w-full text-sm"><thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200"><tr><th className="px-4 py-2 text-left">Metric (N)</th><th className="px-4 py-2 text-center w-24">Test {baselineTest.id}</th><th className="px-4 py-2 text-center w-32 bg-slate-50">Critical Range <span className="text-[10px] text-slate-400 block font-normal">({confidenceLevel}%)</span></th><th className="px-4 py-2 text-center w-24">Test {comparisonTest.id}</th><th className="px-4 py-2 text-center w-32">Significant?</th></tr></thead><tbody className="divide-y divide-slate-100"><tr><td className="px-4 py-3 font-medium text-slate-800">Word Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalWords}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.wordPercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.wordPercent}%</td><td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>{(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme') && (<tr><td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalPhonemes}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.phonemePercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{Number(phonemeCriticalLimits.lower).toFixed(1)}% - {Number(phonemeCriticalLimits.upper).toFixed(1)}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.phonemePercent}%</td><td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}{tntDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">aTNT Difference (Tracking Noise Tolerance) <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 2.8 : 1.8} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineTest.tnt || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">±{confidenceLevel === 95 ? 2.8 : 1.8} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonTest.tnt || '--'}</td><td className="px-4 py-3 text-center">{isTNTDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}{tntExcursionWidthDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">TNT Excursion Width <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 1.0 : 0.7} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">±{confidenceLevel === 95 ? 1.0 : 0.7} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center">{isTNTExcursionWidthDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}</tbody></table></div>
+                                        <div className="border border-slate-200 rounded-lg overflow-hidden mb-6"><table className="w-full text-sm"><thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200"><tr><th className="px-4 py-2 text-left">Metric (N)</th><th className="px-4 py-2 text-center w-24">Test {baselineTest.id}</th><th className="px-4 py-2 text-center w-32 bg-slate-50">Critical Range <span className="text-[10px] text-slate-400 block font-normal">({confidenceLevel}%)</span></th><th className="px-4 py-2 text-center w-24">Test {comparisonTest.id}</th><th className="px-4 py-2 text-center w-32">Significant?</th></tr></thead><tbody className="divide-y divide-slate-100">
+                                            {(baselineStats.isBKB && comparisonStats.isBKB) ? (
+                                                <tr><td className="px-4 py-3 font-medium text-slate-800">SNR-50 <span className="block text-xs text-slate-400 font-normal">Signal-to-Noise Ratio50</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.snr50?.toFixed(1)} dB</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">Diff &gt; {bkbCriticalDiff} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.snr50?.toFixed(1)} dB</td><td className="px-4 py-3 text-center">{isBKBDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>
+                                            ) : (
+                                                <>
+                                                    <tr><td className="px-4 py-3 font-medium text-slate-800">Word Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalWords}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.wordPercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.wordPercent}%</td><td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>{(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme') && (<tr><td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalPhonemes}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.phonemePercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{Number(phonemeCriticalLimits.lower).toFixed(1)}% - {Number(phonemeCriticalLimits.upper).toFixed(1)}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.phonemePercent}%</td><td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}
+                                                </>
+                                            )}
+                                            {tntDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">aTNT Difference (Tracking Noise Tolerance) <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 2.8 : 1.8} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineTest.tnt || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">±{confidenceLevel === 95 ? 2.8 : 1.8} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonTest.tnt || '--'}</td><td className="px-4 py-3 text-center">{isTNTDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}{tntExcursionWidthDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">TNT Excursion Width <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 1.0 : 0.7} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">±{confidenceLevel === 95 ? 1.0 : 0.7} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center">{isTNTExcursionWidthDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}</tbody></table></div>
 
                                         {/* Visual Critical Range Comparison */}
                                         <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-6">
@@ -4890,35 +5037,79 @@
                                         {/* Outcome */}
                                         <div className="space-y-4">
                                             <div>
-                                                <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Outcome</label>
-                                                <div className="flex gap-4">
-                                                    <div className="flex rounded-lg overflow-hidden border border-slate-200">
-                                                        <button onClick={() => { setOutcome('Sold'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Sold' ? 'bg-emerald-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Sold</button>
-                                                        <button onClick={() => { setOutcome('Not Sold'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Not Sold' ? 'bg-red-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Not Sold</button>
-                                                        <button onClick={() => { setOutcome('Need to Follow Up'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Need to Follow Up' ? 'bg-blue-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Need to Follow Up</button>
-                                                    </div>
-                                                    {outcome === 'Sold' && (
-                                                        <div className="flex-1">
-                                                            <select value={soldType} onChange={(e) => { setSoldType(e.target.value); setHasUnsavedChanges(true); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
-                                                                <option value="Private Pay">Private Pay</option>
-                                                                <option value="Managed Care">Managed Care</option>
-                                                                <option value="Vocational Rehabilitation Services">Vocational Rehabilitation Services</option>
-                                                            </select>
-                                                        </div>
-                                                    )}
-                                                    {outcome === 'Not Sold' && (
-                                                        <div className="flex-1">
-                                                            <select value={notSoldReason} onChange={(e) => { setNotSoldReason(e.target.value); setHasUnsavedChanges(true); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
-                                                                <option value="Price">Price</option>
-                                                                <option value="Current Hearing Aids Too New">Current Hearing Aids Too New</option>
-                                                                <option value="Patient Considers Themselves Too Old">Patient Considers Themselves Too Old</option>
-                                                                <option value="Question of Value">Question of Value</option>
-                                                                <option value="No Benefit">No Benefit</option>
-                                                                <option value="Other">Other</option>
-                                                            </select>
-                                                        </div>
-                                                    )}
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <label className="block text-xs font-bold uppercase text-slate-500">Outcome</label>
+                                                    <select
+                                                        value={outcomeMode}
+                                                        onChange={(e) => {
+                                                            setOutcomeMode(e.target.value);
+                                                            setHasUnsavedChanges(true);
+                                                            // Reset outcome to default for new mode
+                                                            if (e.target.value === 'Validation') {
+                                                                setOutcome('Validation Completed');
+                                                            } else {
+                                                                setOutcome('Sold');
+                                                            }
+                                                        }}
+                                                        className="text-xs border-none bg-slate-100 rounded px-2 py-1 font-semibold text-slate-600 focus:ring-0 cursor-pointer hover:bg-slate-200"
+                                                    >
+                                                        <option value="Demo">Demo Mode</option>
+                                                        <option value="Validation">Validation Mode</option>
+                                                    </select>
                                                 </div>
+
+                                                {outcomeMode === 'Demo' ? (
+                                                    <div className="flex gap-4">
+                                                        <div className="flex rounded-lg overflow-hidden border border-slate-200">
+                                                            <button onClick={() => { setOutcome('Sold'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Sold' ? 'bg-emerald-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Sold</button>
+                                                            <button onClick={() => { setOutcome('Not Sold'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Not Sold' ? 'bg-red-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Not Sold</button>
+                                                            <button onClick={() => { setOutcome('Need to Follow Up'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Need to Follow Up' ? 'bg-blue-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Need to Follow Up</button>
+                                                        </div>
+                                                        {outcome === 'Sold' && (
+                                                            <div className="flex-1">
+                                                                <select value={soldType} onChange={(e) => { setSoldType(e.target.value); setHasUnsavedChanges(true); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+                                                                    <option value="Private Pay">Private Pay</option>
+                                                                    <option value="Managed Care">Managed Care</option>
+                                                                    <option value="Vocational Rehabilitation Services">Vocational Rehabilitation Services</option>
+                                                                </select>
+                                                            </div>
+                                                        )}
+                                                        {outcome === 'Not Sold' && (
+                                                            <div className="flex-1">
+                                                                <select value={notSoldReason} onChange={(e) => { setNotSoldReason(e.target.value); setHasUnsavedChanges(true); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+                                                                    <option value="Price">Price</option>
+                                                                    <option value="Current Hearing Aids Too New">Current Hearing Aids Too New</option>
+                                                                    <option value="Patient Considers Themselves Too Old">Patient Considers Themselves Too Old</option>
+                                                                    <option value="Question of Value">Question of Value</option>
+                                                                    <option value="No Benefit">No Benefit</option>
+                                                                    <option value="Other">Other</option>
+                                                                </select>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-3">
+                                                        <div className="flex gap-4">
+                                                            <div className="flex rounded-lg overflow-hidden border border-slate-200">
+                                                                <button onClick={() => { setOutcome('Validation Completed'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Validation Completed' ? 'bg-emerald-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Validation Completed</button>
+                                                                <button onClick={() => { setOutcome('Retest Needed'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Retest Needed' ? 'bg-orange-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Retest Needed</button>
+                                                            </div>
+                                                            <div className="flex-1 max-w-xs">
+                                                                <div className="relative">
+                                                                    <label className="absolute -top-2 left-2 bg-white px-1 text-[10px] uppercase font-bold text-slate-500">IOI-HA Score</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        step="0.1"
+                                                                        value={ioiHaScore}
+                                                                        onChange={(e) => { setIoiHaScore(e.target.value); setHasUnsavedChanges(true); }}
+                                                                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"
+                                                                        placeholder="Score (e.g. 4.5)"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
