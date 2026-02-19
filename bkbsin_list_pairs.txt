@@ -1,0 +1,2717 @@
+List Pairs
+
+E T Y M O T I C
+
+R E S E A R C H ,
+
+I N C .
+
+SCORING
+• IMPORTANT: The BKB-SIN Test contains 18 List Pairs that are equated for difficulty.
+Each List Pair has two lists; both lists of the pair (A&B) must be administered for valid
+scoring. Each List Pair takes approximately three minutes to administer and score.
+• The first sentence in each list has four key words, and the remaining sentences each
+have three. Give one point for each key word repeated correctly (key words are underlined on the score sheets). Write the number of correct words for each sentence on the
+line provided.
+• Add the number of correct words for each list, putting the sum in the space provided.
+Subtract total correct from 23.5 to obtain SNR-50 (signal-to-noise ratio for 50% correct).
+SNR-50 = 23.5 - Total Correct
+• Score each list, then average the two scores for the List Pair using the space
+provided on the score sheets (see Figure 1 on page 2). When administering more than
+one List Pair, average the SNR-50 scores across List Pairs. As in any measure, reliability
+is influenced by the number of items presented. See Table 4 on page 14 of the BKB-SIN
+Test manual to determine the desired number of List Pairs.
+• Calculate SNR Loss by subtracting the SNR-50 score from the group-average value.
+SNR Loss = Subject's SNR-50 - Average SNR-50 for that Subject Category
+
+NORMATIVE DATA
+
+BKB-SIN Test Norms (List Pairs 1-8)
+Adults
+
+Mean SNR-50
+Standard Deviation
+
+Children by Age
+
+Normal Hearing
+
+CI Users
+
+Ages 5-6
+
+Ages 7-10
+
+Ages 11-14
+
+-2.5
+0.8
+
+*
+1.6
+
+3.5
+2.0
+
+0.8
+1.2
+
+-0.9
+1.1
+
+*Compare to normal-hearing adult value to determine SNR Loss.
+
+TEST INTERPRETATION
+See page 11 of the BKB-SIN Test manual.
+
+1
+
+Figure 1
+
+Scoring Example
+
+10.5 + 7.5 =18
+18 : 2 = 9
+
+Note: An interesting phenomenon occurs in five sentences when the Standard and Split
+Track recordings are compared: normal-hearing listeners perceive a different word on the
+Standard recording than on the Split Track recordings. For example, when the target talker
+and background babble are presented from a single source using the Standard recording
+(earphone or loudspeaker presentation), sentence nine of List 2B is heard as “The boy has
+black tie.” When the target talker and background babble are spatially separated using
+the Split Track recordings (target talker from one loudspeaker and background babble
+from another loudspeaker), sentence nine of List 2B is heard as “The boy has black hair.”
+In the first instance, the word “tie” (spoken by one of the babble talkers) masks the word
+“hair” (spoken by the target talker). For this reason, two possible correct answers are
+shown on the score sheet (see Figure 1 on page 3). Sentences containing a key word
+with two possible correct answers are: List 2B, sentence 9; List 8A, sentence 5; List 8B,
+sentence 9; List 15B, sentence 5; and List 18A, sentence 7.
+2
+
+LIST PAIR 1
+List 1A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. They are looking at the clock.
+
+4
+
++21 dB
+
+2. The car engine is running.
+
+3
+
++18 dB
+
+3. Children like strawberries.
+
+3
+
++15 dB
+
+4. They are buying some bread.
+
+3
+
++12 dB
+
+5. The green tomatoes are small.
+
+3
+
++9 dB
+
+6. He played with his train.
+
+3
+
++6 dB
+
+7. The bag fell to the ground.
+
+3
+
++3 dB
+
+8. The boy did a handstand.
+
+3
+
+0 dB
+
+9. The water boiled quickly.
+
+3
+
+-3 dB
+
+10. The man is painting a sign.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 1B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. The dog made an angry noise.
+
+4
+
++21 dB
+
+2. They followed the path.
+
+3
+
++18 dB
+
+3. Someone is crossing the road.
+
+3
+
++15 dB
+
+4. The mailman brought a letter.
+
+3
+
++12 dB
+
+5. The milk was by the front door.
+
+3
+
++9 dB
+
+6. The candy shop was empty.
+
+3
+
++6 dB
+
+7. The lady stayed for lunch.
+
+3
+
++3 dB
+
+8. The policeman knows the way.
+
+3
+
+0 dB
+
+9. The little girl was happy.
+
+3
+
+-3 dB
+
+10. They are coming for Christmas.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 1A and 1B =
+3
+
+dB
+
+dB
+
+LIST PAIR 2
+List 2A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. The cat is sitting on the bed.
+
+4
+
++21 dB
+
+2. They had a lovely day.
+
+3
+
++18 dB
+
+3. The thin dog was hungry.
+
+3
+
++15 dB
+
+4. They are watching the train.
+
+3
+
++12 dB
+
+5. The dog played with a stick.
+
+3
+
++9 dB
+
+6. The farmer keeps a bull.
+
+3
+
++6 dB
+
+7. The lady wore a coat.
+
+3
+
++3 dB
+
+8. The boy is running away.
+
+3
+
+0 dB
+
+9. The room is getting cold.
+
+3
+
+-3 dB
+
+10. The wife helped her husband.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 2B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. The lady went to the store.
+
+4
+
++21 dB
+
+2. A tree fell on the house.
+
+3
+
++18 dB
+
+3. The fruit came in a box.
+
+3
+
++15 dB
+
+4. The husband brought some flowers.
+
+3
+
++12 dB
+
+5. A man told the police.
+
+3
+
++9 dB
+
+6. Potatoes grow in the ground.
+
+3
+
++6 dB
+
+7. The big dog was dangerous.
+
+3
+
++3 dB
+
+8. The strawberry jam was sweet.
+
+3
+
+0 dB
+
+9. The boy has black hair/tie.
+
+3
+
+-3 dB
+
+10. The mother heard the baby.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 2A and 2B =
+4
+
+dB
+
+dB
+
+LIST PAIR 3
+List 3A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. The ball went into the goal.
+
+4
+
++21 dB
+
+2. The house had a nice garden.
+
+3
+
++18 dB
+
+3. He found his brother.
+
+3
+
++15 dB
+
+4. Some animals sleep on straw.
+
+3
+
++12 dB
+
+5. The jelly jar was full.
+
+3
+
++9 dB
+
+6. They are kneeling down.
+
+3
+
++6 dB
+
+7. The cook is making a cake.
+
+3
+
++3 dB
+
+8. The child grabbed the toy.
+
+3
+
+0 dB
+
+9. A boy fell from the window.
+
+3
+
+-3 dB
+
+10. She used her spoon.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 3B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. Mother cut the birthday cake.
+
+4
+
++21 dB
+
+2. The mailman comes early.
+
+3
+
++18 dB
+
+3. The sign showed the way.
+
+3
+
++15 dB
+
+4. The grass is getting long.
+
+3
+
++12 dB
+
+5. A man is turning the faucet.
+
+3
+
++9 dB
+
+6. The fire was very hot.
+
+3
+
++6 dB
+
+7. He is sucking his thumb.
+
+3
+
++3 dB
+
+8. The driver started the engine.
+
+3
+
+0 dB
+
+9. The janitor swept the floor.
+
+3
+
+-3 dB
+
+10. A grocer sells butter.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 3A and 3B =
+5
+
+dB
+
+dB
+
+LIST PAIR 4
+List 4A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. A mouse ran down the hole.
+
+4
+
++21 dB
+
+2. The light went out.
+
+3
+
++18 dB
+
+3. They wanted some potatoes.
+
+3
+
++15 dB
+
+4. The little girl is shouting.
+
+3
+
++12 dB
+
+5. The cold milk is in a pitcher.
+
+3
+
++9 dB
+
+6. The paint dripped on the ground.
+
+3
+
++6 dB
+
+7. Mother stirred her tea.
+
+3
+
++3 dB
+
+8. The father is coming home.
+
+3
+
+0 dB
+
+9. They painted the wall.
+
+3
+
+-3 dB
+
+10. The towel dropped on the floor.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 4B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. The boy got into bed.
+
+4
+
++21 dB
+
+2. He is reaching for his spoon.
+
+3
+
++18 dB
+
+3. They are staying for supper.
+
+3
+
++15 dB
+
+4. The girl held a mirror.
+
+3
+
++12 dB
+
+5. The cows are in the pasture.
+
+3
+
++9 dB
+
+6. He paid his bill.
+
+3
+
++6 dB
+
+7. Mother made some curtains.
+
+3
+
++3 dB
+
+8. The oven is too hot.
+
+3
+
+0 dB
+
+9. The two children are laughing.
+
+3
+
+-3 dB
+
+10. The pepper shaker was empty.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 4A and 4B =
+6
+
+dB
+
+dB
+
+LIST PAIR 5
+List 5A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. They ate the lemon pie.
+
+4
+
++21 dB
+
+2. A sharp knife is dangerous.
+
+3
+
++18 dB
+
+3. The smart girls are reading.
+
+3
+
++15 dB
+
+4. The broom stood in the corner.
+
+3
+
++12 dB
+
+5. The woman cleaned her house.
+
+3
+
++9 dB
+
+6. Mother got a saucepan.
+
+3
+
++6 dB
+
+7. The young people are dancing.
+
+3
+
++3 dB
+
+8. The bus left early.
+
+3
+
+0 dB
+
+9. The ball is bouncing very high.
+
+3
+
+-3 dB
+
+10. Father forgot the bread.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 5B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. They had two empty bottles.
+
+4
+
++21 dB
+
+2. He closed his eyes.
+
+3
+
++18 dB
+
+3. The lady bought some butter.
+
+3
+
++15 dB
+
+4. They called an ambulance.
+
+3
+
++12 dB
+
+5. The policeman found a dog.
+
+3
+
++9 dB
+
+6. The driver lost his way.
+
+3
+
++6 dB
+
+7. They stared at the picture.
+
+3
+
++3 dB
+
+8. The cat drank from a saucer.
+
+3
+
+0 dB
+
+9. The oven door was open.
+
+3
+
+-3 dB
+
+10. The silly boy is hiding.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 5A and 5B =
+7
+
+dB
+
+dB
+
+LIST PAIR 6
+List 6A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. A boy ran down the path.
+
+4
+
++21 dB
+
+2. The orange was very sweet.
+
+3
+
++18 dB
+
+3. He is holding his nose.
+
+3
+
++15 dB
+
+4. The new road is on the map.
+
+3
+
++12 dB
+
+5. The boy forgot his book.
+
+3
+
++9 dB
+
+6. A friend came for lunch.
+
+3
+
++6 dB
+
+7. The match boxes are empty.
+
+3
+
++3 dB
+
+8. The family bought a house.
+
+3
+
+0 dB
+
+9. The ball broke the window.
+
+3
+
+-3 dB
+
+10. The pond water is dirty.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 6B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. They are running past the house.
+
+4
+
++21 dB
+
+2. The police are clearing the road.
+
+3
+
++18 dB
+
+3. She writes to her brother.
+
+3
+
++15 dB
+
+4. The book tells a story.
+
+3
+
++12 dB
+
+5. They are climbing the tree.
+
+3
+
++9 dB
+
+6. She stood near her window.
+
+3
+
++6 dB
+
+7. The baby broke his cup.
+
+3
+
++3 dB
+
+8. The dinner plate is hot.
+
+3
+
+0 dB
+
+9. A dish towel is by the sink.
+
+3
+
+-3 dB
+
+10. The good boy is helping.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 6A and 6B =
+8
+
+dB
+
+dB
+
+LIST PAIR 7
+List 7A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. Men wear long pants.
+
+4
+
++21 dB
+
+2. The two farmers are talking.
+
+3
+
++18 dB
+
+3. Father wrote a letter.
+
+3
+
++15 dB
+
+4. The food cost a lot.
+
+3
+
++12 dB
+
+5. The girl is washing her hair.
+
+3
+
++9 dB
+
+6. He lost his hat.
+
+3
+
++6 dB
+
+7. The faucets are above the sink.
+
+3
+
++3 dB
+
+8. They had some cold meat.
+
+3
+
+0 dB
+
+9. The children helped the milkman.
+
+3
+
+-3 dB
+
+10. The rice pudding was ready.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 7B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. The boy slipped on the stairs.
+
+4
+
++21 dB
+
+2. The snow is on the roof.
+
+3
+
++18 dB
+
+3. Sugar is very sweet.
+
+3
+
++15 dB
+
+4. The washing machine broke.
+
+3
+
++12 dB
+
+5. They are clearing the table.
+
+3
+
++9 dB
+
+6. She hurt her hand.
+
+3
+
++6 dB
+
+7. The cup is on a saucer.
+
+3
+
++3 dB
+
+8. The boy got into trouble.
+
+3
+
+0 dB
+
+9. The truck carried fruit.
+
+3
+
+-3 dB
+
+10. The ice cream was pink.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 7A and 7B =
+9
+
+dB
+
+dB
+
+LIST PAIR 8
+List 8A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. They washed in cold water.
+
+4
+
++21 dB
+
+2. The dog sleeps in a basket.
+
+3
+
++18 dB
+
+3. An old woman was at home.
+
+3
+
++15 dB
+
+4. The girl played with the baby.
+
+3
+
++12 dB
+
+5. The children washed the plate / plates.
+
+3
+
++9 dB
+
+6. The match fell on the floor.
+
+3
+
++6 dB
+
+7. The shop closed for lunch.
+
+3
+
++3 dB
+
+8. The boy hurried to school.
+
+3
+
+0 dB
+
+9. Flowers grow in the garden.
+
+3
+
+-3 dB
+
+10. The children waved at the train.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 8B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. They broke all the eggs.
+
+4
+
++21 dB
+
+2. The car hit a wall.
+
+3
+
++18 dB
+
+3. They are riding their bicycles.
+
+3
+
++15 dB
+
+4. He broke his leg.
+
+3
+
++12 dB
+
+5. The shirts are hanging in the closet.
+
+3
+
++9 dB
+
+6. The ground was very hard.
+
+3
+
++6 dB
+
+7. The buckets hold water.
+
+3
+
++3 dB
+
+8. The chicken laid some eggs.
+
+3
+
+0 dB
+
+9. He / She had her spending money.
+
+3
+
+-3 dB
+
+10. He is bringing his raincoat.
+
+3
+
+-6 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 8A and 8B =
+10
+
+dB
+
+dB
+
+LIST PAIR 9
+List 9A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. The football player lost a shoe.
+
+4
+
++21 dB
+
+2. The painter used a brush.
+
+3
+
++18 dB
+
+3. The lady sat on her chair.
+
+3
+
++15 dB
+
+4. The milkman brought the cream.
+
+3
+
++12 dB
+
+5. The dog chased the cat.
+
+3
+
++9 dB
+
+6. Mother shut the window.
+
+3
+
++6 dB
+
+7. The apple pie was good.
+
+3
+
++3 dB
+
+8. Rain falls from the clouds.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 9B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. They carried some shopping bags.
+
+4
+
++21 dB
+
+2. They laughed at his story.
+
+3
+
++18 dB
+
+3. The small boy was asleep.
+
+3
+
++15 dB
+
+4. The sun melted the snow.
+
+3
+
++12 dB
+
+5. The truck drove up the road.
+
+3
+
++9 dB
+
+6. The children dropped the bag.
+
+3
+
++6 dB
+
+7. The dog came back.
+
+3
+
++3 dB
+
+8. She found her purse.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 9A and 9B =
+
+11
+
+dB
+
+dB
+
+LIST PAIR 10
+List 10A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. She looked in her mirror.
+
+4
+
++21 dB
+
+2. The dog is eating some meat.
+
+3
+
++18 dB
+
+3. A boy broke the fence.
+
+3
+
++15 dB
+
+4. The yellow pears tasted good.
+
+3
+
++12 dB
+
+5. The lady washed the shirt.
+
+3
+
++9 dB
+
+6. The cup is hanging on a hook.
+
+3
+
++6 dB
+
+7. The family likes fish.
+
+3
+
++3 dB
+
+8. The baby is on the rug.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 10B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. They waited for one hour.
+
+4
+
++21 dB
+
+2. The fruit is on the ground.
+
+3
+
++18 dB
+
+3. The girl has a picture book.
+
+3
+
++15 dB
+
+4. The jug is on the shelf.
+
+3
+
++12 dB
+
+5. They are shopping for cheese.
+
+3
+
++9 dB
+
+6. The bus stopped suddenly.
+
+3
+
++6 dB
+
+7. The three girls are listening.
+
+3
+
++3 dB
+
+8. The coat is on a chair.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 10A and 10B =
+
+12
+
+dB
+
+dB
+
+LIST PAIR 11
+List 11A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. Father paid at the gate.
+
+4
+
++21 dB
+
+2. A girl came into the room.
+
+3
+
++18 dB
+
+3. The cat caught a mouse.
+
+3
+
++15 dB
+
+4. She made her bed.
+
+3
+
++12 dB
+
+5. Bananas are yellow fruit.
+
+3
+
++9 dB
+
+6. The coffee cups are on the table.
+
+3
+
++6 dB
+
+7. The basketball team is playing.
+
+3
+
++3 dB
+
+8. Father picked some pears.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 11B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. She spoke to her son.
+
+4
+
++21 dB
+
+2. The clown had a funny face
+
+3
+
++18 dB
+
+3. She cut with her knife.
+
+3
+
++15 dB
+
+4. The house had nine rooms.
+
+3
+
++12 dB
+
+5. The mailman shut the gate.
+
+3
+
++9 dB
+
+6. The rain came down.
+
+3
+
++6 dB
+
+7. The old gloves are dirty.
+
+3
+
++3 dB
+
+8. The boy knew the game.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 11A and 11B =
+
+13
+
+dB
+
+dB
+
+LIST PAIR 12
+List 12A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. They heard a funny noise.
+
+4
+
++21 dB
+
+2. Snow falls at Christmas.
+
+3
+
++18 dB
+
+3. She is taking her coat.
+
+3
+
++15 dB
+
+4. The police chased the car.
+
+3
+
++12 dB
+
+5. The lady is making a toy.
+
+3
+
++9 dB
+
+6. Some sticks were under the tree.
+
+3
+
++6 dB
+
+7. The little baby is sleeping.
+
+3
+
++3 dB
+
+8. School finished early today.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 12B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. They walked across the grass.
+
+4
+
++21 dB
+
+2. The children are all eating.
+
+3
+
++18 dB
+
+3. The angry man shouted.
+
+3
+
++15 dB
+
+4. They are drinking tea.
+
+3
+
++12 dB
+
+5. Mother opened the drawer.
+
+3
+
++9 dB
+
+6. He dropped his money.
+
+3
+
++6 dB
+
+7. The kitchen window was clean.
+
+3
+
++3 dB
+
+8. She is helping her friend.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 12A and 12B =
+
+14
+
+dB
+
+dB
+
+LIST PAIR 13
+List 13A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. The young boy left home.
+
+4
+
++21 dB
+
+2. The glass bowl broke.
+
+3
+
++18 dB
+
+3. The teapot is very hot.
+
+3
+
++15 dB
+
+4. The children are walking home.
+
+3
+
++12 dB
+
+5. The man cleaned his shoes.
+
+3
+
++9 dB
+
+6. Father looked at the book.
+
+3
+
++6 dB
+
+7. She drinks from her cup.
+
+3
+
++3 dB
+
+8. A girl kicked the table.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 13B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. The plant is hanging above the door.
+
+4
+
++21 dB
+
+2. The table has three legs.
+
+3
+
++18 dB
+
+3. A letter fell on the floor.
+
+3
+
++15 dB
+
+4. The five men are working.
+
+3
+
++12 dB
+
+5. The shoes were very dirty.
+
+3
+
++9 dB
+
+6. They went on a vacation.
+
+3
+
++6 dB
+
+7. The lady packed her bag.
+
+3
+
++3 dB
+
+8. The child drank some milk.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 13A and 13B =
+
+15
+
+dB
+
+dB
+
+LIST PAIR 14
+List 14A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. He listened to his father.
+
+4
+
++21 dB
+
+2. The machine was very noisy.
+
+3
+
++18 dB
+
+3. The old man is worried.
+
+3
+
++15 dB
+
+4. They are crossing the street.
+
+3
+
++12 dB
+
+5. Lemons grow on trees.
+
+3
+
++9 dB
+
+6. The girl lost her doll.
+
+3
+
++6 dB
+
+7. The mud stuck on his shoe.
+
+3
+
++3 dB
+
+8. The bath towel was wet.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 14B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. The big boy kicked the ball.
+
+4
+
++21 dB
+
+2. Some nice people are coming.
+
+3
+
++18 dB
+
+3. She bumped her head.
+
+3
+
++15 dB
+
+4. The tiny baby was pretty.
+
+3
+
++12 dB
+
+5. The daughter set the table.
+
+3
+
++9 dB
+
+6. Mother tied the string.
+
+3
+
++6 dB
+
+7. The train stops at the station.
+
+3
+
++3 dB
+
+8. The puppy plays with a ball.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 14A and 14B =
+
+16
+
+dB
+
+dB
+
+LIST PAIR 15
+List 15A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. He wore his yellow shirt.
+
+4
+
++21 dB
+
+2. The matches are on the shelf.
+
+3
+
++18 dB
+
+3. The train had a bad accident.
+
+3
+
++15 dB
+
+4. The kitchen sink is empty.
+
+3
+
++12 dB
+
+5. The park is near the road.
+
+3
+
++9 dB
+
+6. The cook cut some onions.
+
+3
+
++6 dB
+
+7. He is washing his face.
+
+3
+
++3 dB
+
+8. Somebody took the money.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 15B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. They sat on a wooden bench.
+
+4
+
++21 dB
+
+2. The man tied his shoes.
+
+3
+
++18 dB
+
+3. The flowers grow in a pot.
+
+3
+
++15 dB
+
+4. The dog drank from a bowl.
+
+3
+
++12 dB
+
+5. The cow is / was on the grass.
+
+3
+
++9 dB
+
+6. He frightened his sister.
+
+3
+
++6 dB
+
+7. The ladder is near the door.
+
+3
+
++3 dB
+
+8. The janitor used a broom.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 15A and 15B =
+
+17
+
+dB
+
+dB
+
+LIST PAIR 16
+List 16A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. The big fish got away.
+
+4
+
++21 dB
+
+2. The dogs went for a walk.
+
+3
+
++18 dB
+
+3. The driver waited by the corner.
+
+3
+
++15 dB
+
+4. They finished the dinner.
+
+3
+
++12 dB
+
+5. Mother picked some flowers.
+
+3
+
++9 dB
+
+6. A fish swam in the pond.
+
+3
+
++6 dB
+
+7. The front garden was pretty.
+
+3
+
++3 dB
+
+8. She is waiting for her bus.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 16B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. A cat jumped off the fence.
+
+4
+
++21 dB
+
+2. They are going out.
+
+3
+
++18 dB
+
+3. The football hit the goalpost.
+
+3
+
++15 dB
+
+4. The dishcloth is very wet.
+
+3
+
++12 dB
+
+5. The baby has blue eyes.
+
+3
+
++9 dB
+
+6. The girl caught a cold.
+
+3
+
++6 dB
+
+7. The raincoat is hanging up.
+
+3
+
++3 dB
+
+8. She brushed her hair.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 16A and 16B =
+
+18
+
+dB
+
+dB
+
+LIST PAIR 17
+List 17A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. They met some friends.
+
+4
+
++21 dB
+
+2. The bread truck is coming.
+
+3
+
++18 dB
+
+3. The picture came from a book.
+
+3
+
++15 dB
+
+4. The boy had a toy dragon.
+
+3
+
++12 dB
+
+5. They are playing in the park.
+
+3
+
++9 dB
+
+6. She argued with her sister.
+
+3
+
++6 dB
+
+7. He is cleaning his car.
+
+3
+
++3 dB
+
+8. The mouse found the cheese.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 17B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. They like orange marmalade.
+
+4
+
++21 dB
+
+2. The apple pie is baking.
+
+3
+
++18 dB
+
+3. He drinks from his mug.
+
+3
+
++15 dB
+
+4. The sky was very blue.
+
+3
+
++12 dB
+
+5. They knocked on the window.
+
+3
+
++9 dB
+
+6. People are going home.
+
+3
+
++6 dB
+
+7. The baby wants his bottle.
+
+3
+
++3 dB
+
+8. They had some chocolate pudding.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 17A and 17B =
+
+19
+
+dB
+
+dB
+
+LIST PAIR 18
+List 18A
+
+Key Words
+
+# Correct
+
+SNR
+
+1. The milkman drives a small truck.
+
+4
+
++21 dB
+
+2. The scissors are very sharp.
+
+3
+
++18 dB
+
+3. She is calling her daughter.
+
+3
+
++15 dB
+
+4. The girl ran along.
+
+3
+
++12 dB
+
+5. Mother read the paper.
+
+3
+
++9 dB
+
+6. The bakery is open.
+
+3
+
++6 dB
+
+7. She talks / talked to her doll.
+
+3
+
++3 dB
+
+8. The police helped the driver.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+List 18B
+
+Key Words
+
+dB
+
+# Correct
+
+SNR
+
+1. They are pushing an old car.
+
+4
+
++21 dB
+
+2. He needed his vacation.
+
+3
+
++18 dB
+
+3. She is washing her dress.
+
+3
+
++15 dB
+
+4. The cow gave some milk.
+
+3
+
++12 dB
+
+5. The football game is over.
+
+3
+
++9 dB
+
+6. The bath water was warm.
+
+3
+
++6 dB
+
+7. The floor looked clean.
+
+3
+
++3 dB
+
+8. Some men shave in the morning.
+
+3
+
+0 dB
+
+Total Key Words Correct
+SNR–50 = (23.5) - (# Correct) =
+
+Average SNR–50, Lists 18A and 18B =
+
+20
+
+dB
+
+dB
+
+What’s on these CDs
+CD 1
+Standard BKB-SIN
+Track List Pair
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+
+ID
+Cal Tone
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+SSN
+
+CD 2
+Split Track BKB-SIN
+Track List Pair
+Split Track I (Pre-recorded SNRs)
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+
+ID
+Cal Tone
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+
+Split Track II (Constant Level)
+
+21
+22
+23
+24
+25
+26
+27
+28
+
+ID
+9
+10
+11
+12
+13
+14
+SSN
+
+© 2005 ETYMOTIC RESEARCH, INC. • 61 Martin Lane Elk Grove Village, IL 60007 • www.etymotic.com
+07/05-5
+
+Designed
+
+

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.8] - 2026-02-19
+### Added
+- **Rose Hill HF List 4B**: Integrated the final HF list with 25 words (Back, Chop, Thud, etc.) and normalized audio.
+
+### Fixed
+- **Audio Playback Path**: Resolved an issue where audio files for specific lists were not playing due to incorrect path construction.
+- **Audio Normalization**: Verified that List 4B audio levels (-23.00 dBFS) match the existing HF lists.
+
 ## [1.3.7] - 2026-02-18
 ### Added
 - **New Test Modal**: Added a dialog when starting a new test to choose between:
