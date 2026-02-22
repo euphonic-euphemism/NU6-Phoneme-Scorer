@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.9] - 2026-02-22
+### Changed
+- Commited updated high-quality audio recordings for Rose Hill HF lists.
+- Integrated randomized word order for HF 3 and HF 4 with matching audio files.
+
 ## [1.3.8] - 2026-02-19
 ### Added
 - **Rose Hill HF List 4B**: Integrated the final HF list with 25 words (Back, Chop, Thud, etc.) and normalized audio.
