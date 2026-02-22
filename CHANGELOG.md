@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.1] - 2026-02-22
+### Changed
+- Updated Rose Hill HF lists from the C-series to the newly normalized D-series.
+- Fixed an audio file indexing mismatch where list arrays diverged from chronological .wav files.
+
 ## [1.4.0] - 2026-02-22
 ### Changed
 - Updated Rose Hill HF lists to the C-series with new audio files.
