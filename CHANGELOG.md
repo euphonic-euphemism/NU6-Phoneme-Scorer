@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.0] - 2026-02-22
+### Changed
+- Updated Rose Hill HF lists to the C-series with new audio files.
+- Corrected phonemes and words for "Task"->"Toss", "Case"->"Pace", and "Sat"->"Pack" in the HF lists.
+
 ## [1.3.9] - 2026-02-22
 ### Changed
 - Commited updated high-quality audio recordings for Rose Hill HF lists.
