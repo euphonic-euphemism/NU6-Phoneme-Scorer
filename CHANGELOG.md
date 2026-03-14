@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.3] - 2026-03-07
+### Added
+- **NU-6 List 1A Integration**: Split the NU-6 CNC List 1A tracks into 50 individual word audio files and integrated them via the app UI.
+
+### Changed
+- App title dynamically upgraded to v1.4.3.
+- Removed the Automated Error Pattern Analysis from the UI.
+
+## [1.4.2] - 2026-02-28
+### Added
+- **NU-6 List 2A Integration**: Split the NU-6 CNC List 2A tracks into 50 individual word audio files, integrated via the app UI, and played correctly un-normalized.
+- **Original Calibration Selection**: Added NU-6 native 1000-Hz Calibration Tone as a selectable UI option alongside the newly labeled "RH HF" Tone, supporting un-normalized validation loops.
+
+### Changed
+- App title dynamically explicitly states v1.4.2.
 ## [1.4.1] - 2026-02-22
 ### Changed
 - Updated Rose Hill HF lists from the C-series to the newly normalized D-series.

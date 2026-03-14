@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hearing Aid Demonstration App v1.4.1</title>
+    <title>Hearing Aid Demonstration App v1.4.4</title>
 
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -447,6 +447,7 @@
         const Flame = (props) => (<IconBase {...props}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.115.385-2.256 1.034-3.222l.173.239a5.32 5.32 0 0 0 2.293 2.483Z" /></IconBase>);
         const SettingsIcon = (props) => (<IconBase {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></IconBase>);
         const FileText = (props) => (<IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="16" x2="8" y1="13" y2="13" /><line x1="16" x2="8" y1="17" y2="17" /><line x1="10" x2="8" y1="9" y2="9" /></IconBase>);
+        const FileJson = (props) => (<IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1" /><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1" /></IconBase>);
         const Moon = (props) => (<IconBase {...props}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></IconBase>);
         const Sun = (props) => (<IconBase {...props}><circle cx="12" cy="12" r="5" /><line x1="12" x2="12" y1="1" y2="3" /><line x1="12" x2="12" y1="21" y2="23" /><line x1="4.22" x2="5.64" y1="4.22" y2="5.64" /><line x1="18.36" x2="19.78" y1="18.36" y2="19.78" /><line x1="1" x2="3" y1="12" y2="12" /><line x1="21" x2="23" y1="12" y2="12" /><line x1="4.22" x2="5.64" y1="19.78" y2="18.36" /><line x1="18.36" x2="19.78" y1="5.64" y2="4.22" /></IconBase>);
         const Clock = (props) => (<IconBase {...props}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></IconBase>);
@@ -1690,128 +1691,6 @@
             );
         };
 
-        const DiagnosticsPanel = ({ stats, scores, listId }) => {
-            const chartRef = useRef(null);
-            const canvasRef = useRef(null);
-            const [showInfo, setShowInfo] = useState(false);
-
-            const breakdown = useMemo(() => {
-                const groups = { "High Frequency (Fricatives, Affricates, Stops)": { total: 0, missed: 0, types: ["Fricative", "Affricate", "Stop"] }, "Low Frequency (Nasals, Liquids, Glides, Vowels)": { total: 0, missed: 0, types: ["Nasal", "Liquid/Glide", "Vowel"] } };
-                const details = { Fricative: { total: 0, missed: 0 }, Affricate: { total: 0, missed: 0 }, Stop: { total: 0, missed: 0 }, Nasal: { total: 0, missed: 0 }, "Liquid/Glide": { total: 0, missed: 0 }, Vowel: { total: 0, missed: 0 } };
-
-                // Feature-based analysis
-                const mannerErrors = {}, placeErrors = {}, voicingErrors = { Voiced: { total: 0, missed: 0 }, Voiceless: { total: 0, missed: 0 } };
-
-                stats.visibleWords.forEach(word => {
-                    word.p.forEach((p, idx) => {
-                        if (p === '-') return;
-                        const type = PHONEME_MAP[p];
-                        const isCorrect = scores[`${listId}_${word.i}_${idx}`];
-                        const features = PHONEME_FEATURES[p];
-
-                        if (type) {
-                            if (details[type]) { details[type].total++; if (!isCorrect) details[type].missed++; }
-                            if (groups["High Frequency (Fricatives, Affricates, Stops)"].types.includes(type)) { groups["High Frequency (Fricatives, Affricates, Stops)"].total++; if (!isCorrect) groups["High Frequency (Fricatives, Affricates, Stops)"].missed++; }
-                            else if (groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].types.includes(type)) { groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].total++; if (!isCorrect) groups["Low Frequency (Nasals, Liquids, Glides, Vowels)"].missed++; }
-                        }
-
-                        if (features) {
-                            const { manner, place, voicing } = features;
-
-                            if (manner) {
-                                if (!mannerErrors[manner]) mannerErrors[manner] = { total: 0, missed: 0 };
-                                mannerErrors[manner].total++;
-                                if (!isCorrect) mannerErrors[manner].missed++;
-                            }
-
-                            if (place) {
-                                if (!placeErrors[place]) placeErrors[place] = { total: 0, missed: 0 };
-                                placeErrors[place].total++;
-                                if (!isCorrect) placeErrors[place].missed++;
-                            }
-
-                            if (voicing) {
-                                voicingErrors[voicing].total++;
-                                if (!isCorrect) voicingErrors[voicing].missed++;
-                            }
-                        }
-                    });
-                });
-                return { groups, details, mannerErrors, placeErrors, voicingErrors };
-            }, [stats, scores, listId]);
-
-            useEffect(() => {
-                if (!canvasRef.current) return;
-                const ctx = canvasRef.current.getContext('2d');
-                if (chartRef.current) { chartRef.current.destroy(); }
-                const labels = Object.keys(breakdown.details).filter(k => breakdown.details[k].total > 0);
-                const data = labels.map(k => { const d = breakdown.details[k]; return Math.round((d.missed / d.total) * 100); });
-                chartRef.current = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: '% Errors', data: data, backgroundColor: 'rgba(239, 68, 68, 0.6)', borderColor: 'rgb(239, 68, 68)', borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false }, title: { display: true, text: 'Error Rate by Category' } }, scales: { x: { beginAtZero: true, max: 100, title: { display: true, text: '% Missed' } } } } });
-                return () => { if (chartRef.current) chartRef.current.destroy(); };
-            }, [breakdown]);
-
-            if (stats.isBKB) return null;
-
-            return (
-                <div className="bg-slate-50 border-t border-slate-200 p-4 space-y-4">
-                    <PhonemeFrequencyModal isOpen={showInfo} onClose={() => setShowInfo(false)} />
-                    <div className="flex items-center gap-2 mb-3"><h4 className="text-sm font-bold text-slate-700 flex items-center gap-2"><Activity className="w-4 h-4 text-blue-600" /> Automated Error Pattern Analysis</h4><button onClick={() => setShowInfo(true)} className="text-slate-400 hover:text-blue-600 transition-colors" title="View Phoneme Frequency Guide"><HelpCircle className="w-4 h-4" /></button></div>
-
-                    {/* Feature-based error summary */}
-                    <div className="bg-white rounded-lg border border-slate-200 p-3 shadow-sm">
-                        <h5 className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2 border-b border-slate-100 pb-2">Error Summary by Feature</h5>
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                            {/* Manner Errors */}
-                            {breakdown && breakdown.mannerErrors && (() => {
-                                let totalManner = 0, missedManner = 0;
-                                Object.values(breakdown.mannerErrors).forEach(data => { totalManner += data.total; missedManner += data.missed; });
-                                const pct = totalManner > 0 ? Math.round((missedManner / totalManner) * 100) : 0;
-                                return (
-                                    <div className="text-center">
-                                        <div className="font-semibold text-slate-700 mb-1">Manner</div>
-                                        <div className={`text-2xl font-bold ${pct > 0 ? 'text-red-600' : 'text-slate-400'}`}>{pct}%</div>
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Place Errors */}
-                            {breakdown && breakdown.placeErrors && (() => {
-                                let totalPlace = 0, missedPlace = 0;
-                                Object.values(breakdown.placeErrors).forEach(data => { totalPlace += data.total; missedPlace += data.missed; });
-                                const pct = totalPlace > 0 ? Math.round((missedPlace / totalPlace) * 100) : 0;
-                                return (
-                                    <div className="text-center">
-                                        <div className="font-semibold text-slate-700 mb-1">Place</div>
-                                        <div className={`text-2xl font-bold ${pct > 0 ? 'text-red-600' : 'text-slate-400'}`}>{pct}%</div>
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Voicing Errors */}
-                            {breakdown && breakdown.voicingErrors && (() => {
-                                let totalVoicing = 0, missedVoicing = 0;
-                                Object.values(breakdown.voicingErrors).forEach(data => { totalVoicing += data.total; missedVoicing += data.missed; });
-                                const pct = totalVoicing > 0 ? Math.round((missedVoicing / totalVoicing) * 100) : 0;
-                                return (
-                                    <div className="text-center">
-                                        <div className="font-semibold text-slate-700 mb-1">Voicing</div>
-                                        <div className={`text-2xl font-bold ${pct > 0 ? 'text-red-600' : 'text-slate-400'}`}>{pct}%</div>
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm h-56 relative"><canvas ref={canvasRef}></canvas></div>
-                            {breakdown && breakdown.groups && Object.entries(breakdown.groups).map(([name, data]) => { const percent = data.total > 0 ? Math.round((data.missed / data.total) * 100) : 0; return (<div key={name} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm"> <div className="flex justify-between items-center mb-1"> <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">{name}</span> <span className={`text-xs font-bold ${percent > 30 ? 'text-red-600' : 'text-slate-500'}`}>{percent}% Missed</span> </div> <div className="w-full bg-slate-100 rounded-full h-2 mb-1"> <div className={`h-2 rounded-full ${percent > 50 ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div> </div> <div className="text-[10px] text-slate-400 text-right">{data.missed} / {data.total} phonemes</div> </div>); })}
-                        </div>
-                        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm"><h5 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3 border-b border-slate-100 pb-2">Error Analysis by Type</h5><div className="grid grid-cols-2 gap-y-2 gap-x-4">{breakdown && breakdown.details && Object.entries(breakdown.details).map(([type, data]) => { if (data.total === 0) return null; const pct = Math.round((data.missed / data.total) * 100); return (<div key={type} className="flex justify-between items-center text-xs"> <span className="text-slate-600">{type}</span> <span className={`font-mono ${pct > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}`}> {data.missed}/{data.total} ({pct}%) </span> </div>); })}</div></div>
-                    </div>
-                </div>
-            );
-        };
 
         const CriticalDifferenceModal = ({ isOpen, onClose, confidenceLevel }) => {
             const chartRef = useRef(null);
@@ -2416,7 +2295,8 @@
             const [showComparativeScaleModal, setShowComparativeScaleModal] = useState(false);
             const [clinicalNotes, setClinicalNotes] = useState('');
             const [calibrationMode, setCalibrationMode] = useState('none'); // 'none', 'left', 'right'
-            const [calibrationSignal, setCalibrationSignal] = useState('tone'); // 'tone' or 'noise'
+            const [calibrationSignalGroup, setCalibrationSignalGroup] = useState('rh_hf'); // 'nu6', 'rh_hf', 'bkb'
+            const [calibrationSignal, setCalibrationSignal] = useState('rh_hf_tone'); // the specific signal
             const calibrationAudioRef = useRef(null);
             const [isPlayingNoise, setIsPlayingNoise] = useState(false);
             const [snrLevel, setSnrLevel] = useState(10); // Default 10 dB SNR
@@ -2894,10 +2774,16 @@
                     calibrationAudioRef.current.currentTime = 0;
                 }
 
-                let audioPath = 'audio/calibration/000_Master_Calibration_1kHz.wav';
-                if (calibrationSignal === 'noise') {
+                let audioPath = '';
+                if (calibrationSignal === 'nu6_tone') {
+                    audioPath = 'audio/calibration/1000-Hz Calibration Tone.wav';
+                } else if (calibrationSignal === 'rh_hf_tone') {
+                    audioPath = 'audio/calibration/000_Master_Calibration_1kHz.wav';
+                } else if (calibrationSignal === 'rh_hf_ssn') {
                     // Use Global HF Noise containing spectrum of all 100 words (Forms 1-4)
                     audioPath = 'audio/calibration/Global_HF_MasterNoise.wav';
+                } else if (calibrationSignal === 'rh_hf_noise') {
+                    audioPath = 'audio/calibration/pink_noise_4kHz_12kHz_cal_23dBFS.wav';
                 } else if (calibrationSignal === 'bkb_noise') {
                     audioPath = 'BKB-SIN/21 - Speech Spectrum Noise.flac';
                 }
@@ -3597,7 +3483,245 @@
                 }
             };
 
+            // Export to FHIR JSON
+            const handleExportFHIR = async () => {
+                try {
+                    // Fetch all records from IndexedDB
+                    const records = await window.SecureDB.getAllTests();
+
+                    if (!records || records.length === 0) {
+                        alert('No records found to export.');
+                        return;
+                    }
+
+                    // Define the FHIR Bundle
+                    const bundle = {
+                        resourceType: "Bundle",
+                        type: "collection",
+                        entry: []
+                    };
+
+                    const generateUUID = () => {
+                        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                            var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                            return v.toString(16);
+                        });
+                    };
+
+                    // Format date to FHIR dateTime (YYYY-MM-DD or full ISO depending on what we have)
+                    const formatFHIRDate = (dateStr) => {
+                        if (!dateStr) return new Date().toISOString().split('T')[0];
+                        return dateStr;
+                    };
+
+                    // Process each record
+                    records.forEach(record => {
+                        if (!record.tests) return;
+
+                        const patientId = generateUUID();
+                        const patientNameParts = record.patientName ? record.patientName.split(' ') : ['Unknown'];
+                        const familyName = patientNameParts.length > 1 ? patientNameParts.pop() : 'Unknown';
+                        const givenNames = patientNameParts.length > 0 ? patientNameParts : ['Unknown'];
+
+                        // 1. Create Patient Resource
+                        const patientResource = {
+                            fullUrl: `urn:uuid:${patientId}`,
+                            resource: {
+                                resourceType: "Patient",
+                                id: patientId,
+                                text: {
+                                    status: "generated",
+                                    div: `<div xmlns="http://www.w3.org/1999/xhtml">${record.patientName || 'Unknown Patient'}</div>`
+                                },
+                                identifier: record.cNumber ? [
+                                    {
+                                        use: "usual",
+                                        type: { text: "Clinic Number" },
+                                        value: record.cNumber
+                                    }
+                                ] : undefined,
+                                name: [
+                                    {
+                                        use: "official",
+                                        family: familyName,
+                                        given: givenNames,
+                                        text: record.patientName
+                                    }
+                                ],
+                                birthDate: record.dateOfBirth || undefined
+                            }
+                        };
+                        bundle.entry.push(patientResource);
+
+                        // Calculate stats for tests
+                        const statsA = calculateStats(record.tests.A.listId, record.tests.A.section, record.tests.A.scores, record.tests.A.limitTo10);
+                        const statsB = calculateStats(record.tests.B.listId, record.tests.B.section, record.tests.B.scores, record.tests.B.limitTo10);
+
+                        // 2. Create DiagnosticReport
+                        const reportId = generateUUID();
+                        const reportResource = {
+                            fullUrl: `urn:uuid:${reportId}`,
+                            resource: {
+                                resourceType: "DiagnosticReport",
+                                id: reportId,
+                                status: "final",
+                                code: {
+                                    coding: [
+                                        {
+                                            system: "http://snomed.info/sct",
+                                            code: "252560006",
+                                            display: "Speech audiometry (procedure)"
+                                        }
+                                    ],
+                                    text: "NU-6 Speech Audiometry Test"
+                                },
+                                subject: {
+                                    reference: `urn:uuid:${patientId}`,
+                                    display: record.patientName
+                                },
+                                effectiveDateTime: formatFHIRDate(record.testDate),
+                                result: [], // Will hold references to Observations
+                                conclusion: record.clinicalNotes || undefined
+                            }
+                        };
+
+                        const observations = [];
+
+                        // Helper to generate Observation
+                        const createObservation = (testLabel, testData, stats) => {
+                            if (!testData || !stats || stats.totalWords === 0) return;
+
+                            const obsId = generateUUID();
+
+                            // Reference this observation in the report
+                            reportResource.resource.result.push({ reference: `urn:uuid:${obsId}` });
+
+                            const components = [
+                                {
+                                    code: { text: "Word Recognition Score" },
+                                    valueQuantity: {
+                                        value: stats.wordPercent,
+                                        unit: "%",
+                                        system: "http://unitsofmeasure.org",
+                                        code: "%"
+                                    }
+                                },
+                                {
+                                    code: { text: "Words Correct" },
+                                    valueQuantity: {
+                                        value: stats.correctWords,
+                                        unit: "{words}",
+                                        system: "http://unitsofmeasure.org",
+                                        code: "{words}"
+                                    }
+                                },
+                                {
+                                    code: { text: "Total Words Evaluated" },
+                                    valueQuantity: {
+                                        value: stats.totalWords,
+                                        unit: "{words}",
+                                        system: "http://unitsofmeasure.org",
+                                        code: "{words}"
+                                    }
+                                }
+                            ];
+
+                            if (testData.scoringMode === 'phoneme' && stats.totalPhonemes > 0) {
+                                components.push({
+                                    code: { text: "Phoneme Recognition Score" },
+                                    valueQuantity: {
+                                        value: stats.phonemePercent,
+                                        unit: "%",
+                                        system: "http://unitsofmeasure.org",
+                                        code: "%"
+                                    }
+                                });
+                                components.push({
+                                    code: { text: "Phonemes Correct" },
+                                    valueQuantity: {
+                                        value: stats.correctPhonemes,
+                                        unit: "{phonemes}",
+                                        system: "http://unitsofmeasure.org",
+                                        code: "{phonemes}"
+                                    }
+                                });
+                                components.push({
+                                    code: { text: "Total Phonemes Evaluated" },
+                                    valueQuantity: {
+                                        value: stats.totalPhonemes,
+                                        unit: "{phonemes}",
+                                        system: "http://unitsofmeasure.org",
+                                        code: "{phonemes}"
+                                    }
+                                });
+                            }
+
+                            if (testData.snr !== undefined && testData.snr !== '') {
+                                components.push({
+                                    code: { text: "Signal to Noise Ratio (SNR)" },
+                                    valueQuantity: {
+                                        value: Number(testData.snr),
+                                        unit: "dB",
+                                        system: "http://unitsofmeasure.org",
+                                        code: "dB"
+                                    }
+                                });
+                            }
+
+                            const observation = {
+                                fullUrl: `urn:uuid:${obsId}`,
+                                resource: {
+                                    resourceType: "Observation",
+                                    id: obsId,
+                                    status: "final",
+                                    code: {
+                                        coding: [
+                                            {
+                                                system: "http://snomed.info/sct",
+                                                code: "117673004",
+                                                display: "Word recognition score"
+                                            }
+                                        ],
+                                        text: `NU-6 Word Recognition Score - Condition ${testLabel}: ${testData.condition || 'Unknown'} (${testData.listId})`
+                                    },
+                                    subject: {
+                                        reference: `urn:uuid:${patientId}`,
+                                        display: record.patientName
+                                    },
+                                    effectiveDateTime: formatFHIRDate(record.testDate),
+                                    component: components
+                                }
+                            };
+                            observations.push(observation);
+                        };
+
+                        createObservation("A", record.tests.A, statsA);
+                        createObservation("B", record.tests.B, statsB);
+
+                        bundle.entry.push(reportResource);
+                        observations.forEach(obs => bundle.entry.push(obs));
+                    });
+
+                    const jsonString = JSON.stringify(bundle, null, 2);
+                    const blob = new Blob([jsonString], { type: "application/json;charset=utf-8" });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `NU6_FHIR_Export_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setShowExportModal(false);
+                    alert('FHIR (HL7 JSON) export complete.');
+
+                } catch (err) {
+                    console.error('FHIR export failed:', err);
+                    alert('Failed to export FHIR database: ' + (err.message || 'Unknown error'));
+                }
+            };
+
             // Import DB: open source selection (simulated or upload)
+
             const handleImportDB = () => {
                 setShowImportSourceModal(true);
             };
@@ -4416,6 +4540,13 @@
                                         <div className="font-semibold">📈 CSV Export - Aggregate Statistics</div>
                                         <div className="text-xs opacity-90 mt-1">Grouped by list, with mean scores and standard deviations</div>
                                     </button>
+                                    <button onClick={() => { handleExportFHIR(); setShowExportModal(false); }} className="w-full px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-left transition flex items-center gap-3">
+                                        <FileJson className="w-6 h-6 text-teal-200 shrink-0" />
+                                        <div>
+                                            <div className="font-semibold">HL7 FHIR Export (JSON)</div>
+                                            <div className="text-xs opacity-90 mt-1">Standardized Interoperability format for EHRs</div>
+                                        </div>
+                                    </button>
                                 </div>
                                 <button onClick={() => setShowExportModal(false)} className="w-full mt-3 px-4 py-2 bg-slate-100 rounded text-slate-700">Cancel</button>
                             </div>
@@ -4542,7 +4673,7 @@
                                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                                         <Calculator className="w-6 h-6 text-blue-600" />
                                         Hearing Aid Demonstration App
-                                        <span className="text-sm font-normal text-slate-400">v1.4.0</span>
+                                        <span className="text-sm font-normal text-slate-400">v1.4.4</span>
                                     </h1>
                                     <p className="text-slate-500 text-sm">Comparison Mode & Multi-list Support</p>
                                 </div>
@@ -4676,40 +4807,97 @@
                                                         <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
                                                             <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2"><SettingsIcon className="w-4 h-4" /> Calibration</h4>
 
-                                                            <div className="flex gap-4 mb-3 text-sm">
-                                                                <label className="flex items-center gap-2 cursor-pointer">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name="calSignal"
-                                                                        value="tone"
-                                                                        checked={calibrationSignal === 'tone'}
-                                                                        onChange={() => setCalibrationSignal('tone')}
-                                                                        className="text-blue-600 focus:ring-blue-500"
-                                                                    />
-                                                                    <span>1kHz Tone</span>
-                                                                </label>
-                                                                <label className="flex items-center gap-2 cursor-pointer">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name="calSignal"
-                                                                        value="noise"
-                                                                        checked={calibrationSignal === 'noise'}
-                                                                        onChange={() => setCalibrationSignal('noise')}
-                                                                        className="text-blue-600 focus:ring-blue-500"
-                                                                    />
-                                                                    <span>Speech Shaped Noise</span>
-                                                                </label>
-                                                                <label className="flex items-center gap-2 cursor-pointer">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name="calSignal"
-                                                                        value="bkb_noise"
-                                                                        checked={calibrationSignal === 'bkb_noise'}
-                                                                        onChange={() => setCalibrationSignal('bkb_noise')}
-                                                                        className="text-blue-600 focus:ring-blue-500"
-                                                                    />
-                                                                    <span>BKB-SIN Noise</span>
-                                                                </label>
+                                                            <div className="flex flex-col gap-3 mb-4">
+                                                                <div className="flex bg-slate-100 p-1 rounded-lg w-full max-w-sm">
+                                                                    <button
+                                                                        onClick={() => { setCalibrationSignalGroup('nu6'); setCalibrationSignal('nu6_tone'); }}
+                                                                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition ${calibrationSignalGroup === 'nu6' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                                    >
+                                                                        NU-6
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => { setCalibrationSignalGroup('rh_hf'); setCalibrationSignal('rh_hf_tone'); }}
+                                                                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition ${calibrationSignalGroup === 'rh_hf' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                                    >
+                                                                        Rose Hill HF
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => { setCalibrationSignalGroup('bkb'); setCalibrationSignal('bkb_noise'); }}
+                                                                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition ${calibrationSignalGroup === 'bkb' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                                                    >
+                                                                        BKB-SIN
+                                                                    </button>
+                                                                </div>
+
+                                                                {calibrationSignalGroup === 'nu6' && (
+                                                                    <div className="flex gap-4 text-sm pl-2">
+                                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                                            <input
+                                                                                type="radio"
+                                                                                name="calSignal"
+                                                                                value="nu6_tone"
+                                                                                checked={calibrationSignal === 'nu6_tone'}
+                                                                                onChange={() => setCalibrationSignal('nu6_tone')}
+                                                                                className="text-blue-600 focus:ring-blue-500"
+                                                                            />
+                                                                            <span>1000-Hz Calibration Tone</span>
+                                                                        </label>
+                                                                    </div>
+                                                                )}
+
+                                                                {calibrationSignalGroup === 'rh_hf' && (
+                                                                    <div className="flex gap-4 text-sm pl-2">
+                                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                                            <input
+                                                                                type="radio"
+                                                                                name="calSignal"
+                                                                                value="rh_hf_tone"
+                                                                                checked={calibrationSignal === 'rh_hf_tone'}
+                                                                                onChange={() => setCalibrationSignal('rh_hf_tone')}
+                                                                                className="text-blue-600 focus:ring-blue-500"
+                                                                            />
+                                                                            <span>1000-Hz Calibration Tone</span>
+                                                                        </label>
+                                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                                            <input
+                                                                                type="radio"
+                                                                                name="calSignal"
+                                                                                value="rh_hf_ssn"
+                                                                                checked={calibrationSignal === 'rh_hf_ssn'}
+                                                                                onChange={() => setCalibrationSignal('rh_hf_ssn')}
+                                                                                className="text-blue-600 focus:ring-blue-500"
+                                                                            />
+                                                                            <span>Speech Shaped Noise</span>
+                                                                        </label>
+                                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                                            <input
+                                                                                type="radio"
+                                                                                name="calSignal"
+                                                                                value="rh_hf_noise"
+                                                                                checked={calibrationSignal === 'rh_hf_noise'}
+                                                                                onChange={() => setCalibrationSignal('rh_hf_noise')}
+                                                                                className="text-blue-600 focus:ring-blue-500"
+                                                                            />
+                                                                            <span>RH HF Pink Noise</span>
+                                                                        </label>
+                                                                    </div>
+                                                                )}
+
+                                                                {calibrationSignalGroup === 'bkb' && (
+                                                                    <div className="flex gap-4 text-sm pl-2">
+                                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                                            <input
+                                                                                type="radio"
+                                                                                name="calSignal"
+                                                                                value="bkb_noise"
+                                                                                checked={calibrationSignal === 'bkb_noise'}
+                                                                                onChange={() => setCalibrationSignal('bkb_noise')}
+                                                                                className="text-blue-600 focus:ring-blue-500"
+                                                                            />
+                                                                            <span>Track 21 Speech Spectrum Noise</span>
+                                                                        </label>
+                                                                    </div>
+                                                                )}
                                                             </div>
 
                                                             <div className="grid grid-cols-2 gap-3">
@@ -4808,11 +4996,11 @@
                                             <div className="flex gap-2 print:hidden"><button onClick={() => markAll(true)} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium">Mark All</button></div>
                                         </div>
                                         <table className="w-full text-left text-sm">
-                                            <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 print:hidden"><tr><th className="px-4 py-2 w-10">#</th>{(activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '3A', '4A'].includes(activeTest.listId)) && <th className="px-2 py-2 w-10">Play</th>}<th className="px-4 py-2">Word</th>{activeTest.scoringMode === 'phoneme' && (<React.Fragment><th className="px-2 py-2 text-center">I</th><th className="px-2 py-2 text-center">M</th><th className="px-2 py-2 text-center">F</th></React.Fragment>)}<th className="px-4 py-2 text-center">{activeTest.scoringMode === 'phoneme' ? 'Word' : 'Result'}</th></tr></thead>
+                                            <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 print:hidden"><tr><th className="px-4 py-2 w-10">#</th>{(activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '1A', '2A', '3A', '4A'].includes(activeTest.listId)) && <th className="px-2 py-2 w-10">Play</th>}<th className="px-4 py-2">Word</th>{activeTest.scoringMode === 'phoneme' && (<React.Fragment><th className="px-2 py-2 text-center">I</th><th className="px-2 py-2 text-center">M</th><th className="px-2 py-2 text-center">F</th></React.Fragment>)}<th className="px-4 py-2 text-center">{activeTest.scoringMode === 'phoneme' ? 'Word' : 'Result'}</th></tr></thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {activeStats.visibleWords.map((word) => {
                                                     const listId = activeTest.listId; const phonemeScores = word.p.map((p, idx) => { if (p === '-') return null; return activeTest.scores[`${listId}_${word.i}_${idx}`]; }).filter(val => val !== null); const isWordCorrect = phonemeScores.every(s => s === true); const isWordFullyIncorrect = phonemeScores.every(s => s === false);
-                                                    const showAudio = activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '3A', '4A'].includes(listId);
+                                                    const showAudio = activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '1A', '2A', '3A', '4A'].includes(listId);
                                                     return (
                                                         <tr key={word.i} className="hover:bg-slate-50"><td className="px-4 py-2 text-slate-400 font-mono text-xs">{word.i}</td>
                                                             {showAudio && (
@@ -4831,7 +5019,7 @@
                                         </table>
                                     </div>
                                 )}
-                                {activeTest.scoringMode === 'phoneme' && !activeTest.section.includes('_10') && (<DiagnosticsPanel stats={activeStats} scores={activeTest.scores} listId={activeTest.listId} />)}
+
                             </div>
                         )}
 
