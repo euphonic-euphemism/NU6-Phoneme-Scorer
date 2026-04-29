@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hearing Aid Demonstration App v1.4.4</title>
+    <title>Hearing Aid Demonstration App v1.5.0</title>
 
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -460,7 +460,7 @@
         const PHONEME_MAP = { "f": "Fricative", "v": "Fricative", "θ": "Fricative", "ð": "Fricative", "s": "Fricative", "z": "Fricative", "ʃ": "Fricative", "ʒ": "Fricative", "h": "Fricative", "tʃ": "Affricate", "dʒ": "Affricate", "p": "Stop", "b": "Stop", "t": "Stop", "d": "Stop", "k": "Stop", "g": "Stop", "m": "Nasal", "n": "Nasal", "ŋ": "Nasal", "l": "Liquid/Glide", "r": "Liquid/Glide", "w": "Liquid/Glide", "j": "Liquid/Glide", "i": "Vowel", "ɪ": "Vowel", "eɪ": "Vowel", "ɛ": "Vowel", "æ": "Vowel", "u": "Vowel", "ʊ": "Vowel", "oʊ": "Vowel", "ɔ": "Vowel", "ɑ": "Vowel", "ʌ": "Vowel", "ɝ": "Vowel", "aɪ": "Vowel", "ɔɪ": "Vowel", "aʊ": "Vowel", "ə": "Vowel", "ɚ": "Vowel" };
         const PHONEME_GROUPS = { "High Frequency (Fricatives, Affricates, Stops)": ["Fricative", "Affricate", "Stop"], "Low Frequency (Nasals, Liquids, Glides, Vowels)": ["Nasal", "Liquid/Glide", "Vowel"] };
 
-        // Phonetic features for manner, place, and voicing analysis
+
         // BKB-SIN List Pairs (Disc 2 - Split Track I)
         // BKB-SIN List Pairs (Disc 2 - Split Track I)
         // Verified Track Mapping: Track 03.wav = List Pair 1
@@ -796,55 +796,7 @@
             }
         };
 
-        const PHONEME_FEATURES = {
-            // Stops
-            "p": { manner: "Stop", place: "Bilabial", voicing: "Voiceless" },
-            "b": { manner: "Stop", place: "Bilabial", voicing: "Voiced" },
-            "t": { manner: "Stop", place: "Alveolar", voicing: "Voiceless" },
-            "d": { manner: "Stop", place: "Alveolar", voicing: "Voiced" },
-            "k": { manner: "Stop", place: "Velar", voicing: "Voiceless" },
-            "g": { manner: "Stop", place: "Velar", voicing: "Voiced" },
-            // Fricatives
-            "f": { manner: "Fricative", place: "Labiodental", voicing: "Voiceless" },
-            "v": { manner: "Fricative", place: "Labiodental", voicing: "Voiced" },
-            "θ": { manner: "Fricative", place: "Dental", voicing: "Voiceless" },
-            "ð": { manner: "Fricative", place: "Dental", voicing: "Voiced" },
-            "s": { manner: "Fricative", place: "Alveolar", voicing: "Voiceless" },
-            "z": { manner: "Fricative", place: "Alveolar", voicing: "Voiced" },
-            "ʃ": { manner: "Fricative", place: "Postalveolar", voicing: "Voiceless" },
-            "ʒ": { manner: "Fricative", place: "Postalveolar", voicing: "Voiced" },
-            "h": { manner: "Fricative", place: "Glottal", voicing: "Voiceless" },
-            // Affricates
-            "tʃ": { manner: "Affricate", place: "Postalveolar", voicing: "Voiceless" },
-            "dʒ": { manner: "Affricate", place: "Postalveolar", voicing: "Voiced" },
-            // Nasals
-            "m": { manner: "Nasal", place: "Bilabial", voicing: "Voiced" },
-            "n": { manner: "Nasal", place: "Alveolar", voicing: "Voiced" },
-            "ŋ": { manner: "Nasal", place: "Velar", voicing: "Voiced" },
-            // Liquids and Glides
-            "l": { manner: "Liquid", place: "Alveolar", voicing: "Voiced" },
-            "r": { manner: "Liquid", place: "Postalveolar", voicing: "Voiced" },
-            "w": { manner: "Glide", place: "Bilabial-Velar", voicing: "Voiced" },
-            "j": { manner: "Glide", place: "Palatal", voicing: "Voiced" },
-            // Vowels (all voiced, varying places)
-            "i": { manner: "Vowel", place: "High-Front", voicing: "Voiced" },
-            "ɪ": { manner: "Vowel", place: "High-Front", voicing: "Voiced" },
-            "eɪ": { manner: "Vowel", place: "Mid-Front", voicing: "Voiced" },
-            "ɛ": { manner: "Vowel", place: "Mid-Front", voicing: "Voiced" },
-            "æ": { manner: "Vowel", place: "Low-Front", voicing: "Voiced" },
-            "u": { manner: "Vowel", place: "High-Back", voicing: "Voiced" },
-            "ʊ": { manner: "Vowel", place: "High-Back", voicing: "Voiced" },
-            "oʊ": { manner: "Vowel", place: "Mid-Back", voicing: "Voiced" },
-            "ɔ": { manner: "Vowel", place: "Mid-Back", voicing: "Voiced" },
-            "ɑ": { manner: "Vowel", place: "Low-Back", voicing: "Voiced" },
-            "ʌ": { manner: "Vowel", place: "Mid-Central", voicing: "Voiced" },
-            "ɝ": { manner: "Vowel", place: "Mid-Central", voicing: "Voiced" },
-            "aɪ": { manner: "Vowel", place: "Low-Front", voicing: "Voiced" },
-            "ɔɪ": { manner: "Vowel", place: "Mid-Back", voicing: "Voiced" },
-            "aʊ": { manner: "Vowel", place: "Low-Back", voicing: "Voiced" },
-            "ə": { manner: "Vowel", place: "Mid-Central", voicing: "Voiced" },
-            "ɚ": { manner: "Vowel", place: "Mid-Central", voicing: "Voiced" }
-        };
+
         const LIST_1A = [{ i: 1, w: "LAUD", p: ["l", "ɔ", "d"] }, { i: 2, w: "BOAT", p: ["b", "oʊ", "t"] }, { i: 3, w: "POOL", p: ["p", "u", "l"] }, { i: 4, w: "NAG", p: ["n", "æ", "g"] }, { i: 5, w: "LIMB", p: ["l", "ɪ", "m"] }, { i: 6, w: "SHOUT", p: ["ʃ", "aʊ", "t"] }, { i: 7, w: "SUB", p: ["s", "ʌ", "b"] }, { i: 8, w: "VINE", p: ["v", "aɪ", "n"] }, { i: 9, w: "DIME", p: ["d", "aɪ", "m"] }, { i: 10, w: "GOOSE", p: ["g", "u", "s"] }, { i: 11, w: "WHIP", p: ["w", "ɪ", "p"] }, { i: 12, w: "TOUGH", p: ["t", "ʌ", "f"] }, { i: 13, w: "PUFF", p: ["p", "ʌ", "f"] }, { i: 14, w: "KEEN", p: ["k", "i", "n"] }, { i: 15, w: "DEATH", p: ["d", "ɛ", "θ"] }, { i: 16, w: "SELL", p: ["s", "ɛ", "l"] }, { i: 17, w: "TAKE", p: ["t", "eɪ", "k"] }, { i: 18, w: "FALL", p: ["f", "ɔ", "l"] }, { i: 19, w: "RAISE", p: ["r", "eɪ", "z"] }, { i: 20, w: "THIRD", p: ["θ", "ɝ", "d"] }, { i: 21, w: "GAP", p: ["g", "æ", "p"] }, { i: 22, w: "FAT", p: ["f", "æ", "t"] }, { i: 23, w: "MET", p: ["m", "ɛ", "t"] }, { i: 24, w: "JAR", p: ["dʒ", "ɑ", "r"] }, { i: 25, w: "DOOR", p: ["d", "ɔ", "r"] }, { i: 26, w: "LOVE", p: ["l", "ʌ", "v"] }, { i: 27, w: "SURE", p: ["ʃ", "ʊ", "r"] }, { i: 28, w: "KNOCK", p: ["n", "ɑ", "k"] }, { i: 29, w: "CHOICE", p: ["tʃ", "ɔɪ", "s"] }, { i: 30, w: "HASH", p: ["h", "æ", "ʃ"] }, { i: 31, w: "LOT", p: ["l", "ɑ", "t"] }, { i: 32, w: "RAID", p: ["r", "eɪ", "d"] }, { i: 33, w: "HURL", p: ["h", "ɝ", "l"] }, { i: 34, w: "MOON", p: ["m", "u", "n"] }, { i: 35, w: "PAGE", p: ["p", "eɪ", "dʒ"] }, { i: 36, w: "YES", p: ["j", "ɛ", "s"] }, { i: 37, w: "REACH", p: ["r", "i", "tʃ"] }, { i: 38, w: "KING", p: ["k", "ɪ", "ŋ"] }, { i: 39, w: "HOME", p: ["h", "oʊ", "m"] }, { i: 40, w: "RAG", p: ["r", "æ", "g"] }, { i: 41, w: "WHICH", p: ["w", "ɪ", "tʃ"] }, { i: 42, w: "WEEK", p: ["w", "i", "k"] }, { i: 43, w: "SIZE", p: ["s", "aɪ", "z"] }, { i: 44, w: "MODE", p: ["m", "oʊ", "d"] }, { i: 45, w: "BEAN", p: ["b", "i", "n"] }, { i: 46, w: "TIP", p: ["t", "ɪ", "p"] }, { i: 47, w: "CHALK", p: ["tʃ", "ɔ", "k"] }, { i: 48, w: "JAIL", p: ["dʒ", "eɪ", "l"] }, { i: 49, w: "BURN", p: ["b", "ɝ", "n"] }, { i: 50, w: "KITE", p: ["k", "aɪ", "t"] }];
         const LIST_2A = [{ i: 1, w: "PICK", p: ["p", "ɪ", "k"] }, { i: 2, w: "ROOM", p: ["r", "u", "m"] }, { i: 3, w: "NICE", p: ["n", "aɪ", "s"] }, { i: 4, w: "SAID", p: ["s", "ɛ", "d"] }, { i: 5, w: "FAIL", p: ["f", "eɪ", "l"] }, { i: 6, w: "SOUTH", p: ["s", "aʊ", "θ"] }, { i: 7, w: "WHITE", p: ["w", "aɪ", "t"] }, { i: 8, w: "KEEP", p: ["k", "i", "p"] }, { i: 9, w: "DEAD", p: ["d", "ɛ", "d"] }, { i: 10, w: "LOAF", p: ["l", "oʊ", "f"] }, { i: 11, w: "DAB", p: ["d", "æ", "b"] }, { i: 12, w: "NUMB", p: ["n", "ʌ", "m"] }, { i: 13, w: "JUICE", p: ["dʒ", "u", "s"] }, { i: 14, w: "CHIEF", p: ["tʃ", "i", "f"] }, { i: 15, w: "MERGE", p: ["m", "ɝ", "dʒ"] }, { i: 16, w: "WAG", p: ["w", "æ", "g"] }, { i: 17, w: "RAIN", p: ["r", "eɪ", "n"] }, { i: 18, w: "WITCH", p: ["w", "ɪ", "tʃ"] }, { i: 19, w: "SOAP", p: ["s", "oʊ", "p"] }, { i: 20, w: "YOUNG", p: ["j", "ʌ", "ŋ"] }, { i: 21, w: "TON", p: ["t", "ʌ", "n"] }, { i: 22, w: "KEG", p: ["k", "ɛ", "g"] }, { i: 23, w: "CALM", p: ["k", "ɑ", "m"] }, { i: 24, w: "TOOL", p: ["t", "u", "l"] }, { i: 25, w: "PIKE", p: ["p", "aɪ", "k"] }, { i: 26, w: "MILL", p: ["m", "ɪ", "l"] }, { i: 27, w: "HUSH", p: ["h", "ʌ", "ʃ"] }, { i: 28, w: "SHACK", p: ["ʃ", "æ", "k"] }, { i: 29, w: "READ", p: ["r", "i", "d"] }, { i: 30, w: "ROT", p: ["r", "ɑ", "t"] }, { i: 31, w: "HATE", p: ["h", "eɪ", "t"] }, { i: 32, w: "LIVE", p: ["l", "ɪ", "v"] }, { i: 33, w: "BOOK", p: ["b", "ʊ", "k"] }, { i: 34, w: "VOICE", p: ["v", "ɔɪ", "s"] }, { i: 35, w: "GAZE", p: ["g", "eɪ", "z"] }, { i: 36, w: "PAD", p: ["p", "æ", "d"] }, { i: 37, w: "THOUGHT", p: ["θ", "ɔ", "t"] }, { i: 38, w: "BOUGHT", p: ["b", "ɔ", "t"] }, { i: 39, w: "TURN", p: ["t", "ɝ", "n"] }, { i: 40, w: "CHAIR", p: ["tʃ", "ɛ", "r"] }, { i: 41, w: "LORE", p: ["l", "ɔ", "r"] }, { i: 42, w: "BITE", p: ["b", "aɪ", "t"] }, { i: 43, w: "HAZE", p: ["h", "eɪ", "z"] }, { i: 44, w: "MATCH", p: ["m", "æ", "tʃ"] }, { i: 45, w: "LEARN", p: ["l", "ɝ", "n"] }, { i: 46, w: "SHAWL", p: ["ʃ", "ɔ", "l"] }, { i: 47, w: "DEEP", p: ["d", "i", "p"] }, { i: 48, w: "GIN", p: ["dʒ", "ɪ", "n"] }, { i: 49, w: "GOAL", p: ["g", "oʊ", "l"] }, { i: 50, w: "FAR", p: ["f", "ɑ", "r"] }];
         const LIST_3A = [{ i: 1, w: "BASE", p: ["b", "eɪ", "s"] }, { i: 2, w: "MESS", p: ["m", "ɛ", "s"] }, { i: 3, w: "CAUSE", p: ["k", "ɔ", "z"] }, { i: 4, w: "MOP", p: ["m", "ɑ", "p"] }, { i: 5, w: "GOOD", p: ["g", "ʊ", "d"] }, { i: 6, w: "LUCK", p: ["l", "ʌ", "k"] }, { i: 7, w: "WALK", p: ["w", "ɔ", "k"] }, { i: 8, w: "YOUTH", p: ["j", "u", "θ"] }, { i: 9, w: "PAIN", p: ["p", "eɪ", "n"] }, { i: 10, w: "DATE", p: ["d", "eɪ", "t"] }, { i: 11, w: "PEARL", p: ["p", "ɝ", "l"] }, { i: 12, w: "SEARCH", p: ["s", "ɝ", "tʃ"] }, { i: 13, w: "DITCH", p: ["d", "ɪ", "tʃ"] }, { i: 14, w: "TALK", p: ["t", "ɔ", "k"] }, { i: 15, w: "RING", p: ["r", "ɪ", "ŋ"] }, { i: 16, w: "GERM", p: ["dʒ", "ɝ", "m"] }, { i: 17, w: "LIFE", p: ["l", "aɪ", "f"] }, { i: 18, w: "TEAM", p: ["t", "i", "m"] }, { i: 19, w: "LID", p: ["l", "ɪ", "d"] }, { i: 20, w: "POLE", p: ["p", "oʊ", "l"] }, { i: 21, w: "RODE", p: ["r", "oʊ", "d"] }, { i: 22, w: "SHALL", p: ["ʃ", "æ", "l"] }, { i: 23, w: "LATE", p: ["l", "eɪ", "t"] }, { i: 24, w: "CHEEK", p: ["tʃ", "i", "k"] }, { i: 25, w: "BEG", p: ["b", "ɛ", "g"] }, { i: 26, w: "GUN", p: ["g", "ʌ", "n"] }, { i: 27, w: "JUG", p: ["dʒ", "ʌ", "g"] }, { i: 28, w: "SHEEP", p: ["ʃ", "i", "p"] }, { i: 29, w: "FIVE", p: ["f", "aɪ", "v"] }, { i: 30, w: "RUSH", p: ["r", "ʌ", "ʃ"] }, { i: 31, w: "RAT", p: ["r", "æ", "t"] }, { i: 32, w: "VOID", p: ["v", "ɔɪ", "d"] }, { i: 33, w: "WIRE", p: ["w", "aɪ", "r"] }, { i: 34, w: "HALF", p: ["h", "æ", "f"] }, { i: 35, w: "NOTE", p: ["n", "oʊ", "t"] }, { i: 36, w: "WHEN", p: ["w", "ɛ", "n"] }, { i: 37, w: "NAME", p: ["n", "eɪ", "m"] }, { i: 38, w: "THIN", p: ["θ", "ɪ", "n"] }, { i: 39, w: "TELL", p: ["t", "ɛ", "l"] }, { i: 40, w: "BAR", p: ["b", "ɑ", "r"] }, { i: 41, w: "MOUSE", p: ["m", "aʊ", "s"] }, { i: 42, w: "HIRE", p: ["h", "aɪ", "r"] }, { i: 43, w: "CAB", p: ["k", "æ", "b"] }, { i: 44, w: "HIT", p: ["h", "ɪ", "t"] }, { i: 45, w: "CHAT", p: ["tʃ", "æ", "t"] }, { i: 46, w: "PHONE", p: ["f", "oʊ", "n"] }, { i: 47, w: "SOUP", p: ["s", "u", "p"] }, { i: 48, w: "DODGE", p: ["d", "ɑ", "dʒ"] }, { i: 49, w: "SEIZE", p: ["s", "i", "z"] }, { i: 50, w: "COOL", p: ["k", "u", "l"] }];
@@ -1972,8 +1924,10 @@
         };
 
         const HistoryChart = ({ cNumber }) => {
-            const canvasRef = useRef(null);
-            const chartRef = useRef(null);
+            const canvasNu6Ref = useRef(null);
+            const canvasBkbRef = useRef(null);
+            const chartNu6Ref = useRef(null);
+            const chartBkbRef = useRef(null);
             const [historyData, setHistoryData] = useState([]);
             const [loading, setLoading] = useState(false);
 
@@ -1981,18 +1935,182 @@
                 if (!cNumber) return;
                 setLoading(true);
                 window.SecureDB.getPatientHistory(cNumber).then(data => {
-                    const sortedData = [...data].sort((a, b) => new Date(b.testDate) - new Date(a.testDate));
+                    // Sort ascending (oldest first) for correct chronological charting
+                    const sortedData = [...data].sort((a, b) => new Date(a.testDate) - new Date(b.testDate));
                     setHistoryData(sortedData);
                     setLoading(false);
                 });
             }, [cNumber]);
 
+            useEffect(() => {
+                if (historyData.length === 0) return;
+
+                const nu6Data = { labels: [], datasets: {} };
+                const bkbData = { labels: [], datasets: {} };
+                let hasNu6 = false;
+                let hasBkb = false;
+
+                const labels = historyData.map(r => r.testDate);
+
+                historyData.forEach((record, idx) => {
+                    const processTest = (test) => {
+                        if (!test || !test.listId) return;
+                        const stats = calculateStats(test.listId, test.section, test.scores, test.limitTo10);
+                        if (!stats) return;
+
+                        let chartLabel = test.condition || 'Unknown';
+                        
+                        let borderColor = '#94a3b8'; 
+                        let borderDash = [];
+                        let pointStyle = 'circle';
+                        
+                        const lowerCond = chartLabel.toLowerCase();
+                        if (lowerCond.includes('unaided')) {
+                            chartLabel = 'Unaided';
+                            borderColor = '#ef4444'; // red
+                        } else if (lowerCond.includes('new') || lowerCond.includes('current') || lowerCond.includes('aid')) {
+                            chartLabel = 'Aided';
+                            borderColor = '#3b82f6'; // blue
+                            pointStyle = 'rect';
+                        }
+
+                        if (stats.isBKB) {
+                            if (stats.snr50 !== undefined) {
+                                hasBkb = true;
+                                if (!bkbData.datasets[chartLabel]) {
+                                    bkbData.datasets[chartLabel] = {
+                                        label: chartLabel,
+                                        data: Array(historyData.length).fill(null),
+                                        borderColor,
+                                        borderDash,
+                                        pointStyle,
+                                        pointRadius: 5,
+                                        tension: 0.2,
+                                        spanGaps: true
+                                    };
+                                }
+                                bkbData.datasets[chartLabel].data[idx] = stats.snr50;
+                            }
+                        } else {
+                            if (stats.wordPercent !== undefined) {
+                                hasNu6 = true;
+                                if (!nu6Data.datasets[chartLabel]) {
+                                    nu6Data.datasets[chartLabel] = {
+                                        label: chartLabel,
+                                        data: Array(historyData.length).fill(null),
+                                        borderColor,
+                                        borderDash,
+                                        pointStyle,
+                                        pointRadius: 5,
+                                        tension: 0.2,
+                                        spanGaps: true
+                                    };
+                                }
+                                nu6Data.datasets[chartLabel].data[idx] = stats.wordPercent;
+                            }
+                        }
+                    };
+
+                    processTest(record.tests?.A);
+                    processTest(record.tests?.B);
+                });
+
+                if (hasNu6 && canvasNu6Ref.current) {
+                    if (chartNu6Ref.current) chartNu6Ref.current.destroy();
+                    chartNu6Ref.current = new Chart(canvasNu6Ref.current, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: Object.values(nu6Data.datasets)
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: { display: true, text: 'NU-6 Word Recognition Score (%)' },
+                                tooltip: {
+                                    callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}%` }
+                                }
+                            },
+                            scales: {
+                                y: { min: 0, max: 100, title: { display: true, text: 'Score (%)' } },
+                                x: { title: { display: true, text: 'Test Date' } }
+                            }
+                        }
+                    });
+                } else if (chartNu6Ref.current) {
+                    chartNu6Ref.current.destroy();
+                }
+
+                if (hasBkb && canvasBkbRef.current) {
+                    if (chartBkbRef.current) chartBkbRef.current.destroy();
+                    chartBkbRef.current = new Chart(canvasBkbRef.current, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: Object.values(bkbData.datasets)
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: { display: true, text: 'BKB-SIN SNR-50 (dB)' },
+                                tooltip: {
+                                    callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} dB SNR` }
+                                }
+                            },
+                            scales: {
+                                y: { 
+                                    reverse: true, // Lower is better
+                                    title: { display: true, text: 'SNR-50 (dB)' } 
+                                },
+                                x: { title: { display: true, text: 'Test Date' } }
+                            }
+                        }
+                    });
+                } else if (chartBkbRef.current) {
+                    chartBkbRef.current.destroy();
+                }
+
+                return () => {
+                    if (chartNu6Ref.current) chartNu6Ref.current.destroy();
+                    if (chartBkbRef.current) chartBkbRef.current.destroy();
+                };
+            }, [historyData]);
+
             if (!cNumber) return <div className="text-center text-slate-400 py-10">Enter Patient ID to view history.</div>;
             if (loading) return <div className="text-center text-slate-500 py-10"><Loader className="w-8 h-8 mx-auto mb-2 text-blue-600" />Loading history...</div>;
             if (historyData.length === 0) return <div className="text-center text-slate-400 py-10">No history found for ID: {cNumber}</div>;
 
+            const hasNu6 = historyData.some(r => {
+                const a = calculateStats(r.tests?.A?.listId, r.tests?.A?.section, r.tests?.A?.scores, r.tests?.A?.limitTo10);
+                const b = calculateStats(r.tests?.B?.listId, r.tests?.B?.section, r.tests?.B?.scores, r.tests?.B?.limitTo10);
+                return (a && !a.isBKB) || (b && !b.isBKB);
+            });
+
+            const hasBkb = historyData.some(r => {
+                const a = calculateStats(r.tests?.A?.listId, r.tests?.A?.section, r.tests?.A?.scores, r.tests?.A?.limitTo10);
+                const b = calculateStats(r.tests?.B?.listId, r.tests?.B?.section, r.tests?.B?.scores, r.tests?.B?.limitTo10);
+                return (a && a.isBKB) || (b && b.isBKB);
+            });
+
             return (
                 <div className="space-y-6">
+                    {/* Longitudinal Charts */}
+                    {(hasNu6 || hasBkb) && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {hasNu6 && (
+                                <div className="bg-white rounded-lg border border-slate-200 p-4 h-64">
+                                    <canvas ref={canvasNu6Ref}></canvas>
+                                </div>
+                            )}
+                            {hasBkb && (
+                                <div className="bg-white rounded-lg border border-slate-200 p-4 h-64">
+                                    <canvas ref={canvasBkbRef}></canvas>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
                         <table className="w-full text-sm text-left">
@@ -2009,7 +2127,7 @@
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {historyData.map((record, idx) => {
+                                {[...historyData].reverse().map((record, idx) => {
                                     const statsA = calculateStats(record.tests.A.listId, record.tests.A.section, record.tests.A.scores, record.tests.A.limitTo10);
                                     const statsB = calculateStats(record.tests.B.listId, record.tests.B.section, record.tests.B.scores, record.tests.B.limitTo10);
 
@@ -4277,11 +4395,6 @@
                     finalY += 5;
                     const isPhonSig = isPhonemeDiffSig ? "YES - Significant Difference" : "NO - Within Critical Limits";
                     doc.text(`Phoneme Score Difference: ${isPhonSig}`, 20, finalY);
-
-                    // Add Error Pattern Analysis for phoneme scoring
-                    finalY += 10;
-                    doc.setFontSize(11);
-                    doc.text("Error Pattern Analysis:", 20, finalY);
                 }
 
                 // Add TNT Significance if both tests have TNT data
@@ -4300,68 +4413,6 @@
                     doc.text(`TNT Excursion Width Difference: ${tntExcursionWidthDifference.toFixed(2)} dB - ${tntExcSig} (${confidenceLevel}% CI: >${tntExcCI} dB)`, 20, finalY);
                 }
 
-                if (tests.A.scoringMode === 'phoneme' && tests.B.scoringMode === 'phoneme') {
-                    doc.setFontSize(10);
-
-                    // Calculate manner, place, and voicing errors for both tests
-                    const calculateFeatureErrors = (test) => {
-                        const listData = getListData(test.listId);
-                        let visibleWords = listData;
-                        if (test.section === 'first') visibleWords = listData.slice(0, 25);
-                        else if (test.section === 'first_10') visibleWords = listData.slice(0, 10);
-                        else if (test.section === 'second') visibleWords = listData.slice(25, 50);
-                        else if (test.section === 'second_10') visibleWords = listData.slice(25, 35);
-                        if (test.limitTo10) visibleWords = visibleWords.slice(0, 10);
-
-                        const mannerErrors = {}, placeErrors = {}, voicingErrors = { Voiced: { total: 0, missed: 0 }, Voiceless: { total: 0, missed: 0 } };
-
-                        visibleWords.forEach(word => {
-                            word.p.forEach((p, idx) => {
-                                if (p === '-') return;
-                                const isCorrect = test.scores[`${test.listId}_${word.i}_${idx}`];
-                                const features = PHONEME_FEATURES[p];
-
-                                if (features) {
-                                    const { manner, place, voicing } = features;
-                                    if (manner) {
-                                        if (!mannerErrors[manner]) mannerErrors[manner] = { total: 0, missed: 0 };
-                                        mannerErrors[manner].total++;
-                                        if (!isCorrect) mannerErrors[manner].missed++;
-                                    }
-                                    if (place) {
-                                        if (!placeErrors[place]) placeErrors[place] = { total: 0, missed: 0 };
-                                        placeErrors[place].total++;
-                                        if (!isCorrect) placeErrors[place].missed++;
-                                    }
-                                    if (voicing) {
-                                        voicingErrors[voicing].total++;
-                                        if (!isCorrect) voicingErrors[voicing].missed++;
-                                    }
-                                }
-                            });
-                        });
-
-                        // Calculate totals
-                        let totalManner = 0, missedManner = 0, totalPlace = 0, missedPlace = 0, totalVoicing = 0, missedVoicing = 0;
-                        Object.values(mannerErrors).forEach(data => { totalManner += data.total; missedManner += data.missed; });
-                        Object.values(placeErrors).forEach(data => { totalPlace += data.total; missedPlace += data.missed; });
-                        Object.values(voicingErrors).forEach(data => { totalVoicing += data.total; missedVoicing += data.missed; });
-
-                        return {
-                            manner: totalManner > 0 ? Math.round((missedManner / totalManner) * 100) : 0,
-                            place: totalPlace > 0 ? Math.round((missedPlace / totalPlace) * 100) : 0,
-                            voicing: totalVoicing > 0 ? Math.round((missedVoicing / totalVoicing) * 100) : 0
-                        };
-                    };
-
-                    const errorsBaseline = calculateFeatureErrors(baselineTest);
-                    const errorsComparison = calculateFeatureErrors(comparisonTest);
-
-                    finalY += 6;
-                    doc.text(`Test ${baselineTest.id} - Manner: ${errorsBaseline.manner}%  |  Place: ${errorsBaseline.place}%  |  Voicing: ${errorsBaseline.voicing}%`, 25, finalY);
-                    finalY += 5;
-                    doc.text(`Test ${comparisonTest.id} - Manner: ${errorsComparison.manner}%  |  Place: ${errorsComparison.place}%  |  Voicing: ${errorsComparison.voicing}%`, 25, finalY);
-                }
 
                 // Add Comparative Ease if applicable
                 // Add Comparative Ease if applicable

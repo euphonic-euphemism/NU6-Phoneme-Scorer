@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0] - 2026-04-29
+### Added
+- **Longitudinal Dashboard Graphing**: Visual line charts for NU-6 and BKB-SIN tests in the Patient History tab to track performance over time.
+
+### Changed
+- Combined "Current Aids" and "New Aids" under a single "Aided" graph legend to prevent clutter.
+- Removed Automatic Error Pattern Analysis (manner, place, voice) logic and calculation from app and PDF exports.
 ## [1.4.3] - 2026-03-07
 ### Added
 - **NU-6 List 1A Integration**: Split the NU-6 CNC List 1A tracks into 50 individual word audio files and integrated them via the app UI.
