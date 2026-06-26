@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.1] - 2026-06-26
+### Fixed
+- Fixed critical blank screen rendering issue on Windows and Linux by correcting Chart.js ESM inclusion format.
+- Resolved security issue (`unsafe-eval` Content Security Policy warning) by pre-compiling all React JSX code with Babel during the build process instead of at runtime in the browser.
+- Improved application initialization speed significantly by eliminating in-browser transpilation.
+- Fixed an issue where the "Reset Database" button would silently fail if the IndexedDB connection was actively held open.
+- Added `--no-sandbox` to start script to resolve SUID crashes on some Linux distributions.
+
 ## [1.5.0] - 2026-04-29
 ### Added
 - **Longitudinal Dashboard Graphing**: Visual line charts for NU-6 and BKB-SIN tests in the Patient History tab to track performance over time.

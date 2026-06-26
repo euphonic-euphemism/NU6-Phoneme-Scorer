@@ -1,12 +1,16 @@
 {
   "name": "hearing-aid-demonstration-app",
   "productName": "Hearing-Aid-Demonstration-App",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "NU-6 Whole Word and Phoneme Scoring Application",
   "main": "main.js",
   "homepage": "https://github.com/euphonic-euphemism/NU6-Phoneme-Scorer",
   "scripts": {
-    "start": "electron .",
+    "build:js": "babel src/app.jsx --out-file build/app.js",
+    "prestart": "npm run build:js",
+    "prepack": "npm run build:js",
+    "predist": "npm run build:js",
+    "start": "electron . --no-sandbox",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "test": "jest --runInBand"
@@ -14,6 +18,9 @@
   "author": "Mark Shaver <mark.shaver@posteo.net>",
   "license": "ISC",
   "devDependencies": {
+    "@babel/cli": "^7.29.7",
+    "@babel/core": "^7.29.7",
+    "@babel/preset-react": "^7.29.7",
     "electron": "^28.2.0",
     "electron-builder": "^24.13.0"
   },
@@ -29,7 +36,8 @@
       "tailwind.min.css",
       "*.csv",
       "audio/**/*",
-      "BKB-SIN/**/*"
+      "BKB-SIN/**/*",
+      "build/**/*"
     ],
     "asarUnpack": [
       "*.csv",
