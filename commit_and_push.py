@@ -22,7 +22,7 @@ if filtered_files:
     porcelain.add(repo, paths=filtered_files)
 
 porcelain.commit(repo, message=b"V2.0.0 Release - Massive UI Overhaul and Refactoring", author=b"Mark Shaver <mark.shaver@posteo.net>")
-porcelain.tag(repo, b"v2.0.0", author=b"Mark Shaver <mark.shaver@posteo.net>", message=b"Version 2.0.0")
+porcelain.tag_create(repo, b"v2.0.0", author=b"Mark Shaver <mark.shaver@posteo.net>", message=b"Version 2.0.0")
 
 print("Commited and tagged!")
 try:
