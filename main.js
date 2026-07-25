@@ -34,7 +34,16 @@ function createWindow() {
     });
 
     // Load the HTML file
-    win.loadFile(path.join(__dirname, 'nu6_scoring_app.html'));
+    
+    const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
+    if (isDev && process.env.VITE_DEV_SERVER_URL) {
+        win.loadURL(process.env.VITE_DEV_SERVER_URL);
+    } else if (isDev) {
+        win.loadURL('http://localhost:5173');
+    } else {
+        win.loadFile(path.join(__dirname, 'dist-web', 'index.html'));
+    }
+
 
     // Log any console errors
     win.webContents.on('console-message', (event, level, message, line, sourceId) => {

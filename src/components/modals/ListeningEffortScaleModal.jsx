@@ -1,0 +1,17 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { X, Download } from "../icons/index.jsx";
+
+// Note: You may need to import word lists or other constants if used.
+import { LIST_1A, LIST_2A, LIST_3A, LIST_4A, LIST_HF1, LIST_HF2, LIST_HF3, LIST_HF4 } from '../../data/wordLists.js';
+export const ListeningEffortScaleModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            const downloadScale = async () => {
+                const element = document.getElementById('scale-capture-target'); if (!element) return;
+                try { const canvas = await html2canvas(element, { backgroundColor: '#ffffff', scale: 2 }); const data = canvas.toDataURL('image/png'); const link = document.createElement('a'); link.href = data; link.download = 'listening-effort-scale.png'; link.click(); } catch (error) { console.error("Download failed:", error); alert("Could not export PNG. Try printing instead."); }
+            };
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"> <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-4 relative max-h-[90vh] overflow-y-auto"> <button onClick={onClose} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 no-print"> <X className="w-5 h-5" /> </button> <div id="scale-capture-target" className="p-2 bg-white"> <h3 className="text-lg font-bold text-slate-800 mb-3 text-center">Listening Effort Scale</h3> <div className="space-y-1"> {[{ val: 0, label: "No Effort", color: "bg-emerald-100 border-emerald-300 text-emerald-800" }, { val: 1, label: "Very Little Effort", color: "bg-emerald-50 border-emerald-200 text-emerald-700" }, { val: 2, label: "Little Effort", color: "bg-green-50 border-green-200 text-green-700" }, { val: 3, label: "Moderate Effort", color: "bg-lime-50 border-lime-200 text-lime-700" }, { val: 4, label: "Considerable Effort", color: "bg-yellow-50 border-yellow-200 text-yellow-700" }, { val: 5, label: "Much Effort", color: "bg-amber-50 border-amber-200 text-amber-700" }, { val: 6, label: "Very Much Effort", color: "bg-orange-50 border-orange-200 text-orange-700" }, { val: 7, label: "Extreme Effort", color: "bg-red-50 border-red-200 text-red-700" }, { val: 8, label: "Maximum Effort", color: "bg-red-100 border-red-300 text-red-800" }, { val: 9, label: "Giving Up", color: "bg-rose-100 border-rose-300 text-rose-800" }, { val: 10, label: "Unable to Ignore Noise", color: "bg-slate-800 border-slate-900 text-white" },].map((item) => (<div key={item.val} className={`flex items-center gap-3 p-1.5 rounded border ${item.color}`}> <span className="font-bold text-base w-6 text-center">{item.val}</span> <span className="font-medium text-sm">{item.label}</span> </div>))} </div> </div> <div className="mt-4 text-center flex gap-2 justify-center no-print"> <button onClick={downloadScale} className="px-4 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-sm font-medium flex items-center gap-1"><Download className="w-4 h-4" /> PNG</button> <button onClick={onClose} className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium">Close</button> </div> </div> </div>
+            );
+        };
+
+        

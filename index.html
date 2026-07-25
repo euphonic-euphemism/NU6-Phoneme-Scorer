@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hearing Aid Demonstration App v1.5.1</title>
+
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+
+    <!-- html2canvas for PNG Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Chart.js for Critical Difference Graph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.js"></script>
+
+    <!-- jsPDF for Professional Reports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .phoneme-btn {
+            transition: all 0.2s;
+        }
+
+        .ipa-text {
+            font-family: 'Times New Roman', serif;
+        }
+
+        .tab-btn {
+            transition: all 0.2s;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            .print-only {
+                display: block !important;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+        }
+
+        /* Custom scrollbar for tables */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <!-- STANDARD JS: Cryptography & Database Logic -->
+    <script>
+        // --- CRYPTOGRAPHY SERVICE ---
+        const CryptoService = {
+            deriveKey: async (password, salt) => {
+                if (!window.crypto || !window.crypto.subtle) {
+                    throw new Error("Secure Context Required: Cryptography API is unavailable. Please access this app via HTTPS or localhost (not 0.0.0.0 or plain IP).");
+                }
+                const enc = new TextEncoder();
+                const keyMaterial = await window.crypto.subtle.importKey(
+                    "raw",
+                    enc.encode(password),
+                    "PBKDF2",
+                    false,
+                    ["deriveKey"]
+                );
+                return window.crypto.subtle.deriveKey(
+                    { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
+                    keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
+                );
+            },
+            encryptData: async (dataObj, password) => {
+                const salt = window.crypto.getRandomValues(new Uint8Array(16));
+                const iv = window.crypto.getRandomValues(new Uint8Array(12));
+                const key = await CryptoService.deriveKey(password, salt);
+                const enc = new TextEncoder();
+                const encodedData = enc.encode(JSON.stringify(dataObj));
+                const encryptedContent = await window.crypto.subtle.encrypt(
+                    { name: "AES-GCM", iv: iv }, key, encodedData
+                );
+                return {
+                    salt: btoa(String.fromCharCode(...salt)),
+                    iv: btoa(String.fromCharCode(...iv)),
+                    data: btoa(String.fromCharCode(...new Uint8Array(encryptedContent)))
+                };
+            },
+            decryptData: async (encryptedObj, password) => {
+                try {
+                    const salt = new Uint8Array(atob(encryptedObj.salt).split("").map(c => c.charCodeAt(0)));
+                    const iv = new Uint8Array(atob(encryptedObj.iv).split("").map(c => c.charCodeAt(0)));
+                    const data = new Uint8Array(atob(encryptedObj.data).split("").map(c => c.charCodeAt(0)));
+                    const key = await CryptoService.deriveKey(password, salt);
+                    const decryptedContent = await window.crypto.subtle.decrypt(
+                        { name: "AES-GCM", iv: iv }, key, data
+                    );
+                    const dec = new TextDecoder();
+                    return JSON.parse(dec.decode(decryptedContent));
+                } catch (e) {
+                    throw new Error("Decryption failed.");
+                }
+            }
+        };
+
+        // --- LOCAL INDEXEDDB CONFIGURATION ---
+        const DB_NAME = 'NU6_Audiology_DB_Secure';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'secure_tests';
+        const CONFIG_STORE = 'app_config';
+
+        const dbPromise = new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onerror = (event) => {
+                const error = event.target.error || event.target.errorCode || "Unknown database error";
+                console.error("IndexedDB failed to open:", error);
+                reject("Database error: " + error);
+            };
+            request.onsuccess = (event) => {
+                console.log("IndexedDB opened successfully");
+                resolve(event.target.result);
+            };
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: "id" });
+                if (!db.objectStoreNames.contains(CONFIG_STORE)) db.createObjectStore(CONFIG_STORE, { keyPath: "id" });
+            };
+            request.onblocked = (event) => {
+                console.error("IndexedDB blocked: another tab has the database open.");
+                alert("Database upgrade blocked. Please close other tabs of this app and reload.");
+            };
+        });
+
+        // --- SECURE DB INTERFACE ---
+        window.SecureDB = {
+            sessionPassword: null,
+            isSetup: async () => {
+                const db = await dbPromise;
+                return new Promise((resolve) => {
+                    const tx = db.transaction([CONFIG_STORE], "readonly");
+                    const req = tx.objectStore(CONFIG_STORE).get("validation");
+                    req.onsuccess = () => resolve(!!req.result);
+                    req.onerror = () => resolve(false);
+                });
+            },
+            resetDatabase: async () => {
+                try {
+                    const db = await dbPromise;
+                    db.close();
+                } catch (e) {}
+                const req = window.indexedDB.deleteDatabase(DB_NAME);
+                req.onsuccess = () => window.location.reload();
+                req.onerror = () => window.location.reload();
+                req.onblocked = () => {
+                    alert("Please close all other tabs running this app and try again.");
+                };
+            },
+            setupPassword: async (password) => {
+                const encryptedValidation = await CryptoService.encryptData({ check: "VALID" }, password);
+                const db = await dbPromise;
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction([CONFIG_STORE], "readwrite");
+                    tx.objectStore(CONFIG_STORE).put({ id: "validation", ...encryptedValidation });
+                    tx.oncomplete = () => {
+                        window.SecureDB.sessionPassword = password;
+                        resolve(true);
+                    };
+                    tx.onerror = () => reject("Setup failed");
+                });
+            },
+            login: async (password) => {
+                const db = await dbPromise;
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction([CONFIG_STORE], "readonly");
+                    const req = tx.objectStore(CONFIG_STORE).get("validation");
+                    req.onsuccess = async () => {
+                        if (!req.result) return reject("No setup found");
+                        try {
+                            const decrypted = await CryptoService.decryptData(req.result, password);
+                            if (decrypted.check === "VALID") {
+                                window.SecureDB.sessionPassword = password;
+                                resolve(true);
+                            } else {
+                                resolve(false);
+                            }
+                        } catch (e) { resolve(false); }
+                    };
+                });
+            },
+            saveTest: async (data, options = {}) => {
+                if (!window.SecureDB.sessionPassword) throw new Error("Database locked");
+                const db = await dbPromise;
+
+                // Normalize patient key for duplicate checks
+                const patientKey = (data.cNumber || data.patientName || '').toString();
+                const testDate = data.testDate || '';
+
+                // If caller provided an explicit id, treat as an update (overwrite)
+                if (data.id) {
+                    // Encrypt BEFORE creating transaction
+                    const encryptedData = await CryptoService.encryptData(data, window.SecureDB.sessionPassword);
+                    return new Promise((resolve, reject) => {
+                        const tx = db.transaction([STORE_NAME], "readwrite");
+                        const store = tx.objectStore(STORE_NAME);
+                        const req = store.put({ id: String(data.id), ...encryptedData });
+                        req.onsuccess = () => resolve(String(data.id));
+                        req.onerror = (e) => reject(e.target.error);
+                        tx.onerror = (e) => reject(e.target.error);
+                    });
+                }
+
+                // No explicit id: check for same-patient + same-date duplicates
+                // First, read all records in a separate transaction
+                const allRecords = await new Promise((resolve, reject) => {
+                    const tx = db.transaction([STORE_NAME], "readonly");
+                    const req = tx.objectStore(STORE_NAME).getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => reject(req.error);
+                });
+
+                // Decrypt records to inspect patient/testDate (outside transaction)
+                for (const rec of allRecords) {
+                    try {
+                        const dec = await CryptoService.decryptData(rec, window.SecureDB.sessionPassword);
+                        const existingPatientKey = (dec.cNumber || dec.patientName || '').toString();
+                        const existingDate = dec.testDate || '';
+                        if (existingPatientKey === patientKey && existingDate === testDate) {
+                            // Found a same-patient same-date record
+                            if (options.overwriteExistingSameDate) {
+                                // Encrypt BEFORE creating transaction
+                                const encryptedData = await CryptoService.encryptData(data, window.SecureDB.sessionPassword);
+                                // Now create transaction for the put operation
+                                return new Promise((resolve, reject) => {
+                                    const tx = db.transaction([STORE_NAME], "readwrite");
+                                    const store = tx.objectStore(STORE_NAME);
+                                    const req = store.put({ id: String(rec.id), ...encryptedData });
+                                    req.onsuccess = () => resolve(String(rec.id));
+                                    req.onerror = (e) => reject(e.target.error);
+                                    tx.onerror = (e) => reject(e.target.error);
+                                });
+                            } else {
+                                // Inform caller that a duplicate exists
+                                const err = new Error('A record for this patient on the same date already exists.');
+                                err.code = 'DUPLICATE_DATE';
+                                err.existingId = rec.id;
+                                throw err;
+                            }
+                        }
+                    } catch (e) {
+                        // If it's our DUPLICATE_DATE error, re-throw it
+                        if (e.code === 'DUPLICATE_DATE') throw e;
+                        // Otherwise ignore decrypt failures for individual records
+                    }
+                }
+
+                // No duplicate found: encrypt BEFORE creating transaction
+                const encryptedData = await CryptoService.encryptData(data, window.SecureDB.sessionPassword);
+                const recordId = Date.now().toString();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction([STORE_NAME], "readwrite");
+                    const store = tx.objectStore(STORE_NAME);
+                    const req = store.put({ id: String(recordId), ...encryptedData });
+                    req.onsuccess = () => resolve(recordId);
+                    req.onerror = (e) => reject(e.target.error);
+                    tx.onerror = (e) => reject(e.target.error);
+                });
+            },
+            getAllTests: async () => {
+                if (!window.SecureDB.sessionPassword) throw new Error("Database locked");
+                const db = await dbPromise;
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction([STORE_NAME], "readonly");
+                    const req = tx.objectStore(STORE_NAME).getAll();
+                    req.onsuccess = async () => {
+                        try {
+                            const rawRecords = req.result;
+                            const decryptedRecords = await Promise.all(rawRecords.map(async (rec) => {
+                                try {
+                                    const dec = await CryptoService.decryptData(rec, window.SecureDB.sessionPassword);
+                                    if (rec.id === 'clinic_settings') return { ...dec, id: 'clinic_settings', isSettings: true };
+                                    return { ...dec, id: rec.id };
+                                } catch (e) { return null; }
+                            }));
+                            const valid = decryptedRecords.filter(r => r !== null && !r.isSettings)
+                                .sort((a, b) => new Date(b.testDate || 0) - new Date(a.testDate || 0));
+                            resolve(valid);
+                        } catch (e) { reject(e); }
+                    };
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            deleteTest: async (id) => {
+                if (!window.SecureDB.sessionPassword) throw new Error("Database locked");
+                const db = await dbPromise;
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction([STORE_NAME], "readwrite");
+                    tx.objectStore(STORE_NAME).delete(id);
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = (e) => reject(e.target.error);
+                });
+            },
+
+            // Delete all tests (preserve clinic_settings)
+            deleteAllTests: async () => {
+                if (!window.SecureDB.sessionPassword) throw new Error("Database locked");
+                const db = await dbPromise;
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction([STORE_NAME], "readwrite");
+                    const store = tx.objectStore(STORE_NAME);
+                    const req = store.getAllKeys();
+                    req.onsuccess = () => {
+                        const keys = req.result || [];
+                        keys.forEach(k => {
+                            if (k === 'clinic_settings') return;
+                            store.delete(k);
+                        });
+                    };
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = (e) => reject(e.target.error);
+                });
+            },
+
+            saveSettings: async (settings) => {
+                if (!window.SecureDB.sessionPassword) throw new Error("Database locked");
+                const encryptedData = await CryptoService.encryptData(settings, window.SecureDB.sessionPassword);
+                const db = await dbPromise;
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction([STORE_NAME], "readwrite");
+                    tx.objectStore(STORE_NAME).put({ id: 'clinic_settings', ...encryptedData });
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = (e) => reject(e.target.error);
+                });
+            },
+            getSettings: async () => {
+                if (!window.SecureDB.sessionPassword) throw new Error("Database locked");
+                const db = await dbPromise;
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction([STORE_NAME], "readonly");
+                    const req = tx.objectStore(STORE_NAME).get('clinic_settings');
+                    req.onsuccess = async () => {
+                        if (!req.result) return resolve(null);
+                        try {
+                            const dec = await CryptoService.decryptData(req.result, window.SecureDB.sessionPassword);
+                            resolve(dec);
+                        } catch (e) { resolve(null); }
+                    };
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            getPatientHistory: async (cNumber) => {
+                const allTests = await window.SecureDB.getAllTests();
+                const history = allTests.filter(t => t.cNumber && t.cNumber.toLowerCase() === cNumber.toLowerCase());
+                // Sort chronologically: oldest dates first (left) → newest dates last (right)
+                history.sort((a, b) => {
+                    const da = a && a.testDate ? new Date(a.testDate) : new Date(0);
+                    const db = b && b.testDate ? new Date(b.testDate) : new Date(0);
+                    return da - db;
+                });
+                return history;
+            }
+        };
+    </script>
+
+    <!-- REACT APPLICATION -->
+    <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>

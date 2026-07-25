@@ -1,44 +1,25 @@
-        const { useState, useMemo, useEffect, useRef } = React;
-        const { jsPDF } = window.jspdf;
+        import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+        import { IconBase, Calculator, Save, FolderOpen, Trash2, CheckCircle2, RotateCcw, UserCheck, UserPlus, Check, X, BarChart3, ListChecks, WholeWord, AlertCircle, AlertOctagon, HelpCircle, Download, TrendingUp, Search, Loader, Database, FileUp, HistoryIcon, Activity, Lock, Flame, SettingsIcon, FileText, FileJson, Moon, Sun, Clock, Play, Pause, Square, ArrowRightLeft, Edit } from './components/icons/index.jsx';
+        import { LIST_1A, LIST_2A, LIST_3A, LIST_4A, LIST_HF1, LIST_HF2, LIST_HF3, LIST_HF4 } from './data/wordLists.js';
+        import { WORD_TABLES, PHONEME_TABLES, loadCriticalDifferenceTables, loadPhonemeTables, getListData, calculateStats, getTheta, getCriticalLimits, getInterpolatedCriticalLimits, generateData } from './utils/scoring.js';
+        import { LoginModal } from './components/modals/LoginModal.jsx';
+import { PhonemeFrequencyModal } from "./components/modals/PhonemeFrequencyModal.jsx";
+import { BKBSINScoringPanel } from "./components/modals/BKBSINScoringPanel.jsx";
+import { CriticalDifferenceModal } from "./components/modals/CriticalDifferenceModal.jsx";
+import { ListeningEffortScaleModal } from "./components/modals/ListeningEffortScaleModal.jsx";
+import { PhonemeDisclaimerModal } from "./components/modals/PhonemeDisclaimerModal.jsx";
+import { LoadTestModal } from "./components/modals/LoadTestModal.jsx";
+import { ImportPreviewModal } from "./components/modals/ImportPreviewModal.jsx";
+import { HistoryChart } from "./components/modals/HistoryChart.jsx";
+import { SettingsModal } from "./components/modals/SettingsModal.jsx";
+import { ComparativeEaseScaleModal } from "./components/modals/ComparativeEaseScaleModal.jsx";
+import { RecoveryModal } from "./components/modals/RecoveryModal.jsx";
+
+        
 
         // --- INLINE ICONS ---
-        const IconBase = ({ children, className, ...props }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>);
-        const Calculator = (props) => (<IconBase {...props}><rect width="16" height="20" x="4" y="2" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></IconBase>);
-        const Save = (props) => (<IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></IconBase>);
-        const FolderOpen = (props) => (<IconBase {...props}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2" /></IconBase>);
-        const Trash2 = (props) => (<IconBase {...props}><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></IconBase>);
-        const CheckCircle2 = (props) => (<IconBase {...props}><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></IconBase>);
-        const RotateCcw = (props) => (<IconBase {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></IconBase>);
-        const UserCheck = (props) => (<IconBase {...props}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><polyline points="16 11 18 13 22 9" /></IconBase>);
-        const UserPlus = (props) => (<IconBase {...props}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></IconBase>);
-        const Check = (props) => (<IconBase {...props}><polyline points="20 6 9 17 4 12" /></IconBase>);
-        const X = (props) => (<IconBase {...props}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></IconBase>);
-        const BarChart3 = (props) => (<IconBase {...props}><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></IconBase>);
-        const ListChecks = (props) => (<IconBase {...props}><path d="m3 17 2 2 4-4" /><path d="m3 7 2 2 4-4" /><path d="M13 6h8" /><path d="M13 12h8" /><path d="M13 18h8" /></IconBase>);
-        const WholeWord = (props) => (<IconBase {...props}><rect width="20" height="14" x="2" y="5" rx="2" /><path d="M2 10h20" /></IconBase>);
-        const AlertCircle = (props) => (<IconBase {...props}><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></IconBase>);
-        const AlertOctagon = (props) => (<IconBase {...props}><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></IconBase>);
-        const HelpCircle = (props) => (<IconBase {...props}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></IconBase>);
-        const Download = (props) => (<IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></IconBase>);
-        const TrendingUp = (props) => (<IconBase {...props}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></IconBase>);
-        const Search = (props) => (<IconBase {...props}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></IconBase>);
-        const Loader = (props) => (<IconBase {...props} className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></IconBase>);
-        const Database = (props) => (<IconBase {...props}><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></IconBase>);
-        const FileUp = (props) => (<IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="M12 12v6" /><path d="m15 15-3-3-3 3" /></IconBase>);
-        const HistoryIcon = (props) => (<IconBase {...props}><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></IconBase>);
-        const Activity = (props) => (<IconBase {...props}><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></IconBase>);
-        const Lock = (props) => (<IconBase {...props}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></IconBase>);
-        const Flame = (props) => (<IconBase {...props}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.115.385-2.256 1.034-3.222l.173.239a5.32 5.32 0 0 0 2.293 2.483Z" /></IconBase>);
-        const SettingsIcon = (props) => (<IconBase {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></IconBase>);
-        const FileText = (props) => (<IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="16" x2="8" y1="13" y2="13" /><line x1="16" x2="8" y1="17" y2="17" /><line x1="10" x2="8" y1="9" y2="9" /></IconBase>);
-        const FileJson = (props) => (<IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1" /><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1" /></IconBase>);
-        const Moon = (props) => (<IconBase {...props}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></IconBase>);
-        const Sun = (props) => (<IconBase {...props}><circle cx="12" cy="12" r="5" /><line x1="12" x2="12" y1="1" y2="3" /><line x1="12" x2="12" y1="21" y2="23" /><line x1="4.22" x2="5.64" y1="4.22" y2="5.64" /><line x1="18.36" x2="19.78" y1="18.36" y2="19.78" /><line x1="1" x2="3" y1="12" y2="12" /><line x1="21" x2="23" y1="12" y2="12" /><line x1="4.22" x2="5.64" y1="19.78" y2="18.36" /><line x1="18.36" x2="19.78" y1="5.64" y2="4.22" /></IconBase>);
-        const Clock = (props) => (<IconBase {...props}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></IconBase>);
-        const Play = (props) => (<IconBase {...props}><polygon points="5 3 19 12 5 21 5 3" /></IconBase>);
-        const Pause = (props) => (<IconBase {...props}><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></IconBase>);
-        const Square = (props) => (<IconBase {...props}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /></IconBase>);
-        const ArrowRightLeft = (props) => (<IconBase {...props}><path d="m16 21 5-5-5-5" /><path d="M21 16H3" /><path d="m8 3-5 5 5 5" /><path d="M3 8h18" /></IconBase>);
+
 
         // ... [PHONEME_MAP, PHONEME_GROUPS, LISTS 1A-4A are the same] ...
         const PHONEME_MAP = { "f": "Fricative", "v": "Fricative", "θ": "Fricative", "ð": "Fricative", "s": "Fricative", "z": "Fricative", "ʃ": "Fricative", "ʒ": "Fricative", "h": "Fricative", "tʃ": "Affricate", "dʒ": "Affricate", "p": "Stop", "b": "Stop", "t": "Stop", "d": "Stop", "k": "Stop", "g": "Stop", "m": "Nasal", "n": "Nasal", "ŋ": "Nasal", "l": "Liquid/Glide", "r": "Liquid/Glide", "w": "Liquid/Glide", "j": "Liquid/Glide", "i": "Vowel", "ɪ": "Vowel", "eɪ": "Vowel", "ɛ": "Vowel", "æ": "Vowel", "u": "Vowel", "ʊ": "Vowel", "oʊ": "Vowel", "ɔ": "Vowel", "ɑ": "Vowel", "ʌ": "Vowel", "ɝ": "Vowel", "aɪ": "Vowel", "ɔɪ": "Vowel", "aʊ": "Vowel", "ə": "Vowel", "ɚ": "Vowel" };
@@ -381,19 +362,7 @@
         };
 
 
-        const LIST_1A = [{ i: 1, w: "LAUD", p: ["l", "ɔ", "d"] }, { i: 2, w: "BOAT", p: ["b", "oʊ", "t"] }, { i: 3, w: "POOL", p: ["p", "u", "l"] }, { i: 4, w: "NAG", p: ["n", "æ", "g"] }, { i: 5, w: "LIMB", p: ["l", "ɪ", "m"] }, { i: 6, w: "SHOUT", p: ["ʃ", "aʊ", "t"] }, { i: 7, w: "SUB", p: ["s", "ʌ", "b"] }, { i: 8, w: "VINE", p: ["v", "aɪ", "n"] }, { i: 9, w: "DIME", p: ["d", "aɪ", "m"] }, { i: 10, w: "GOOSE", p: ["g", "u", "s"] }, { i: 11, w: "WHIP", p: ["w", "ɪ", "p"] }, { i: 12, w: "TOUGH", p: ["t", "ʌ", "f"] }, { i: 13, w: "PUFF", p: ["p", "ʌ", "f"] }, { i: 14, w: "KEEN", p: ["k", "i", "n"] }, { i: 15, w: "DEATH", p: ["d", "ɛ", "θ"] }, { i: 16, w: "SELL", p: ["s", "ɛ", "l"] }, { i: 17, w: "TAKE", p: ["t", "eɪ", "k"] }, { i: 18, w: "FALL", p: ["f", "ɔ", "l"] }, { i: 19, w: "RAISE", p: ["r", "eɪ", "z"] }, { i: 20, w: "THIRD", p: ["θ", "ɝ", "d"] }, { i: 21, w: "GAP", p: ["g", "æ", "p"] }, { i: 22, w: "FAT", p: ["f", "æ", "t"] }, { i: 23, w: "MET", p: ["m", "ɛ", "t"] }, { i: 24, w: "JAR", p: ["dʒ", "ɑ", "r"] }, { i: 25, w: "DOOR", p: ["d", "ɔ", "r"] }, { i: 26, w: "LOVE", p: ["l", "ʌ", "v"] }, { i: 27, w: "SURE", p: ["ʃ", "ʊ", "r"] }, { i: 28, w: "KNOCK", p: ["n", "ɑ", "k"] }, { i: 29, w: "CHOICE", p: ["tʃ", "ɔɪ", "s"] }, { i: 30, w: "HASH", p: ["h", "æ", "ʃ"] }, { i: 31, w: "LOT", p: ["l", "ɑ", "t"] }, { i: 32, w: "RAID", p: ["r", "eɪ", "d"] }, { i: 33, w: "HURL", p: ["h", "ɝ", "l"] }, { i: 34, w: "MOON", p: ["m", "u", "n"] }, { i: 35, w: "PAGE", p: ["p", "eɪ", "dʒ"] }, { i: 36, w: "YES", p: ["j", "ɛ", "s"] }, { i: 37, w: "REACH", p: ["r", "i", "tʃ"] }, { i: 38, w: "KING", p: ["k", "ɪ", "ŋ"] }, { i: 39, w: "HOME", p: ["h", "oʊ", "m"] }, { i: 40, w: "RAG", p: ["r", "æ", "g"] }, { i: 41, w: "WHICH", p: ["w", "ɪ", "tʃ"] }, { i: 42, w: "WEEK", p: ["w", "i", "k"] }, { i: 43, w: "SIZE", p: ["s", "aɪ", "z"] }, { i: 44, w: "MODE", p: ["m", "oʊ", "d"] }, { i: 45, w: "BEAN", p: ["b", "i", "n"] }, { i: 46, w: "TIP", p: ["t", "ɪ", "p"] }, { i: 47, w: "CHALK", p: ["tʃ", "ɔ", "k"] }, { i: 48, w: "JAIL", p: ["dʒ", "eɪ", "l"] }, { i: 49, w: "BURN", p: ["b", "ɝ", "n"] }, { i: 50, w: "KITE", p: ["k", "aɪ", "t"] }];
-        const LIST_2A = [{ i: 1, w: "PICK", p: ["p", "ɪ", "k"] }, { i: 2, w: "ROOM", p: ["r", "u", "m"] }, { i: 3, w: "NICE", p: ["n", "aɪ", "s"] }, { i: 4, w: "SAID", p: ["s", "ɛ", "d"] }, { i: 5, w: "FAIL", p: ["f", "eɪ", "l"] }, { i: 6, w: "SOUTH", p: ["s", "aʊ", "θ"] }, { i: 7, w: "WHITE", p: ["w", "aɪ", "t"] }, { i: 8, w: "KEEP", p: ["k", "i", "p"] }, { i: 9, w: "DEAD", p: ["d", "ɛ", "d"] }, { i: 10, w: "LOAF", p: ["l", "oʊ", "f"] }, { i: 11, w: "DAB", p: ["d", "æ", "b"] }, { i: 12, w: "NUMB", p: ["n", "ʌ", "m"] }, { i: 13, w: "JUICE", p: ["dʒ", "u", "s"] }, { i: 14, w: "CHIEF", p: ["tʃ", "i", "f"] }, { i: 15, w: "MERGE", p: ["m", "ɝ", "dʒ"] }, { i: 16, w: "WAG", p: ["w", "æ", "g"] }, { i: 17, w: "RAIN", p: ["r", "eɪ", "n"] }, { i: 18, w: "WITCH", p: ["w", "ɪ", "tʃ"] }, { i: 19, w: "SOAP", p: ["s", "oʊ", "p"] }, { i: 20, w: "YOUNG", p: ["j", "ʌ", "ŋ"] }, { i: 21, w: "TON", p: ["t", "ʌ", "n"] }, { i: 22, w: "KEG", p: ["k", "ɛ", "g"] }, { i: 23, w: "CALM", p: ["k", "ɑ", "m"] }, { i: 24, w: "TOOL", p: ["t", "u", "l"] }, { i: 25, w: "PIKE", p: ["p", "aɪ", "k"] }, { i: 26, w: "MILL", p: ["m", "ɪ", "l"] }, { i: 27, w: "HUSH", p: ["h", "ʌ", "ʃ"] }, { i: 28, w: "SHACK", p: ["ʃ", "æ", "k"] }, { i: 29, w: "READ", p: ["r", "i", "d"] }, { i: 30, w: "ROT", p: ["r", "ɑ", "t"] }, { i: 31, w: "HATE", p: ["h", "eɪ", "t"] }, { i: 32, w: "LIVE", p: ["l", "ɪ", "v"] }, { i: 33, w: "BOOK", p: ["b", "ʊ", "k"] }, { i: 34, w: "VOICE", p: ["v", "ɔɪ", "s"] }, { i: 35, w: "GAZE", p: ["g", "eɪ", "z"] }, { i: 36, w: "PAD", p: ["p", "æ", "d"] }, { i: 37, w: "THOUGHT", p: ["θ", "ɔ", "t"] }, { i: 38, w: "BOUGHT", p: ["b", "ɔ", "t"] }, { i: 39, w: "TURN", p: ["t", "ɝ", "n"] }, { i: 40, w: "CHAIR", p: ["tʃ", "ɛ", "r"] }, { i: 41, w: "LORE", p: ["l", "ɔ", "r"] }, { i: 42, w: "BITE", p: ["b", "aɪ", "t"] }, { i: 43, w: "HAZE", p: ["h", "eɪ", "z"] }, { i: 44, w: "MATCH", p: ["m", "æ", "tʃ"] }, { i: 45, w: "LEARN", p: ["l", "ɝ", "n"] }, { i: 46, w: "SHAWL", p: ["ʃ", "ɔ", "l"] }, { i: 47, w: "DEEP", p: ["d", "i", "p"] }, { i: 48, w: "GIN", p: ["dʒ", "ɪ", "n"] }, { i: 49, w: "GOAL", p: ["g", "oʊ", "l"] }, { i: 50, w: "FAR", p: ["f", "ɑ", "r"] }];
-        const LIST_3A = [{ i: 1, w: "BASE", p: ["b", "eɪ", "s"] }, { i: 2, w: "MESS", p: ["m", "ɛ", "s"] }, { i: 3, w: "CAUSE", p: ["k", "ɔ", "z"] }, { i: 4, w: "MOP", p: ["m", "ɑ", "p"] }, { i: 5, w: "GOOD", p: ["g", "ʊ", "d"] }, { i: 6, w: "LUCK", p: ["l", "ʌ", "k"] }, { i: 7, w: "WALK", p: ["w", "ɔ", "k"] }, { i: 8, w: "YOUTH", p: ["j", "u", "θ"] }, { i: 9, w: "PAIN", p: ["p", "eɪ", "n"] }, { i: 10, w: "DATE", p: ["d", "eɪ", "t"] }, { i: 11, w: "PEARL", p: ["p", "ɝ", "l"] }, { i: 12, w: "SEARCH", p: ["s", "ɝ", "tʃ"] }, { i: 13, w: "DITCH", p: ["d", "ɪ", "tʃ"] }, { i: 14, w: "TALK", p: ["t", "ɔ", "k"] }, { i: 15, w: "RING", p: ["r", "ɪ", "ŋ"] }, { i: 16, w: "GERM", p: ["dʒ", "ɝ", "m"] }, { i: 17, w: "LIFE", p: ["l", "aɪ", "f"] }, { i: 18, w: "TEAM", p: ["t", "i", "m"] }, { i: 19, w: "LID", p: ["l", "ɪ", "d"] }, { i: 20, w: "POLE", p: ["p", "oʊ", "l"] }, { i: 21, w: "RODE", p: ["r", "oʊ", "d"] }, { i: 22, w: "SHALL", p: ["ʃ", "æ", "l"] }, { i: 23, w: "LATE", p: ["l", "eɪ", "t"] }, { i: 24, w: "CHEEK", p: ["tʃ", "i", "k"] }, { i: 25, w: "BEG", p: ["b", "ɛ", "g"] }, { i: 26, w: "GUN", p: ["g", "ʌ", "n"] }, { i: 27, w: "JUG", p: ["dʒ", "ʌ", "g"] }, { i: 28, w: "SHEEP", p: ["ʃ", "i", "p"] }, { i: 29, w: "FIVE", p: ["f", "aɪ", "v"] }, { i: 30, w: "RUSH", p: ["r", "ʌ", "ʃ"] }, { i: 31, w: "RAT", p: ["r", "æ", "t"] }, { i: 32, w: "VOID", p: ["v", "ɔɪ", "d"] }, { i: 33, w: "WIRE", p: ["w", "aɪ", "r"] }, { i: 34, w: "HALF", p: ["h", "æ", "f"] }, { i: 35, w: "NOTE", p: ["n", "oʊ", "t"] }, { i: 36, w: "WHEN", p: ["w", "ɛ", "n"] }, { i: 37, w: "NAME", p: ["n", "eɪ", "m"] }, { i: 38, w: "THIN", p: ["θ", "ɪ", "n"] }, { i: 39, w: "TELL", p: ["t", "ɛ", "l"] }, { i: 40, w: "BAR", p: ["b", "ɑ", "r"] }, { i: 41, w: "MOUSE", p: ["m", "aʊ", "s"] }, { i: 42, w: "HIRE", p: ["h", "aɪ", "r"] }, { i: 43, w: "CAB", p: ["k", "æ", "b"] }, { i: 44, w: "HIT", p: ["h", "ɪ", "t"] }, { i: 45, w: "CHAT", p: ["tʃ", "æ", "t"] }, { i: 46, w: "PHONE", p: ["f", "oʊ", "n"] }, { i: 47, w: "SOUP", p: ["s", "u", "p"] }, { i: 48, w: "DODGE", p: ["d", "ɑ", "dʒ"] }, { i: 49, w: "SEIZE", p: ["s", "i", "z"] }, { i: 50, w: "COOL", p: ["k", "u", "l"] }];
-        const LIST_4A = [{ i: 1, w: "PASS", p: ["p", "æ", "s"] }, { i: 2, w: "DOLL", p: ["d", "ɑ", "l"] }, { i: 3, w: "BACK", p: ["b", "æ", "k"] }, { i: 4, w: "RED", p: ["r", "ɛ", "d"] }, { i: 5, w: "WASH", p: ["w", "ɔ", "ʃ"] }, { i: 6, w: "SOUR", p: ["s", "aʊ", "r"] }, { i: 7, w: "BONE", p: ["b", "oʊ", "n"] }, { i: 8, w: "GET", p: ["g", "ɛ", "t"] }, { i: 9, w: "WHEAT", p: ["w", "i", "t"] }, { i: 10, w: "THUMB", p: ["θ", "ʌ", "m"] }, { i: 11, w: "SALE", p: ["s", "eɪ", "l"] }, { i: 12, w: "YEARN", p: ["j", "ɝ", "n"] }, { i: 13, w: "WIFE", p: ["w", "aɪ", "f"] }, { i: 14, w: "SUCH", p: ["s", "ʌ", "tʃ"] }, { i: 15, w: "NEAT", p: ["n", "i", "t"] }, { i: 16, w: "PEG", p: ["p", "ɛ", "g"] }, { i: 17, w: "MOB", p: ["m", "ɑ", "b"] }, { i: 18, w: "GAS", p: ["g", "æ", "s"] }, { i: 19, w: "CHECK", p: ["tʃ", "ɛ", "k"] }, { i: 20, w: "JOIN", p: ["dʒ", "ɔɪ", "n"] }, { i: 21, w: "LEASE", p: ["l", "i", "s"] }, { i: 22, w: "LONG", p: ["l", "ɔ", "ŋ"] }, { i: 23, w: "CHAIN", p: ["tʃ", "eɪ", "n"] }, { i: 24, w: "KILL", p: ["k", "ɪ", "l"] }, { i: 25, w: "HOLE", p: ["h", "oʊ", "l"] }, { i: 26, w: "LEAN", p: ["l", "i", "n"] }, { i: 27, w: "TAPE", p: ["t", "eɪ", "p"] }, { i: 28, w: "TIRE", p: ["t", "aɪ", "r"] }, { i: 29, w: "DIP", p: ["d", "ɪ", "p"] }, { i: 30, w: "ROSE", p: ["r", "oʊ", "z"] }, { i: 31, w: "CAME", p: ["k", "eɪ", "m"] }, { i: 32, w: "FIT", p: ["f", "ɪ", "t"] }, { i: 33, w: "MAKE", p: ["m", "eɪ", "k"] }, { i: 34, w: "VOTE", p: ["v", "oʊ", "t"] }, { i: 35, w: "JUDGE", p: ["dʒ", "ʌ", "dʒ"] }, { i: 36, w: "FOOD", p: ["f", "u", "d"] }, { i: 37, w: "RIPE", p: ["r", "aɪ", "p"] }, { i: 38, w: "HAVE", p: ["h", "æ", "v"] }, { i: 39, w: "ROUGH", p: ["r", "ʌ", "f"] }, { i: 40, w: "KICK", p: ["k", "ɪ", "k"] }, { i: 41, w: "LOSE", p: ["l", "u", "z"] }, { i: 42, w: "NEAR", p: ["n", "i", "r"] }, { i: 43, w: "PERCH", p: ["p", "ɝ", "tʃ"] }, { i: 44, w: "SHIRT", p: ["ʃ", "ɝ", "t"] }, { i: 45, w: "BATH", p: ["b", "æ", "θ"] }, { i: 46, w: "TIME", p: ["t", "aɪ", "m"] }, { i: 47, w: "HALL", p: ["h", "ɔ", "l"] }, { i: 48, w: "MOOD", p: ["m", "u", "d"] }, { i: 49, w: "DOG", p: ["d", "ɔ", "g"] }, { i: 50, w: "SHOULD", p: ["ʃ", "ʊ", "d"] }];
-        const LIST_HF1 = [{ i: 1, w: "CHECK", p: ["t\u0283", "\u025b", "k"] }, { i: 2, w: "PUSH", p: ["p", "\u028a", "\u0283"] }, { i: 3, w: "CASE", p: ["k", "e\u026a", "s"] }, { i: 4, w: "SIT", p: ["s", "\u026a", "t"] }, { i: 5, w: "POSH", p: ["p", "\u0251", "\u0283"] }, { i: 6, w: "SHAPE", p: ["\u0283", "e\u026a", "p"] }, { i: 7, w: "YOUTH", p: ["j", "u", "\u03b8"] }, { i: 8, w: "FACE", p: ["f", "e\u026a", "s"] }, { i: 9, w: "GAS", p: ["g", "\u00e6", "s"] }, { i: 10, w: "TEACH", p: ["t", "i", "t\u0283"] }, { i: 11, w: "SAFE", p: ["s", "e\u026a", "f"] }, { i: 12, w: "HISS", p: ["h", "\u026a", "s"] }, { i: 13, w: "BUS", p: ["b", "\u028c", "s"] }, { i: 14, w: "CHIEF", p: ["t\u0283", "i", "f"] }, { i: 15, w: "PATH", p: ["p", "\u00e6", "\u03b8"] }, { i: 16, w: "VOTE", p: ["v", "o\u028a", "t"] }, { i: 17, w: "RICH", p: ["r", "\u026a", "t\u0283"] }, { i: 18, w: "CATCH", p: ["k", "\u00e6", "t\u0283"] }, { i: 19, w: "KEEP", p: ["k", "i", "p"] }, { i: 20, w: "FISH", p: ["f", "\u026a", "\u0283"] }, { i: 21, w: "SOUTH", p: ["s", "a\u028a", "\u03b8"] }, { i: 22, w: "CHOOSE", p: ["t\u0283", "u", "z"] }, { i: 23, w: "TIP", p: ["t", "\u026a", "p"] }, { i: 24, w: "SHAKE", p: ["\u0283", "e\u026a", "k"] }, { i: 25, w: "NOISE", p: ["n", "\u0254\u026a", "z"] }];
-        const LIST_HF2 = [{ i: 1, w: "TOUCH", p: ["t", "\u028c", "t\u0283"] }, { i: 2, w: "LIFE", p: ["l", "a\u026a", "f"] }, { i: 3, w: "FIT", p: ["f", "\u026a", "t"] }, { i: 4, w: "SUM", p: ["s", "\u028c", "m"] }, { i: 5, w: "TOSS", p: ["t", "\u0254", "s"] }, { i: 6, w: "NECK", p: ["n", "\u025b", "k"] }, { i: 7, w: "MOUTH", p: ["m", "a\u028a", "\u03b8"] }, { i: 8, w: "DEEP", p: ["d", "i", "p"] }, { i: 9, w: "PASS", p: ["p", "\u00e6", "s"] }, { i: 10, w: "CHOICE", p: ["t\u0283", "\u0254\u026a", "s"] }, { i: 11, w: "NOTE", p: ["n", "o\u028a", "t"] }, { i: 12, w: "BATH", p: ["b", "\u00e6", "\u03b8"] }, { i: 13, w: "SHIP", p: ["\u0283", "\u026a", "p"] }, { i: 14, w: "KISS", p: ["k", "\u026a", "s"] }, { i: 15, w: "REACH", p: ["r", "i", "t\u0283"] }, { i: 16, w: "SHOUT", p: ["\u0283", "a\u028a", "t"] }, { i: 17, w: "BEEF", p: ["b", "i", "f"] }, { i: 18, w: "PACE", p: ["p", "e\u026a", "s"] }, { i: 19, w: "WISH", p: ["w", "\u026a", "\u0283"] }, { i: 20, w: "DIP", p: ["d", "\u026a", "p"] }, { i: 21, w: "TAKE", p: ["t", "e\u026a", "k"] }, { i: 22, w: "VASE", p: ["v", "e\u026a", "s"] }, { i: 23, w: "MATCH", p: ["m", "\u00e6", "t\u0283"] }, { i: 24, w: "TOOTH", p: ["t", "u", "\u03b8"] }, { i: 25, w: "BUSH", p: ["b", "\u028a", "\u0283"] }];
-        const LIST_HF3 = [{ i: 1, w: "FIGHT", p: ["f", "a\u026a", "t"] }, { i: 2, w: "TOUGH", p: ["t", "\u028c", "f"] }, { i: 3, w: "MOSS", p: ["m", "\u0254", "s"] }, { i: 4, w: "PITCH", p: ["p", "\u026a", "t\u0283"] }, { i: 5, w: "CHESS", p: ["t\u0283", "\u025b", "s"] }, { i: 6, w: "THICK", p: ["\u03b8", "\u026a", "k"] }, { i: 7, w: "SHEET", p: ["\u0283", "i", "t"] }, { i: 8, w: "CHASE", p: ["t\u0283", "e\u026a", "s"] }, { i: 9, w: "PACK", p: ["p", "\u00e6", "k"] }, { i: 10, w: "SHOCK", p: ["\u0283", "\u0251", "k"] }, { i: 11, w: "BOOTH", p: ["b", "u", "\u03b8"] }, { i: 12, w: "VICE", p: ["v", "a\u026a", "s"] }, { i: 13, w: "SIP", p: ["s", "\u026a", "p"] }, { i: 14, w: "CHIP", p: ["t\u0283", "\u026a", "p"] }, { i: 15, w: "SAKE", p: ["s", "e\u026a", "k"] }, { i: 16, w: "SACK", p: ["s", "\u00e6", "k"] }, { i: 17, w: "SHOP", p: ["\u0283", "\u0251", "p"] }, { i: 18, w: "MESH", p: ["m", "\u025b", "\u0283"] }, { i: 19, w: "PEAK", p: ["p", "i", "k"] }, { i: 20, w: "SET", p: ["s", "\u025b", "t"] }, { i: 21, w: "SIGHT", p: ["s", "a\u026a", "t"] }, { i: 22, w: "SHOES", p: ["\u0283", "u", "z"] }, { i: 23, w: "SICK", p: ["s", "\u026a", "k"] }, { i: 24, w: "HUSH", p: ["h", "\u028c", "\u0283"] }, { i: 25, w: "FETCH", p: ["f", "\u025b", "t\u0283"] }];
-        const LIST_HF4 = [{ i: 1, w: "BACK", p: ["b", "\u00e6", "k"] }, { i: 2, w: "CHOP", p: ["t\u0283", "\u0251", "p"] }, { i: 3, w: "THUD", p: ["\u03b8", "\u028c", "d"] }, { i: 4, w: "CASH", p: ["k", "\u00e6", "\u0283"] }, { i: 5, w: "THIEF", p: ["\u03b8", "i", "f"] }, { i: 6, w: "DASH", p: ["d", "\u00e6", "\u0283"] }, { i: 7, w: "SUCH", p: ["s", "\u028c", "t\u0283"] }, { i: 8, w: "TIGHT", p: ["t", "a\u026a", "t"] }, { i: 9, w: "POACH", p: ["p", "o\u028a", "t\u0283"] }, { i: 10, w: "BOTH", p: ["b", "o\u028a", "\u03b8"] }, { i: 11, w: "THUMB", p: ["\u03b8", "\u028c", "m"] }, { i: 12, w: "SHOOT", p: ["\u0283", "u", "t"] }, { i: 13, w: "CHAT", p: ["t\u0283", "\u00e6", "t"] }, { i: 14, w: "SIZE", p: ["s", "a\u026a", "z"] }, { i: 15, w: "PICK", p: ["p", "\u026a", "k"] }, { i: 16, w: "ROOF", p: ["r", "u", "f"] }, { i: 17, w: "HASH", p: ["h", "\u00e6", "\u0283"] }, { i: 18, w: "HATCH", p: ["h", "\u00e6", "t\u0283"] }, { i: 19, w: "MUSH", p: ["m", "\u028a", "\u0283"] }, { i: 20, w: "LOSS", p: ["l", "\u0254", "s"] }, { i: 21, w: "SIDE", p: ["s", "a\u026a", "d"] }, { i: 22, w: "SHACK", p: ["\u0283", "\u00e6", "k"] }, { i: 23, w: "SOUP", p: ["s", "u", "p"] }, { i: 24, w: "SHOT", p: ["\u0283", "\u0251", "t"] }, { i: 25, w: "SEEK", p: ["s", "i", "k"] }];
-
-        // --- PAIRWISE MONTE CARLO WORD TABLES (N=10,25,50 | 80%,95%) ---
-
-        // --- Simulated DB for quick import/testing (generated 100 longitudinal records) ---
-        const SIMULATED_DB = (() => {
+const SIMULATED_DB = (() => {
             const records = [];
             const firstNames = ['Alex', 'Chris', 'Sam', 'Taylor', 'Jordan', 'Morgan', 'Casey', 'Jamie', 'Riley', 'Avery', 'Dakota', 'Peyton', 'Quinn', 'Cameron', 'Robin', 'Skyler', 'Reese', 'Rowan', 'Elliot', 'Blake'];
             const lastNames = ['Johnson', 'Smith', 'Brown', 'Lee', 'Garcia', 'Martinez', 'Davis', 'Miller', 'Wilson', 'Moore', 'Taylor', 'Anderson', 'Thomas', 'Jackson', 'White', 'Harris', 'Martin', 'Thompson', 'Young', 'King'];
@@ -692,1308 +661,23 @@
             return records;
         })();
         // Load critical difference tables from CSV
-        const loadCriticalDifferenceTables = async (confidenceLevel) => {
-            const fileName = `${confidenceLevel}_Word_Recognition_Critical_Differences_Simulated_v2.csv`;
-            try {
-                let csvText;
-                // Check if we're in Electron (packaged app)
-                if (typeof require !== 'undefined') {
-                    const fs = require('fs');
-                    const path = require('path');
-                    // In packaged Electron apps, check both regular path and unpacked path
-                    let filePath = path.join(__dirname, fileName);
-                    if (!fs.existsSync(filePath)) {
-                        // Try the unpacked asar location
-                        filePath = path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), fileName);
-                    }
-                    console.log('Loading CSV from:', filePath);
-                    csvText = fs.readFileSync(filePath, 'utf-8');
-                } else {
-                    // Browser/dev environment
-                    const response = await fetch(fileName);
-                    csvText = await response.text();
-                }
-
-                // Parse CSV
-                const lines = csvText.trim().split('\n');
-                const headers = lines[0].split(',');
-
-                // Build table structure
-                const tables = {};
-
-                for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',');
-                    const scenario = values[0]; // e.g., "WW_10", "WW_25", "WW_50", "Phoneme_10", etc.
-                    const scorePercent = parseFloat(values[5]); // Score_Percent column
-                    const lowerLimit = parseFloat(values[6]); // Lower_Limit_Percent column
-                    const upperLimit = parseFloat(values[7]); // Upper_Limit_Percent column
-
-                    // Skip phoneme scenarios - only process word scenarios
-                    if (scenario.startsWith('Phoneme_')) continue;
-
-                    // Extract N from scenario (e.g., "WW_10" -> "10")
-                    const nValue = scenario.split('_')[1];
-
-                    if (!tables[nValue]) {
-                        tables[nValue] = {};
-                    }
-
-                    // Store with score as key
-                    tables[nValue][scorePercent.toFixed(1)] = [lowerLimit, upperLimit];
-                }
-
-                return tables;
-            } catch (error) {
-                console.error('Error loading critical difference tables:', error);
-                // Return empty structure if loading fails
-                return { "10": {}, "25": {}, "50": {} };
-            }
-        };
-
-        // Load phoneme critical difference tables from CSV
-        const loadPhonemeTables = async (confidenceLevel) => {
-            const fileName = `${confidenceLevel}_Word_Recognition_Critical_Differences_Simulated_v2.csv`;
-            try {
-                let csvText;
-                // Check if we're in Electron (packaged app)
-                if (typeof require !== 'undefined') {
-                    const fs = require('fs');
-                    const path = require('path');
-                    // In packaged Electron apps, check both regular path and unpacked path
-                    let filePath = path.join(__dirname, fileName);
-                    if (!fs.existsSync(filePath)) {
-                        // Try the unpacked asar location
-                        filePath = path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), fileName);
-                    }
-                    console.log('Loading CSV from:', filePath);
-                    csvText = fs.readFileSync(filePath, 'utf-8');
-                } else {
-                    // Browser/dev environment
-                    const response = await fetch(fileName);
-                    csvText = await response.text();
-                }
-
-                // Parse CSV
-                const lines = csvText.trim().split('\n');
-                const tables = {};
-
-                // Mapping: Phoneme_10 -> 30, Phoneme_25 -> 75, Phoneme_50 -> 150
-                const scenarioToTableKey = {
-                    'Phoneme_10': '30',
-                    'Phoneme_25': '75',
-                    'Phoneme_50': '150'
-                };
-
-                for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',');
-                    const scenario = values[0];
-                    const scorePercent = parseFloat(values[5]);
-                    const lowerLimit = parseFloat(values[6]);
-                    const upperLimit = parseFloat(values[7]);
-
-                    // Only process phoneme scenarios
-                    if (!scenario.startsWith('Phoneme_')) continue;
-
-                    // Map scenario to table key
-                    const tableKey = scenarioToTableKey[scenario];
-                    if (!tableKey) continue;
-
-                    if (!tables[tableKey]) {
-                        tables[tableKey] = {};
-                    }
-
-                    // Store with score as key
-                    tables[tableKey][scorePercent.toFixed(1)] = [lowerLimit, upperLimit];
-                }
-
-                return tables;
-            } catch (error) {
-                console.error('Error loading phoneme tables:', error);
-                // Return empty structure if loading fails
-                return { "30": {}, "75": {}, "150": {} };
-            }
-        };
-
-        // Initialize WORD_TABLES - will be populated on page load
-        let WORD_TABLES = {
-            "80": { "10": {}, "25": {}, "50": {} },
-            "95": { "10": {}, "25": {}, "50": {} }
-        };
-
-        // Initialize PHONEME_TABLES - will be populated on page load
-        let PHONEME_TABLES = {
-            "80": { "30": {}, "75": {}, "150": {} },
-            "95": { "30": {}, "75": {}, "150": {} }
-        };
-
-        // Load both 80% and 95% tables on startup
-        (async () => {
-            WORD_TABLES["80"] = await loadCriticalDifferenceTables(80);
-            WORD_TABLES["95"] = await loadCriticalDifferenceTables(95);
-            PHONEME_TABLES["80"] = await loadPhonemeTables(80);
-            PHONEME_TABLES["95"] = await loadPhonemeTables(95);
-            console.log("Critical difference tables loaded from CSV files");
-        })();
-
-
-
-        // --- HELPER FUNCTIONS ---
-        // Same list getter, stats calc, critical limits as before
-        const getListData = (listId) => {
-            switch (listId) { case '1A': return LIST_1A; case '2A': return LIST_2A; case '3A': return LIST_3A; case '4A': return LIST_4A; case 'HF1': return LIST_HF1; case 'HF2': return LIST_HF2; case 'HF3': return LIST_HF3; case 'HF4': return LIST_HF4; default: return LIST_1A; }
-        };
-
-        const calculateStats = (listId, section, scores, limitTo10 = false) => {
-            if (listId && listId.startsWith('BKB')) {
-                const pairId = parseInt(listId.replace('BKB', ''));
-                const listData = BKB_SIN_LISTS_FULL[pairId];
-                if (!listData) return { isBKB: true, error: "List not found", visibleWords: [] };
-
-                let totalCorrect = 0;
-                let countA = 0;
-                let countB = 0;
-
-                // Process List A
-                const processedListA = listData.listA.map(item => {
-                    const key = `${listId}_A_${item.i}`;
-                    const score = scores[key];
-                    const val = (typeof score === 'number') ? score : 0;
-                    countA += val;
-                    return { ...item, score: val };
-                });
-
-                // Process List B
-                const processedListB = listData.listB.map(item => {
-                    const key = `${listId}_B_${item.i}`;
-                    const score = scores[key];
-                    const val = (typeof score === 'number') ? score : 0;
-                    countB += val;
-                    return { ...item, score: val };
-                });
-
-                totalCorrect = countA + countB;
-                // BKB-SIN uses average of the pair for the score
-                // Formula: 23.5 - (TotalCorrect / 2)
-                const snr50 = 23.5 - (totalCorrect / 2);
-
-                return {
-                    isBKB: true,
-                    pairId,
-                    totalCorrect,
-                    scoreA: countA,
-                    scoreB: countB,
-                    snr50,
-                    listA: processedListA,
-                    listB: processedListB,
-                    wordPercent: 0, phonemePercent: 0, totalWords: 0, visibleWords: []
-                };
-            }
-            const allWords = getListData(listId);
-            let visibleWords = allWords;
-            if (section === 'first') visibleWords = allWords.slice(0, 25);
-            else if (section === 'first_10') visibleWords = allWords.slice(0, 10);
-            else if (section === 'second') visibleWords = allWords.slice(25, 50);
-            else if (section === 'second_10') visibleWords = allWords.slice(25, 35);
-            else if (section === 'full') visibleWords = allWords;
-
-            if (limitTo10) { visibleWords = visibleWords.slice(0, 10); }
-
-            let totalPhonemes = 0; let correctPhonemes = 0; let correctWords = 0; let totalWords = visibleWords.length;
-            visibleWords.forEach(word => {
-                let wordCorrectCount = 0; let wordPhonemeCount = 0;
-                word.p.forEach((phoneme, pIndex) => {
-                    if (phoneme === '-') return;
-                    wordPhonemeCount++; totalPhonemes++;
-                    const key = `${listId}_${word.i}_${pIndex}`;
-                    if (scores[key]) { correctPhonemes++; wordCorrectCount++; }
-                });
-                if (wordCorrectCount === wordPhonemeCount && wordPhonemeCount > 0) { correctWords++; }
-            });
-            return {
-                totalPhonemes, correctPhonemes, phonemePercent: totalPhonemes === 0 ? 0 : Math.round((correctPhonemes / totalPhonemes) * 100),
-                correctWords, totalWords, wordPercent: totalWords === 0 ? 0 : Math.round((correctWords / totalWords) * 100), visibleWords
-            };
-        };
-
-        const getTheta = (x, n) => Math.asin(Math.sqrt(x / (n + 1))) + Math.asin(Math.sqrt((x + 1) / (n + 1)));
-
-        const getCriticalLimits = (scorePercent, n, confidence, isPhoneme = false) => {
-            const confKey = String(confidence); // "80" or "95"
-            let table = null;
-
-            if (isPhoneme) {
-                // Determine closest N for phoneme table lookup (30, 75, 150)
-                let tableN;
-                if (n <= 45) tableN = "30";
-                else if (n <= 110) tableN = "75";
-                else tableN = "150";
-
-                if (PHONEME_TABLES[confKey]) table = PHONEME_TABLES[confKey][tableN];
-            } else {
-                // Determine closest N for word table lookup (10, 25, 50)
-                let tableN;
-                if (n <= 15) tableN = "10";
-                else if (n <= 35) tableN = "25";
-                else tableN = "50";
-
-                if (WORD_TABLES[confKey]) table = WORD_TABLES[confKey][tableN];
-            }
-
-            if (table) {
-                // Find exact match or closest key in table
-                let bestKey = null;
-                let minDiff = Infinity;
-
-                Object.keys(table).forEach(key => {
-                    const keyNum = parseFloat(key);
-                    const diff = Math.abs(keyNum - scorePercent);
-                    if (diff < minDiff) {
-                        minDiff = diff;
-                        bestKey = key;
-                    }
-                });
-
-                if (bestKey !== null) {
-                    const range = table[bestKey];
-                    return { lower: range[0], upper: range[1] };
-                }
-            }
-
-            // Fallback for edge cases where table lookup might fail (should rarely happen)
-            // Default to 0-100 to be safe and obvious that it failed
-            console.warn("Table lookup failed for", scorePercent, n, confidence);
-            return { lower: 0, upper: 100 };
-        };
-
-        const getInterpolatedCriticalLimits = (scorePercent, n, confidence) => {
-            let tableN;
-            if (n <= 45) tableN = "30";
-            else if (n <= 110) tableN = "75";
-            else tableN = "150";
-
-            const confKey = String(confidence);
-            if (!PHONEME_TABLES[confKey] || !PHONEME_TABLES[confKey][tableN]) return getCriticalLimits(scorePercent, n, confidence, true);
-
-            const table = PHONEME_TABLES[confKey][tableN];
-            const keys = Object.keys(table).map(parseFloat).sort((a, b) => a - b);
-
-            // Find neighbors
-            let lowerKey = keys[0];
-            let upperKey = keys[keys.length - 1];
-
-            for (let i = 0; i < keys.length - 1; i++) {
-                if (scorePercent >= keys[i] && scorePercent <= keys[i + 1]) {
-                    lowerKey = keys[i];
-                    upperKey = keys[i + 1];
-                    break;
-                }
-            }
-
-            if (lowerKey === upperKey) {
-                const range = table[String(lowerKey.toFixed(1))] || table[String(lowerKey.toFixed(0))] || table[String(lowerKey)];
-                return { lower: range[0], upper: range[1] };
-            }
-
-            const rangeLower = table[String(lowerKey.toFixed(1))] || table[String(lowerKey)];
-            const rangeUpper = table[String(upperKey.toFixed(1))] || table[String(upperKey)];
-
-            if (!rangeLower || !rangeUpper) return getCriticalLimits(scorePercent, n, confidence, true);
-
-            const ratio = (scorePercent - lowerKey) / (upperKey - lowerKey);
-            const interpolatedLower = rangeLower[0] + (rangeUpper[0] - rangeLower[0]) * ratio;
-            const interpolatedUpper = rangeLower[1] + (rangeUpper[1] - rangeLower[1]) * ratio;
-
-            return { lower: interpolatedLower, upper: interpolatedUpper };
-        };
-
-        function generateData(n, confidence, isPhoneme) {
-            const data = [];
-            if (isPhoneme) {
-                // Interpolate for smooth curves for phonemes
-                for (let score = 0; score <= 100; score += 1) {
-                    const limits = getInterpolatedCriticalLimits(score, n, confidence);
-                    const margin = (limits.upper - limits.lower) / 2;
-                    data.push({ x: score, y: margin });
-                }
-            } else {
-                // For Words, maintain discrete steps
-                for (let i = 0; i <= n; i++) {
-                    const score = (i / n) * 100;
-                    const limits = getCriticalLimits(score, n, confidence, false);
-                    const margin = (limits.upper - limits.lower) / 2;
-                    data.push({ x: score, y: margin });
-                }
-            }
-            return data;
-        }
-
-        // --- COMPONENTS ---
-
-        const LoginModal = ({ onLogin, isSetup }) => {
-            const [password, setPassword] = useState('');
-            const [confirm, setConfirm] = useState('');
-            const [error, setError] = useState('');
-            const [resetConfirm, setResetConfirm] = useState(false);
-
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                setError('');
-                if (isSetup) {
-                    const success = await window.SecureDB.login(password);
-                    if (success) onLogin();
-                    else setError("Incorrect password.");
-                } else {
-                    if (password !== confirm) { setError("Passwords do not match."); return; }
-                    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
-                    try {
-                        await window.SecureDB.setupPassword(password);
-                        onLogin();
-                    } catch (err) {
-                        setError("Setup failed.");
-                    }
-                }
-            };
-
-            return (
-                <div className="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-8 relative">
-                        <div className="flex justify-center mb-6 text-blue-600"><Lock className="w-12 h-12" /></div>
-                        <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">{isSetup ? "Unlock Database" : "Set Encryption Password"}</h2>
-                        <p className="text-center text-slate-500 mb-6 text-sm">{isSetup ? "Enter your password to access patient records." : "Create a password to encrypt your local database. If you lose this, data cannot be recovered."}</p>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div><label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" autoFocus /></div>
-                            {!isSetup && (<div><label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Confirm Password</label><input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" /></div>)}
-                            {error && <div className="text-red-600 text-sm text-center font-medium">{error}</div>}
-                            <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors">{isSetup ? "Unlock" : "Set Password & Unlock"}</button>
-                            {isSetup && (
-                                resetConfirm ? (
-                                    <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
-                                        <p className="text-xs text-red-600 font-bold text-center mb-2">Are you absolutely sure? This will wipe everything!</p>
-                                        <div className="flex gap-2">
-                                            <button type="button" onClick={() => setResetConfirm(false)} className="flex-1 py-2 bg-slate-200 text-slate-700 rounded text-xs font-bold uppercase">Cancel</button>
-                                            <button type="button" onClick={async () => await window.SecureDB.resetDatabase()} className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold uppercase">Yes, Wipe DB</button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <button type="button" onClick={() => setResetConfirm(true)} className="w-full mt-2 text-xs text-red-500 hover:text-red-700 font-semibold uppercase">
-                                        Forgot Password? Reset Database
-                                    </button>
-                                )
-                            )}
-                        </form>
-                    </div>
-                </div>
-            );
-        };
-
-        const PhonemeFrequencyModal = ({ isOpen, onClose }) => {
-            if (!isOpen) return null;
-            return (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 relative">
-                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
-                        <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2"><Activity className="w-5 h-5 text-blue-600" /> Phoneme Frequency Guide</h3>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left border-collapse">
-                                <thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200"><tr><th className="px-4 py-2 border-r border-slate-200">Class</th><th className="px-4 py-2 border-r border-slate-200">Examples</th><th className="px-4 py-2">Critical Frequency Range</th></tr></thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    <tr className="hover:bg-slate-50"><td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Vowels</td><td className="px-4 py-2 text-slate-600 border-r border-slate-200">/i, u, a/</td><td className="px-4 py-2 text-slate-800"><strong>Low/Mid</strong> (F1: 250-1000 Hz, F2: 800-2500 Hz)</td></tr>
-                                    <tr className="hover:bg-slate-50 bg-slate-50/50"><td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Nasals</td><td className="px-4 py-2 text-slate-600 border-r border-slate-200">/m, n, ŋ/</td><td className="px-4 py-2 text-slate-800"><strong>Low</strong> (~250-500 Hz Murmur)</td></tr>
-                                    <tr className="hover:bg-slate-50"><td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Liquids/Glides</td><td className="px-4 py-2 text-slate-600 border-r border-slate-200">/l, r, w, j/</td><td className="px-4 py-2 text-slate-800"><strong>Low/Mid</strong> (Formant transitions 500-2000 Hz)</td></tr>
-                                    <tr className="hover:bg-slate-50 bg-slate-50/50"><td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Stops</td><td className="px-4 py-2 text-slate-600 border-r border-slate-200">/p, t, k, b, d, g/</td><td className="px-4 py-2 text-slate-800"><strong>Mid/High</strong> (Burst energy 1500 - 4000+ Hz)</td></tr>
-                                    <tr className="hover:bg-slate-50"><td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Fricatives</td><td className="px-4 py-2 text-slate-600 border-r border-slate-200">/f, s, ʃ, θ/</td><td className="px-4 py-2 text-slate-800"><strong>High</strong> (Turbulence 2500 - 8000+ Hz)</td></tr>
-                                    <tr className="hover:bg-slate-50 bg-slate-50/50"><td className="px-4 py-2 font-medium text-slate-700 border-r border-slate-200">Affricates</td><td className="px-4 py-2 text-slate-600 border-r border-slate-200">/tʃ, dʒ/</td><td className="px-4 py-2 text-slate-800"><strong>Mid/High</strong> (Wide range 2000 - 8000 Hz)</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="mt-4 text-center"><button onClick={onClose} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">Close</button></div>
-                    </div>
-                </div>
-            );
-        };
-
-        const BKBSINScoringPanel = ({ stats, scores, testId, updateScore, playTrack, audioState, onPause, onResume, onStop }) => {
-            if (!stats.isBKB) return null;
-
-            const { listA, listB, snr50, totalCorrect, pairId } = stats;
-
-            const renderSentence = (text) => {
-                const parts = text.split('*');
-                return parts.map((part, index) => {
-                    if (index % 2 === 1) {
-                        return <span key={index} className="underline decoration-slate-400 decoration-2 font-semibold text-slate-900">{part}</span>;
-                    }
-                    return <span key={index}>{part}</span>;
-                });
-            };
-
-            const renderList = (list, label, type) => (
-                <div className="flex-1">
-                    <h3 className="font-bold text-slate-700 mb-2 border-b pb-1">{label}</h3>
-                    <div className="space-y-1">
-                        {list.map((item) => {
-                            const maxScore = item.kwCount || 3;
-                            const currentScore = item.score;
-                            // List ID is "BKB1", but we need "BKB1_A_1"
-                            // activeTest.listId is "BKB1".
-                            // stats.pairId is 1.
-                            // We need to use the exact listId string from the state to match calculateStats logic.
-                            // calculateStats used: `${listId}_A_${item.i}` where listId passed in is "BKB1"
-                            // So we need "BKB1_A_1". 
-                            // Prop 'testId' is "A" or "B" (Test A/B), not List ID.
-                            // We don't have listId prop here? 
-                            // Ah, I need to pass listId or construct it.
-                            // Stats object has pairId. I can reconstruct "BKB" + pairId.
-                            const listId = `BKB${pairId}`;
-                            const scoreKey = `${listId}_${type}_${item.i}`;
-
-                            return (
-                                <div key={item.i} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 border border-transparent hover:border-slate-200">
-                                    <div className="w-6 font-mono text-xs text-slate-400 pt-1">{item.i}</div>
-                                    <div className="flex-1">
-                                        <div className="text-sm font-medium text-slate-800 mb-1">{renderSentence(item.s)}</div>
-                                        <div className="flex items-center justify-between">
-                                            <div className="text-xs text-slate-500 font-mono">SNR: {item.snr} dB</div>
-                                            <div className="flex gap-1">
-                                                {[...Array(maxScore + 1)].map((_, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        onClick={() => updateScore(scoreKey, idx)}
-                                                        className={`w-6 h-6 rounded text-xs font-bold transition-colors ${currentScore === idx
-                                                            ? 'bg-blue-600 text-white'
-                                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                                            }`}
-                                                    >
-                                                        {idx}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-
-            return (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black mb-6">
-                    <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
-                        <div className="font-bold text-slate-700">BKB-SIN Scoring: List Pair {pairId}</div>
-                        <div className="flex gap-4 items-center">
-                            <div className="text-sm">
-                                <span className="text-slate-500">Total Correct:</span>
-                                <span className="font-mono font-bold ml-1 text-slate-800">{totalCorrect}</span>
-                            </div>
-                            <div className="text-sm bg-blue-50 px-3 py-1 rounded border border-blue-100">
-                                <span className="text-blue-600 font-bold">SNR-50:</span>
-                                <span className="font-mono font-bold ml-1 text-blue-800">{snr50.toFixed(1)} dB</span>
-                            </div>
-
-                            <div className="flex items-center gap-2 print:hidden ml-4 pl-4 border-l border-slate-200">
-                                {(audioState === 'stopped' || audioState === undefined) && playTrack && (
-                                    <button
-                                        onClick={playTrack}
-                                        className="flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium text-xs transition-colors"
-                                    >
-                                        <Play className="w-3 h-3" /> Play
-                                    </button>
-                                )}
-
-                                {audioState === 'playing' && (
-                                    <button
-                                        onClick={onPause}
-                                        className="flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-800 rounded hover:bg-amber-200 font-medium text-xs transition-colors"
-                                    >
-                                        <Pause className="w-3 h-3" /> Pause
-                                    </button>
-                                )}
-
-                                {audioState === 'paused' && (
-                                    <button
-                                        onClick={onResume}
-                                        className="flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium text-xs transition-colors"
-                                    >
-                                        <Play className="w-3 h-3" /> Resume
-                                    </button>
-                                )}
-
-                                {(audioState === 'playing' || audioState === 'paused') && (
-                                    <button
-                                        onClick={onStop}
-                                        className="flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 font-medium text-xs transition-colors"
-                                    >
-                                        <Square className="w-3 h-3" /> Stop
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="p-4 flex flex-col md:flex-row gap-6">
-                        {renderList(listA, "List A (First Half)", "A")}
-                        <div className="hidden md:block w-px bg-slate-200"></div>
-                        {renderList(listB, "List B (Second Half)", "B")}
-                    </div>
-                    <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 text-xs text-slate-500 flex justify-between print:hidden">
-                        <div>SNR starts at +21 dB and decreases by 3 dB per sentence.</div>
-                        <div>Score = Key Words Correct</div>
-                    </div>
-                </div>
-            );
-        };
-
-
-        const CriticalDifferenceModal = ({ isOpen, onClose, confidenceLevel }) => {
-            const chartRef = useRef(null);
-            const canvasRef = useRef(null);
-            const [viewMode, setViewMode] = useState('words'); // 'words' or 'phonemes'
-            const [selectedN, setSelectedN] = useState('50'); // '10','25','50' for words; '30','75','150' for phonemes
-            const [tableData, setTableData] = useState([]);
-            const [isTableView, setIsTableView] = useState(true); // Default to Table View
-
-            useEffect(() => {
-                if (viewMode === 'words') {
-                    // Ensure valid N for words
-                    if (['10', '25', '50'].indexOf(selectedN) === -1) setSelectedN('50');
-                } else {
-                    if (['30', '75', '150'].indexOf(selectedN) === -1) setSelectedN('150');
-                }
-            }, [viewMode]);
-
-            useEffect(() => {
-                const n = parseInt(selectedN);
-                const isPhoneme = viewMode === 'phonemes';
-                const data = [];
-
-                // Always generate discrete integer steps for the table view
-                // This ensures we match the specific count/score alignment of the test
-                for (let i = 0; i <= n; i++) {
-                    const score = (i / n) * 100;
-                    const limits = getCriticalLimits(score, n, confidenceLevel, isPhoneme);
-                    data.push({
-                        count: i,
-                        score: score,
-                        lower: limits.lower,
-                        upper: limits.upper
-                    });
-                }
-                setTableData(data);
-
-                // If chart view is active, update chart
-                if (!isTableView && canvasRef.current) {
-                    if (chartRef.current) { chartRef.current.destroy(); }
-
-                    const ctx = canvasRef.current.getContext('2d');
-
-                    // Regenerate ALL datasets for the chart context
-                    const data10 = generateData(10, confidenceLevel, false);
-                    const data25 = generateData(25, confidenceLevel, false);
-                    const data30 = generateData(30, confidenceLevel, true);
-                    const data50 = generateData(50, confidenceLevel, false);
-                    const data75 = generateData(75, confidenceLevel, true);
-                    const data150 = generateData(150, confidenceLevel, true);
-
-                    chartRef.current = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            datasets: [
-                                { label: 'N = 10 (Words)', data: data10, borderColor: '#9467bd', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 },
-                                { label: 'N = 25 (Words)', data: data25, borderColor: '#d62728', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 },
-                                { label: 'N = 50 (Words)', data: data50, borderColor: '#ff7f0e', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 },
-                                { label: 'N = 30 (Phonemes)', data: data30, borderColor: '#17becf', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 },
-                                { label: 'N = 75 (Phonemes)', data: data75, borderColor: '#2ca02c', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 },
-                                { label: 'N = 150 (Phonemes)', data: data150, borderColor: '#1f77b4', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 }
-                            ]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false, }, plugins: { title: { display: true, text: `Critical Difference Ranges (${confidenceLevel}% Confidence)` }, tooltip: { callbacks: { label: function (context) { return context.dataset.label + ': ±' + context.parsed.y.toFixed(1) + '%'; } } } }, scales: { x: { type: 'linear', title: { display: true, text: 'Score (%)' }, min: 0, max: 100 }, y: { title: { display: true, text: 'Margin of Error (+/- %)' }, min: 0, suggestedMax: 30 } } }
-                    });
-                }
-            }, [selectedN, confidenceLevel, viewMode, isTableView, isOpen]);
-
-            if (!isOpen) return null;
-
-            return (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl p-6 relative flex flex-col max-h-[90vh]">
-                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
-
-                        <div className="mb-4">
-                            <h3 className="text-xl font-bold text-slate-800 mb-2">Critical Difference Tables ({confidenceLevel}% Confidence)</h3>
-
-                            <div className="flex gap-4 mb-4 border-b border-slate-200 pb-2">
-                                <button onClick={() => setViewMode('words')} className={`pb-2 text-sm font-bold transition-colors ${viewMode === 'words' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>Whole Word Scoring (Monte Carlo)</button>
-                                <button onClick={() => setViewMode('phonemes')} className={`pb-2 text-sm font-bold transition-colors ${viewMode === 'phonemes' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>Phoneme Scoring (Monte Carlo)</button>
-                            </div>
-
-                            <div className="flex gap-2">
-                                {viewMode === 'words' ? (
-                                    <>
-                                        <button onClick={() => setSelectedN('10')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${selectedN === '10' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>N = 10</button>
-                                        <button onClick={() => setSelectedN('25')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${selectedN === '25' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>N = 25</button>
-                                        <button onClick={() => setSelectedN('50')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${selectedN === '50' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>N = 50</button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button onClick={() => setSelectedN('30')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${selectedN === '30' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>N = 30</button>
-                                        <button onClick={() => setSelectedN('75')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${selectedN === '75' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>N = 75</button>
-                                        <button onClick={() => setSelectedN('150')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${selectedN === '150' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>N = 150</button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto border rounded-lg border-slate-200 custom-scrollbar">
-                            <table className="w-full text-sm text-left relative">
-                                <thead className="bg-slate-50 text-slate-600 font-bold text-xs uppercase sticky top-0 shadow-sm">
-                                    <tr>
-                                        <th className="px-4 py-3 border-b">Score (Count)</th>
-                                        <th className="px-4 py-3 border-b text-center">Score (%)</th>
-                                        <th className="px-4 py-3 border-b text-center text-red-600">Lower Limit</th>
-                                        <th className="px-4 py-3 border-b text-center text-emerald-600">Upper Limit</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {tableData.length > 0 ? (
-                                        tableData.map((row, idx) => {
-                                            const n = parseInt(selectedN);
-                                            return (
-                                                <tr key={idx} className="hover:bg-blue-50">
-                                                    <td className="px-4 py-2 font-mono text-slate-500">{row.count} / {n}</td>
-                                                    <td className="px-4 py-2 font-bold text-center text-slate-800">{row.score.toFixed(1)}%</td>
-                                                    <td className="px-4 py-2 text-center text-slate-600">{row.lower.toFixed(1)}%</td>
-                                                    <td className="px-4 py-2 text-center text-slate-600">{row.upper.toFixed(1)}%</td>
-                                                </tr>
-                                            )
-                                        })
-                                    ) : (
-                                        <tr><td colSpan="4" className="text-center py-4 text-slate-500">Loading data...</td></tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div className="mt-4 text-center">
-                            <button onClick={onClose} className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors">Close</button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const ListeningEffortScaleModal = ({ isOpen, onClose }) => {
-            if (!isOpen) return null;
-            const downloadScale = async () => {
-                const element = document.getElementById('scale-capture-target'); if (!element) return;
-                try { const canvas = await html2canvas(element, { backgroundColor: '#ffffff', scale: 2 }); const data = canvas.toDataURL('image/png'); const link = document.createElement('a'); link.href = data; link.download = 'listening-effort-scale.png'; link.click(); } catch (error) { console.error("Download failed:", error); alert("Could not export PNG. Try printing instead."); }
-            };
-            return (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"> <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-4 relative max-h-[90vh] overflow-y-auto"> <button onClick={onClose} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 no-print"> <X className="w-5 h-5" /> </button> <div id="scale-capture-target" className="p-2 bg-white"> <h3 className="text-lg font-bold text-slate-800 mb-3 text-center">Listening Effort Scale</h3> <div className="space-y-1"> {[{ val: 0, label: "No Effort", color: "bg-emerald-100 border-emerald-300 text-emerald-800" }, { val: 1, label: "Very Little Effort", color: "bg-emerald-50 border-emerald-200 text-emerald-700" }, { val: 2, label: "Little Effort", color: "bg-green-50 border-green-200 text-green-700" }, { val: 3, label: "Moderate Effort", color: "bg-lime-50 border-lime-200 text-lime-700" }, { val: 4, label: "Considerable Effort", color: "bg-yellow-50 border-yellow-200 text-yellow-700" }, { val: 5, label: "Much Effort", color: "bg-amber-50 border-amber-200 text-amber-700" }, { val: 6, label: "Very Much Effort", color: "bg-orange-50 border-orange-200 text-orange-700" }, { val: 7, label: "Extreme Effort", color: "bg-red-50 border-red-200 text-red-700" }, { val: 8, label: "Maximum Effort", color: "bg-red-100 border-red-300 text-red-800" }, { val: 9, label: "Giving Up", color: "bg-rose-100 border-rose-300 text-rose-800" }, { val: 10, label: "Unable to Ignore Noise", color: "bg-slate-800 border-slate-900 text-white" },].map((item) => (<div key={item.val} className={`flex items-center gap-3 p-1.5 rounded border ${item.color}`}> <span className="font-bold text-base w-6 text-center">{item.val}</span> <span className="font-medium text-sm">{item.label}</span> </div>))} </div> </div> <div className="mt-4 text-center flex gap-2 justify-center no-print"> <button onClick={downloadScale} className="px-4 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-sm font-medium flex items-center gap-1"><Download className="w-4 h-4" /> PNG</button> <button onClick={onClose} className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium">Close</button> </div> </div> </div>
-            );
-        };
-
-        const PhonemeDisclaimerModal = ({ isOpen, onClose }) => {
-            if (!isOpen) return null;
-            return (<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"> <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 relative"> <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"> <X className="w-5 h-5" /> </button> <div className="flex flex-col items-center text-center"> <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4 text-blue-600"> <AlertCircle className="w-6 h-6" /> </div> <h3 className="text-lg font-bold text-slate-800 mb-2">Phoneme Scoring Note</h3> <p className="text-sm text-slate-600 mb-6 leading-relaxed"> Phoneme scores are typically about <strong>20% better</strong> than whole word scores. You may want to use a <strong>lower (more difficult) SNR</strong> to avoid ceiling effects. </p> <button onClick={onClose} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium w-full transition-colors"> Got it </button> </div> </div> </div>);
-        };
-
-        const Edit = (props) => (<IconBase {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></IconBase>);
-        const LoadTestModal = ({ isOpen, onClose, onLoad }) => {
-            const [search, setSearch] = useState('');
-            const [historyData, setHistoryData] = useState([]);
-            const [loading, setLoading] = useState(false);
-
-            useEffect(() => {
-                if (isOpen) {
-                    setLoading(true);
-                    window.SecureDB.getAllTests().then(data => {
-                        setHistoryData(data);
-                        setLoading(false);
-                    });
-                }
-            }, [isOpen]);
-
-            const handleDelete = async (id, e) => {
-                e.stopPropagation();
-                if (confirm("Are you sure you want to delete this record?")) {
-                    try {
-                        await window.SecureDB.deleteTest(id);
-                        setHistoryData(prev => prev.filter(t => t.id !== id));
-                    } catch (err) {
-                        alert("Failed to delete record");
-                    }
-                }
-            };
-
-            // Edit handler - same as load but explicit
-            const handleEdit = (test, e) => {
-                e.stopPropagation();
-                onLoad(test);
-                onClose();
-            };
-
-            const filtered = historyData.filter(t => {
-                const s = search.toLowerCase();
-                return (t.patientName && t.patientName.toLowerCase().includes(s)) ||
-                    (t.cNumber && t.cNumber.toLowerCase().includes(s));
-            });
-
-            if (!isOpen) return null;
-
-            return (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 relative flex flex-col max-h-[80vh]">
-                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
-                        <h3 className="text-xl font-bold text-slate-800 mb-4">Load Patient History (Secure)</h3>
-
-                        <div className="relative mb-4">
-                            <Search className="absolute left-3 top-2.5 text-slate-400 w-5 h-5" />
-                            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by Name or ID..." className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                            {loading ? <div className="text-center py-8 text-slate-500"><Loader className="w-8 h-8 mx-auto mb-2 text-blue-600" />Loading records...</div> :
-                                filtered.length === 0 ? <div className="text-center py-8 text-slate-500 italic">No matching records found in secure database.</div> :
-                                    filtered.map(test => (
-                                        <div key={test.id} className="p-3 border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-blue-300 transition group flex justify-between items-center">
-                                            <div onClick={() => { onLoad(test); onClose(); }} className="flex-1 cursor-pointer">
-                                                <div className="font-bold text-slate-800">{test.patientName} <span className="text-slate-400 font-normal">#{test.cNumber}</span></div>
-                                                <div className="text-xs text-slate-500">{test.testDate} • {test.tests.A.condition} vs {test.tests.B.condition}</div>
-                                            </div>
-                                            <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={(e) => handleEdit(test, e)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition" title="Edit Test"><Edit className="w-4 h-4" /></button>
-                                                <button onClick={(e) => handleDelete(test.id, e)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition" title="Delete Test"><Trash2 className="w-4 h-4" /></button>
-                                            </div>
-                                        </div>
-                                    ))}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // ... (Other components) ...
-
-
-        // Import Preview Modal (top-level)
-        const ImportPreviewModal = ({ isOpen, onClose, fileName, records, invalidCount, onImportOverwrite, onImportAppend, onImportSkip, onImportMerge, onImportUseSelected, defaultMode }) => {
-            if (!isOpen) return null;
-            const sample = (records || []).slice(0, 5);
-            const modeLabels = { append: 'Append', skip: 'Skip duplicates', overwrite: 'Overwrite', merge: 'Merge duplicates' };
-            const selectedLabel = modeLabels[defaultMode] || 'Append';
-            return (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 relative max-h-[80vh] overflow-y-auto">
-                        <button onClick={() => { onClose(); if (fileInputRef && fileInputRef.current) fileInputRef.current.value = ''; }} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
-                        <h3 className="text-xl font-bold text-slate-800 mb-2">Import Preview</h3>
-                        <div className="text-sm text-slate-500 mb-4">File: <span className="font-mono">{fileName}</span></div>
-                        <div className="mb-4">
-                            <div className="text-sm">Total records: <span className="font-bold">{records?.length || 0}</span></div>
-                            <div className="text-sm">Invalid records detected: <span className="font-bold">{invalidCount}</span></div>
-                        </div>
-
-                        <div className="mb-3 text-xs text-slate-500">Import options: <span className="font-medium">Append</span> (import as new records), <span className="font-medium">Skip duplicates</span> (ignore records with same ID), <span className="font-medium">Overwrite</span> (replace existing records by ID), or <span className="font-medium">Merge duplicates</span> (combine matching IDs or patient/date records). The <span className="font-medium">selected</span> mode before opening this modal is shown below.</div>
-
-                        <div className="mb-4">
-                            <div className="text-sm font-bold text-slate-600 mb-1">Selected mode</div>
-                            <div className="text-sm text-slate-700 mb-2">{selectedLabel}</div>
-                        </div>
-
-                        <div className="space-y-2 mb-4">
-                            <div className="text-sm font-bold text-slate-600 mb-2">Sample entries</div>
-                            {(sample.length === 0) ? <div className="text-sm text-slate-500 italic">No sample entries available.</div> : sample.map((r, idx) => (
-                                <div key={idx} className="p-2 border rounded bg-slate-50">
-                                    <div className="font-bold text-slate-800">{r.patientName || '(No name)'} <span className="text-slate-400 font-normal">#{r.cNumber || '—'}</span></div>
-                                    <div className="text-xs text-slate-500">{r.testDate || '—'} • {r.tests?.A?.listId || '—'}</div>
-                                    <div className="text-xs text-slate-500 mt-1">Notes: {r.notes || '—'}</div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 justify-end">
-                            <button onClick={() => { onImportAppend(); }} className="px-4 py-2 bg-slate-100 rounded text-slate-700 text-sm">Import (Append as New IDs)</button>
-                            <button onClick={() => { onImportSkip(); }} className="px-4 py-2 bg-yellow-100 rounded text-yellow-800 text-sm">Import (Skip duplicates)</button>
-                            <button onClick={() => { onImportMerge(); }} className="px-4 py-2 bg-emerald-100 rounded text-emerald-800 text-sm">Import (Merge duplicates)</button>
-                            <button onClick={() => { onImportOverwrite(); }} className="px-4 py-2 bg-blue-600 rounded text-white text-sm">Import (Overwrite by ID)</button>
-                            <button onClick={() => onImportUseSelected()} className="px-4 py-2 bg-green-600 rounded text-white text-sm">Import (Use Selected: {selectedLabel})</button>
-                            <button onClick={() => { onClose(); if (fileInputRef && fileInputRef.current) fileInputRef.current.value = ''; }} className="px-4 py-2 bg-white border rounded text-sm">Cancel</button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const HistoryChart = ({ cNumber }) => {
-            const canvasNu6Ref = useRef(null);
-            const canvasBkbRef = useRef(null);
-            const chartNu6Ref = useRef(null);
-            const chartBkbRef = useRef(null);
-            const [historyData, setHistoryData] = useState([]);
-            const [loading, setLoading] = useState(false);
-
-            useEffect(() => {
-                if (!cNumber) return;
-                setLoading(true);
-                window.SecureDB.getPatientHistory(cNumber).then(data => {
-                    // Sort ascending (oldest first) for correct chronological charting
-                    const sortedData = [...data].sort((a, b) => new Date(a.testDate) - new Date(b.testDate));
-                    setHistoryData(sortedData);
-                    setLoading(false);
-                });
-            }, [cNumber]);
-
-            useEffect(() => {
-                if (historyData.length === 0) return;
-
-                const nu6Data = { labels: [], datasets: {} };
-                const bkbData = { labels: [], datasets: {} };
-                let hasNu6 = false;
-                let hasBkb = false;
-
-                const labels = historyData.map(r => r.testDate);
-
-                historyData.forEach((record, idx) => {
-                    const processTest = (test) => {
-                        if (!test || !test.listId) return;
-                        const stats = calculateStats(test.listId, test.section, test.scores, test.limitTo10);
-                        if (!stats) return;
-
-                        let chartLabel = test.condition || 'Unknown';
-                        
-                        let borderColor = '#94a3b8'; 
-                        let borderDash = [];
-                        let pointStyle = 'circle';
-                        
-                        const lowerCond = chartLabel.toLowerCase();
-                        if (lowerCond.includes('unaided')) {
-                            chartLabel = 'Unaided';
-                            borderColor = '#ef4444'; // red
-                        } else if (lowerCond.includes('new') || lowerCond.includes('current') || lowerCond.includes('aid')) {
-                            chartLabel = 'Aided';
-                            borderColor = '#3b82f6'; // blue
-                            pointStyle = 'rect';
-                        }
-
-                        if (stats.isBKB) {
-                            if (stats.snr50 !== undefined) {
-                                hasBkb = true;
-                                if (!bkbData.datasets[chartLabel]) {
-                                    bkbData.datasets[chartLabel] = {
-                                        label: chartLabel,
-                                        data: Array(historyData.length).fill(null),
-                                        borderColor,
-                                        borderDash,
-                                        pointStyle,
-                                        pointRadius: 5,
-                                        tension: 0.2,
-                                        spanGaps: true
-                                    };
-                                }
-                                bkbData.datasets[chartLabel].data[idx] = stats.snr50;
-                            }
-                        } else {
-                            if (stats.wordPercent !== undefined) {
-                                hasNu6 = true;
-                                if (!nu6Data.datasets[chartLabel]) {
-                                    nu6Data.datasets[chartLabel] = {
-                                        label: chartLabel,
-                                        data: Array(historyData.length).fill(null),
-                                        borderColor,
-                                        borderDash,
-                                        pointStyle,
-                                        pointRadius: 5,
-                                        tension: 0.2,
-                                        spanGaps: true
-                                    };
-                                }
-                                nu6Data.datasets[chartLabel].data[idx] = stats.wordPercent;
-                            }
-                        }
-                    };
-
-                    processTest(record.tests?.A);
-                    processTest(record.tests?.B);
-                });
-
-                if (hasNu6 && canvasNu6Ref.current) {
-                    if (chartNu6Ref.current) chartNu6Ref.current.destroy();
-                    chartNu6Ref.current = new Chart(canvasNu6Ref.current, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: Object.values(nu6Data.datasets)
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                title: { display: true, text: 'NU-6 Word Recognition Score (%)' },
-                                tooltip: {
-                                    callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}%` }
-                                }
-                            },
-                            scales: {
-                                y: { min: 0, max: 100, title: { display: true, text: 'Score (%)' } },
-                                x: { title: { display: true, text: 'Test Date' } }
-                            }
-                        }
-                    });
-                } else if (chartNu6Ref.current) {
-                    chartNu6Ref.current.destroy();
-                }
-
-                if (hasBkb && canvasBkbRef.current) {
-                    if (chartBkbRef.current) chartBkbRef.current.destroy();
-                    chartBkbRef.current = new Chart(canvasBkbRef.current, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: Object.values(bkbData.datasets)
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                title: { display: true, text: 'BKB-SIN SNR-50 (dB)' },
-                                tooltip: {
-                                    callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} dB SNR` }
-                                }
-                            },
-                            scales: {
-                                y: { 
-                                    reverse: true, // Lower is better
-                                    title: { display: true, text: 'SNR-50 (dB)' } 
-                                },
-                                x: { title: { display: true, text: 'Test Date' } }
-                            }
-                        }
-                    });
-                } else if (chartBkbRef.current) {
-                    chartBkbRef.current.destroy();
-                }
-
-                return () => {
-                    if (chartNu6Ref.current) chartNu6Ref.current.destroy();
-                    if (chartBkbRef.current) chartBkbRef.current.destroy();
-                };
-            }, [historyData]);
-
-            if (!cNumber) return <div className="text-center text-slate-400 py-10">Enter Patient ID to view history.</div>;
-            if (loading) return <div className="text-center text-slate-500 py-10"><Loader className="w-8 h-8 mx-auto mb-2 text-blue-600" />Loading history...</div>;
-            if (historyData.length === 0) return <div className="text-center text-slate-400 py-10">No history found for ID: {cNumber}</div>;
-
-            const hasNu6 = historyData.some(r => {
-                const a = calculateStats(r.tests?.A?.listId, r.tests?.A?.section, r.tests?.A?.scores, r.tests?.A?.limitTo10);
-                const b = calculateStats(r.tests?.B?.listId, r.tests?.B?.section, r.tests?.B?.scores, r.tests?.B?.limitTo10);
-                return (a && !a.isBKB) || (b && !b.isBKB);
-            });
-
-            const hasBkb = historyData.some(r => {
-                const a = calculateStats(r.tests?.A?.listId, r.tests?.A?.section, r.tests?.A?.scores, r.tests?.A?.limitTo10);
-                const b = calculateStats(r.tests?.B?.listId, r.tests?.B?.section, r.tests?.B?.scores, r.tests?.B?.limitTo10);
-                return (a && a.isBKB) || (b && b.isBKB);
-            });
-
-            return (
-                <div className="space-y-6">
-                    {/* Longitudinal Charts */}
-                    {(hasNu6 || hasBkb) && (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {hasNu6 && (
-                                <div className="bg-white rounded-lg border border-slate-200 p-4 h-64">
-                                    <canvas ref={canvasNu6Ref}></canvas>
-                                </div>
-                            )}
-                            {hasBkb && (
-                                <div className="bg-white rounded-lg border border-slate-200 p-4 h-64">
-                                    <canvas ref={canvasBkbRef}></canvas>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                                <tr>
-                                    <th className="px-4 py-2">Date</th>
-                                    <th className="px-4 py-2">Test A</th>
-                                    <th className="px-4 py-2">Word / SNR</th>
-                                    <th className="px-4 py-2 text-blue-400">Phon</th>
-                                    <th className="px-4 py-2">Test B</th>
-                                    <th className="px-4 py-2">Word / SNR</th>
-                                    <th className="px-4 py-2 text-purple-400">Phon</th>
-                                    <th className="px-4 py-2 border-l border-slate-100">Diff / Sig</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {[...historyData].reverse().map((record, idx) => {
-                                    const statsA = calculateStats(record.tests.A.listId, record.tests.A.section, record.tests.A.scores, record.tests.A.limitTo10);
-                                    const statsB = calculateStats(record.tests.B.listId, record.tests.B.section, record.tests.B.scores, record.tests.B.limitTo10);
-
-                                    // Significance Calculation
-                                    let sigDisplay = <span className="text-slate-300">--</span>;
-
-                                    if (statsA.isBKB && statsB.isBKB) {
-                                        if (statsA.snr50 !== undefined && statsB.snr50 !== undefined) {
-                                            const diff = statsB.snr50 - statsA.snr50;
-                                            const critDiff = 1.9;
-                                            const isSig = Math.abs(diff) > critDiff;
-                                            const color = isSig ? 'text-emerald-600 font-bold' : 'text-slate-400';
-                                            sigDisplay = (
-                                                <div className={color}>
-                                                    {diff > 0 ? '+' : ''}{diff.toFixed(1)} dB
-                                                    {isSig && <span className="ml-1 text-xs bg-emerald-100 text-emerald-800 px-1 rounded">Sig</span>}
-                                                </div>
-                                            );
-                                        }
-                                    } else if (!statsA.isBKB && !statsB.isBKB) {
-                                        const n = record.tests.A.limitTo10 ? 10 : (record.tests.A.section === 'full' ? 50 : 25);
-                                        const conf = record.confidenceLevel || 80;
-                                        const limits = getCriticalLimits(statsA.wordPercent, n, conf, false);
-                                        const isSigWord = statsB.wordPercent < limits.lower || statsB.wordPercent > limits.upper;
-                                        const wDiff = statsB.wordPercent - statsA.wordPercent;
-
-                                        let isSigPhon = false;
-                                        let pDiff = 0;
-                                        if (record.tests.A.scoringMode === 'phoneme') {
-                                            const nPhon = n * 3;
-                                            const limitsPhon = getInterpolatedCriticalLimits(statsA.phonemePercent, nPhon, conf);
-                                            isSigPhon = statsB.phonemePercent < limitsPhon.lower || statsB.phonemePercent > limitsPhon.upper;
-                                            pDiff = statsB.phonemePercent - statsA.phonemePercent;
-                                        }
-
-                                        sigDisplay = (
-                                            <div className="flex flex-col text-xs space-y-0.5">
-                                                <div className={isSigWord ? "text-emerald-600 font-bold" : "text-slate-400"}>
-                                                    W: {wDiff > 0 ? '+' : ''}{wDiff}%
-                                                    {isSigWord && " (Sig)"}
-                                                </div>
-                                                {record.tests.A.scoringMode === 'phoneme' && (
-                                                    <div className={isSigPhon ? "text-purple-600 font-bold" : "text-slate-300"}>
-                                                        P: {pDiff > 0 ? '+' : ''}{pDiff}%
-                                                        {isSigPhon && "*"}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    }
-
-                                    return (
-                                        <tr key={record.id || idx} className="hover:bg-slate-50">
-                                            <td className="px-4 py-2">{record.testDate}</td>
-
-                                            {/* Test A */}
-                                            <td className="px-4 py-2 text-slate-600">{record.tests.A.condition}</td>
-                                            {statsA.isBKB ? (
-                                                <td colSpan={2} className="px-4 py-2 font-bold text-blue-700 bg-blue-50/30">
-                                                    SNR-50: {statsA.snr50?.toFixed(1)} dB
-                                                </td>
-                                            ) : (
-                                                <>
-                                                    <td className="px-4 py-2 font-bold text-blue-600">{statsA.wordPercent}%</td>
-                                                    <td className="px-4 py-2 font-medium text-blue-400">{statsA.phonemePercent}%</td>
-                                                </>
-                                            )}
-
-                                            {/* Test B */}
-                                            <td className="px-4 py-2 text-slate-600 border-l border-slate-100">{record.tests.B.condition}</td>
-                                            {statsB.isBKB ? (
-                                                <td colSpan={2} className="px-4 py-2 font-bold text-purple-700 bg-purple-50/30">
-                                                    SNR-50: {statsB.snr50?.toFixed(1)} dB
-                                                </td>
-                                            ) : (
-                                                <>
-                                                    <td className="px-4 py-2 font-bold text-purple-600">{statsB.wordPercent}%</td>
-                                                    <td className="px-4 py-2 font-medium text-purple-400">{statsB.phonemePercent}%</td>
-                                                </>
-                                            )}
-
-                                            {/* Diff / Sig */}
-                                            <td className="px-4 py-2 border-l border-slate-100">
-                                                {sigDisplay}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            );
-        };
-
-        const SettingsModal = ({ isOpen, onClose, initialSettings, onSave }) => {
-            const [clinicName, setClinicName] = useState(initialSettings?.clinicName || '');
-            const [audiologistName, setAudiologistName] = useState(initialSettings?.audiologistName || '');
-            const [licenseNumber, setLicenseNumber] = useState(initialSettings?.licenseNumber || '');
-
-            useEffect(() => {
-                if (isOpen && initialSettings) {
-                    setClinicName(initialSettings.clinicName || '');
-                    setAudiologistName(initialSettings.audiologistName || '');
-                    setLicenseNumber(initialSettings.licenseNumber || '');
-                }
-            }, [isOpen, initialSettings]);
-
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                onSave({ clinicName, audiologistName, licenseNumber });
-                onClose();
-            };
-
-            if (!isOpen) return null;
-            return (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
-                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-                        <h2 className="text-xl font-bold text-slate-800 mb-4">Clinic Settings</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div><label className="block text-xs font-bold text-slate-500 uppercase">Clinic Name</label><input type="text" className="w-full border p-2 rounded" value={clinicName} onChange={e => setClinicName(e.target.value)} /></div>
-                            <div><label className="block text-xs font-bold text-slate-500 uppercase">Hearing Care Provider Name</label><input type="text" className="w-full border p-2 rounded" value={audiologistName} onChange={e => setAudiologistName(e.target.value)} /></div>
-                            <div><label className="block text-xs font-bold text-slate-500 uppercase">License #</label><input type="text" className="w-full border p-2 rounded" value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} /></div>
-                            <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Save Settings</button>
-                        </form>
-                    </div>
-                </div>
-            );
-        };
-
-        // NEW: Comparative Ease Scale Modal
-        const ComparativeEaseScaleModal = ({ isOpen, onClose }) => {
-            if (!isOpen) return null;
-            const captureRef = useRef(null);
-
-            const handleDownload = async () => {
-                if (!captureRef.current) return;
-                try {
-                    const canvas = await html2canvas(captureRef.current, { scale: 2, backgroundColor: '#ffffff' });
-                    const link = document.createElement('a');
-                    link.download = 'Comparative_Listening_Scale.png';
-                    link.href = canvas.toDataURL();
-                    link.click();
-                } catch (err) {
-                    console.error(err);
-                    alert("Export failed");
-                }
-            };
-
-            const scaleData = [
-                { val: 10, label: "Much Easier", desc: "Significant improvement. Listening requires almost no effort compared to before.", color: "bg-emerald-100 border-emerald-300", textColor: "text-emerald-800" },
-                { val: 9, label: "Very Easy", desc: "A major improvement in clarity and comfort.", color: "bg-emerald-50 border-emerald-200", textColor: "text-emerald-700" },
-                { val: 8, label: "Easier", desc: "Noticeably better. Listening is clearly less straining.", color: "bg-green-50 border-green-200", textColor: "text-green-700" },
-                { val: 7, label: "Moderately Easier", desc: "Definite improvement, though some effort remains.", color: "bg-lime-50 border-lime-200", textColor: "text-lime-700" },
-                { val: 6, label: "Slightly Easier", desc: "A small but noticeable improvement.", color: "bg-yellow-50 border-yellow-200", textColor: "text-yellow-700" },
-                { val: 5, label: "No Difference", desc: "Listening effort is exactly the same as the previous condition.", color: "bg-slate-100 border-slate-300", textColor: "text-slate-800" },
-                { val: 4, label: "Slightly Harder", desc: "A small increase in difficulty or strain.", color: "bg-orange-50 border-orange-200", textColor: "text-orange-700" },
-                { val: 3, label: "Moderately Harder", desc: "Noticeably more difficult to follow speech.", color: "bg-orange-100 border-orange-300", textColor: "text-orange-800" },
-                { val: 2, label: "Harder", desc: "Increased strain. Listening is clearly more fatiguing.", color: "bg-red-50 border-red-200", textColor: "text-red-700" },
-                { val: 1, label: "Very Hard", desc: "Much more difficult. Requires intense concentration.", color: "bg-red-100 border-red-300", textColor: "text-red-800" },
-                { val: 0, label: "Much Harder", desc: "Impossible or significantly worse than before.", color: "bg-red-300 border-red-400", textColor: "text-red-900" }
-            ];
-
-            return (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
-                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-                        <div ref={captureRef} className="p-2">
-                            <div className="text-center mb-6">
-                                <h1 className="text-2xl font-bold text-slate-800">Comparative Listening Scale</h1>
-                                <p className="text-slate-500 text-sm mt-1">...compared to the previous condition.</p>
-                                <div className="flex justify-center items-center gap-4 mt-4 text-xs font-bold uppercase tracking-widest text-slate-400">
-                                    <span>Harder</span>
-                                    <div className="w-24 h-0.5 bg-gradient-to-r from-red-400 via-slate-300 to-emerald-400"></div>
-                                    <span>Easier</span>
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                {scaleData.map(item => (
-                                    <div key={item.val} className={`flex items-center gap-4 p-3 rounded-lg border ${item.color} mb-2`}>
-                                        <div className={`flex flex-col items-center justify-center w-12 h-12 bg-white/60 rounded-full font-bold text-xl shadow-sm shrink-0 ${item.textColor}`}>
-                                            {item.val}
-                                        </div>
-                                        <div>
-                                            <div className={`font-bold text-base ${item.textColor}`}>{item.label}</div>
-                                            <div className="text-xs opacity-80 text-slate-600">{item.desc}</div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="mt-4 flex justify-center gap-3">
-                            <button onClick={handleDownload} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"><Download className="w-4 h-4" /> PNG</button>
-                            <button onClick={onClose} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium">Close</button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // Recovery Modal for crash recovery
-        const RecoveryModal = ({ isOpen, data, onRestore, onDiscard }) => {
-            if (!isOpen || !data) return null;
-            const timestamp = new Date(data.timestamp);
-            const timeAgo = ((Date.now() - timestamp.getTime()) / 60000).toFixed(0); // minutes ago
-
-            return (
-                <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative">
-                        <div className="flex items-start gap-3 mb-4">
-                            <div className="bg-blue-100 p-2 rounded-lg">
-                                <FileText className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-800">Recover Unsaved Work?</h2>
-                                <p className="text-sm text-slate-500 mt-1">We found unsaved data from {timeAgo} minute{timeAgo !== '1' ? 's' : ''} ago.</p>
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-50 rounded-lg p-4 mb-4 border border-slate-200">
-                            <div className="text-sm space-y-2">
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Patient:</span>
-                                    <span className="font-medium text-slate-800">{data.patientName || '(empty)'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">ID:</span>
-                                    <span className="font-medium text-slate-800">{data.cNumber || '(empty)'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Date:</span>
-                                    <span className="font-medium text-slate-800">{data.testDate}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Time saved:</span>
-                                    <span className="font-medium text-slate-800">{timestamp.toLocaleTimeString()}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3">
-                            <button onClick={onRestore} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
-                                <RotateCcw className="w-4 h-4" /> Restore
-                            </button>
-                            <button onClick={onDiscard} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg font-medium transition-colors">
-                                Discard
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const computeAgeYears = (dobStr, refDateStr) => {
-            if (!dobStr || !refDateStr) return null;
-            const dob = new Date(dobStr);
-            const ref = new Date(refDateStr);
-            if (Number.isNaN(dob.getTime()) || Number.isNaN(ref.getTime())) return null;
-            let age = ref.getFullYear() - dob.getFullYear();
-            const m = ref.getMonth() - dob.getMonth();
-            if (m < 0 || (m === 0 && ref.getDate() < dob.getDate())) age--;
-            return age >= 0 ? age : null;
-        };
-
-        const App = () => {
+// --- COMPONENTS ---
+
+
+const computeAgeYears = (dob, testDate) => {
+    if (!dob || !testDate) return '';
+    const birthDate = new Date(dob);
+    const dateOfTest = new Date(testDate);
+    if (isNaN(birthDate) || isNaN(dateOfTest)) return '';
+    let age = dateOfTest.getFullYear() - birthDate.getFullYear();
+    const m = dateOfTest.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && dateOfTest.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+};
+
+const App = () => {
             // ... (State setup) ...
             const [firstName, setFirstName] = useState('');
             const [lastName, setLastName] = useState('');
@@ -2202,21 +886,7 @@
             const isTNTExcursionWidthDiffSig = tntExcursionWidthDifference !== null && tntExcursionWidthDifference > tntExcursionWidthCriticalValue;
 
             // BKB-SIN Significance Logic
-            const getBKBCriticalDifference = (age, confLevel) => {
-                // Default to 80 if not 95 (though UI only has 80/90/95, manual only gives 80/95. Treat 90 as 95? Or 80? Safer to treat as 95 or strict lookup?)
-                // Manual supports 80 and 95. App supports 80, 85, 90, 95, 99.
-                // Logic: If >= 95, use 95 value. Else use 80 value? Or strict? 
-                // Let's use 95 value for >= 90, and 80 value for < 90.
-                const levelKey = confLevel >= 90 ? 95 : 80;
-
-                if (age !== null && age < 15) {
-                    if (age >= 5 && age <= 6) return BKB_CRITICAL_DIFFERENCES.children.age5_6[levelKey];
-                    if (age >= 7 && age <= 10) return BKB_CRITICAL_DIFFERENCES.children.age7_10[levelKey];
-                    if (age >= 11 && age <= 14) return BKB_CRITICAL_DIFFERENCES.children.age11_14[levelKey];
-                }
-                // Default to adult
-                return BKB_CRITICAL_DIFFERENCES.adults[levelKey];
-            };
+            const getBKBCriticalDifference = (age, confLevel) => 0;
 
             const bkbCriticalDiff = getBKBCriticalDifference(ageYears, confidenceLevel);
             const bkbDifference = (statsA.isBKB && statsB.isBKB) ? Math.abs(statsA.snr50 - statsB.snr50) : null;
@@ -4101,7 +2771,7 @@
                                     <li>Storage permissions are denied</li>
                                     <li>Another tab is blocking the database update</li>
                                 </ul>
-                                <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Reload App</button>
+                                <button onClick={() => window.location.reload()} className="btn-primary">Reload App</button>
                             </div>
                         </div>
                     );
@@ -4124,7 +2794,9 @@
 
 
             return (
-                <div className="min-h-screen bg-slate-100 text-slate-900 p-4 md:p-8 print:p-0 print:bg-white">
+                <div className="min-h-screen relative z-0 text-slate-900 p-4 md:p-8 print:p-0 overflow-hidden font-sans bg-slate-50/50">
+                    <div className="ambient-orb orb-1"></div>
+                    <div className="ambient-orb orb-2"></div>
                     <ListeningEffortScaleModal isOpen={showScaleModal} onClose={() => setShowScaleModal(false)} />
                     <CriticalDifferenceModal isOpen={showChartModal} onClose={() => setShowChartModal(false)} confidenceLevel={confidenceLevel} />
                     <PhonemeDisclaimerModal isOpen={showPhonemeModal} onClose={() => setShowPhonemeModal(false)} />
@@ -4143,7 +2815,7 @@
                                 <p className="text-sm text-slate-600 mb-2">Choose export format:</p>
 
                                 {/* Date Filter Section */}
-                                <div className="bg-slate-50 rounded-lg p-3 mb-4 border border-slate-200">
+                                <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg p-3 mb-4 border border-slate-200">
                                     <div className="text-xs font-semibold text-slate-700 mb-2">📅 Filter by Test Date (optional)</div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
@@ -4250,7 +2922,7 @@
                                     autoFocus
                                 />
                                 <div className="flex gap-2">
-                                    <button onClick={confirmExportEncrypted} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Export Encrypted</button>
+                                    <button onClick={confirmExportEncrypted} className="btn-primary">Export Encrypted</button>
                                     <button onClick={() => setShowExportPasswordModal(false)} className="flex-1 px-4 py-2 bg-slate-100 rounded">Cancel</button>
                                 </div>
                             </div>
@@ -4274,7 +2946,7 @@
                                     autoFocus
                                 />
                                 <div className="flex gap-2">
-                                    <button onClick={handleDecryptAndImport} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Decrypt & Import</button>
+                                    <button onClick={handleDecryptAndImport} className="btn-primary">Decrypt & Import</button>
                                     <button onClick={() => { setShowEncryptedImportModal(false); setEncryptedImportPassword(''); setEncryptedImportFile(null); }} className="flex-1 px-4 py-2 bg-slate-100 rounded">Cancel</button>
                                 </div>
                             </div>
@@ -4294,7 +2966,7 @@
                                 </div>
                                 <div className="flex justify-end gap-2">
                                     <button onClick={() => { setShowDeleteDbModal(false); setDeleteDbConfirmText(''); }} className="px-4 py-2 bg-white border rounded">Cancel</button>
-                                    <button onClick={async () => { if (deleteDbConfirmText === 'DELETE') { setShowDeleteDbModal(false); setDeleteDbConfirmText(''); try { await window.SecureDB.deleteAllTests(); alert('Database cleared. Clinic settings preserved.'); resetForm(); setTimeout(() => { if (document.activeElement) document.activeElement.blur(); document.body.focus(); document.body.click(); }, 150); } catch (e) { console.error(e); alert('Failed to delete database.'); } } else { alert('Please type DELETE to confirm.'); } }} className="px-4 py-2 bg-red-600 text-white rounded">Delete Database</button>
+                                    <button onClick={async () => { if (deleteDbConfirmText === 'DELETE') { setShowDeleteDbModal(false); setDeleteDbConfirmText(''); try { await window.SecureDB.deleteAllTests(); alert('Database cleared. Clinic settings preserved.'); resetForm(); setTimeout(() => { if (document.activeElement) document.activeElement.blur(); document.body.focus(); document.body.click(); }, 150); } catch (e) { console.error(e); alert('Failed to delete database.'); } } else { alert('Please type DELETE to confirm.'); } }} className="btn-primary from-red-500 to-rose-600 shadow-red-500/30">Delete Database</button>
                                 </div>
                             </div>
                         </div>
@@ -4316,9 +2988,9 @@
                         </div>
                     )}
 
-                    <div className="max-w-5xl mx-auto space-y-6">
+                    <div className="max-w-6xl mx-auto space-y-8 relative z-10 mt-6">
                         {/* Header Controls */}
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 print:hidden">
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="glass rounded-3xl p-8 print:hidden shadow-lg border-white/50">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                                 <div>
                                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -4341,19 +3013,19 @@
                                             <div className="absolute top-full mt-1 left-0 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[200px]">
                                                 <button
                                                     onClick={() => { setShowLoadModal(true); setShowFileMenu(false); }}
-                                                    className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-slate-700 border-b border-slate-100"
+                                                    className="w-full text-left px-4 py-2 hover:bg-gradient-to-br from-slate-50 to-blue-50 flex items-center gap-2 text-sm text-slate-700 border-b border-slate-100"
                                                 >
                                                     <Database className="w-4 h-4" /> Load Patient
                                                 </button>
                                                 <button
                                                     onClick={() => { handleImportDB(); setShowFileMenu(false); }}
-                                                    className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-slate-700 border-b border-slate-100"
+                                                    className="w-full text-left px-4 py-2 hover:bg-gradient-to-br from-slate-50 to-blue-50 flex items-center gap-2 text-sm text-slate-700 border-b border-slate-100"
                                                 >
                                                     <FileUp className="w-4 h-4" /> Import Database
                                                 </button>
                                                 <button
                                                     onClick={() => { handleExportDB(); setShowFileMenu(false); }}
-                                                    className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-slate-700 border-b border-slate-100"
+                                                    className="w-full text-left px-4 py-2 hover:bg-gradient-to-br from-slate-50 to-blue-50 flex items-center gap-2 text-sm text-slate-700 border-b border-slate-100"
                                                 >
                                                     <Download className="w-4 h-4" /> Export Database
                                                 </button>
@@ -4371,7 +3043,7 @@
                                     <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition text-sm font-medium"><SettingsIcon className="w-4 h-4" /></button>
                                     <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm font-medium"><FileText className="w-4 h-4" /> PDF Report</button>
                                     <div className="flex flex-col gap-1">
-                                        <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"><Save className="w-4 h-4" /> Save (Local)</button>
+                                        <button onClick={handleSave} className="btn-primary"><Save className="w-4 h-4" /> Save (Local)</button>
                                         {lastSaved && (
                                             <div className="text-[10px] text-slate-400 text-center">
                                                 Last saved: {lastSaved.toLocaleTimeString()}
@@ -4410,7 +3082,7 @@
                             </div>
 
                             {/* Patient Info */}
-                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-6">
+                            <div className="bg-gradient-to-br from-slate-50 to-blue-50 p-6 rounded-xl border border-slate-200 mb-6">
                                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Patient Information</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div><label className="block text-xs font-medium text-slate-500 mb-1">First Name</label><input type="text" value={firstName} onChange={(e) => { setFirstName(e.target.value); setHasUnsavedChanges(true); }} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="First name..." /></div>
@@ -4429,11 +3101,11 @@
                                 <button onClick={() => setActiveTab('comparison')} className={`px-4 py-2 text-sm font-medium rounded-md tab-btn flex items-center gap-2 ${activeTab === 'comparison' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}><BarChart3 className="w-4 h-4" /> Comparison Results</button>
                                 <button onClick={() => setActiveTab('history')} className={`px-4 py-2 text-sm font-medium rounded-md tab-btn flex items-center gap-2 ${activeTab === 'history' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}><HistoryIcon className="w-4 h-4" /> Longitudinal History</button>
                             </div>
-                        </div>
+                        </motion.div>
 
                         {/* Content */}
                         {activeTab === 'scoring' && (
-                            <div className="space-y-6">
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="glass rounded-3xl p-8 print:hidden shadow-2xl shadow-indigo-500/10 border border-indigo-100">
                                 <div className="grid grid-cols-2 gap-4 print:hidden">
                                     {['A', 'B'].map(id => {
                                         const t = tests[id]; const s = id === 'A' ? statsA : statsB; const isActive = activeTestId === id;
@@ -4448,14 +3120,14 @@
                                     })}
                                 </div>
 
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 print:hidden">
+                                <div className="glass rounded-3xl p-8 print:hidden">
                                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                                         <div className="lg:col-span-5 space-y-6">
-                                            <div><label className="block text-xs font-medium text-slate-500 mb-2">Condition</label><div className="flex rounded-lg overflow-hidden border border-slate-200 mb-3">{(activeTestId === 'A' ? ['Unaided', 'Current Tech'] : ['Current Tech', 'New Tech']).map(c => (<button key={c} onClick={() => updateActiveTest('condition', c)} className={`flex-1 py-2 text-sm font-medium transition ${activeTest.condition === c ? 'bg-indigo-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>{c}</button>))}</div>{(activeTest.condition === 'Current Tech' || activeTest.condition === 'New Tech') && (<div><input type="text" value={activeTest.deviceModel || ''} onChange={(e) => updateActiveTest('deviceModel', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="Enter Make/Model..." /></div>)}</div>
-                                            <div><label className="block text-xs font-medium text-slate-500 mb-2">Stimulus Presentation</label><div className="flex rounded-lg overflow-hidden border border-slate-200"><button onClick={() => activeTestId === 'A' && updateActiveTest('stimulusPresentation', 'MLV')} disabled={activeTestId === 'B'} className={`flex-1 py-2 text-xs font-bold transition ${activeTest.stimulusPresentation === 'MLV' ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'} ${activeTestId === 'B' ? 'cursor-not-allowed opacity-60' : ''}`}>MLV</button><button onClick={() => activeTestId === 'A' && updateActiveTest('stimulusPresentation', 'Recording')} disabled={activeTestId === 'B'} className={`flex-1 py-2 text-xs font-bold transition ${activeTest.stimulusPresentation === 'Recording' ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'} ${activeTestId === 'B' ? 'cursor-not-allowed opacity-60' : ''}`}>Recording</button></div>{activeTestId === 'B' && <div className="text-[10px] text-slate-400 mt-1 italic">Locked to match Test A</div>}
+                                            <div><label className="block text-xs font-medium text-slate-500 mb-2">Condition</label><div className="flex rounded-lg overflow-hidden border border-slate-200 mb-3">{(activeTestId === 'A' ? ['Unaided', 'Current Tech'] : ['Current Tech', 'New Tech']).map(c => (<button key={c} onClick={() => updateActiveTest('condition', c)} className={`flex-1 py-2 text-sm font-medium transition ${activeTest.condition === c ? 'bg-indigo-600 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 hover:bg-slate-100 text-slate-600'}`}>{c}</button>))}</div>{(activeTest.condition === 'Current Tech' || activeTest.condition === 'New Tech') && (<div><input type="text" value={activeTest.deviceModel || ''} onChange={(e) => updateActiveTest('deviceModel', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="Enter Make/Model..." /></div>)}</div>
+                                            <div><label className="block text-xs font-medium text-slate-500 mb-2">Stimulus Presentation</label><div className="flex rounded-lg overflow-hidden border border-slate-200"><button onClick={() => activeTestId === 'A' && updateActiveTest('stimulusPresentation', 'MLV')} disabled={activeTestId === 'B'} className={`flex-1 py-2 text-xs font-bold transition ${activeTest.stimulusPresentation === 'MLV' ? 'bg-blue-600 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 text-slate-600 hover:bg-slate-100'} ${activeTestId === 'B' ? 'cursor-not-allowed opacity-60' : ''}`}>MLV</button><button onClick={() => activeTestId === 'A' && updateActiveTest('stimulusPresentation', 'Recording')} disabled={activeTestId === 'B'} className={`flex-1 py-2 text-xs font-bold transition ${activeTest.stimulusPresentation === 'Recording' ? 'bg-blue-600 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 text-slate-600 hover:bg-slate-100'} ${activeTestId === 'B' ? 'cursor-not-allowed opacity-60' : ''}`}>Recording</button></div>{activeTestId === 'B' && <div className="text-[10px] text-slate-400 mt-1 italic">Locked to match Test A</div>}
                                                 {activeTest.stimulusPresentation === 'Recording' && (
                                                     <div className="mt-2 space-y-2">
-                                                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                                                        <div className="p-4 bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-lg">
                                                             <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2"><SettingsIcon className="w-4 h-4" /> Calibration</h4>
 
                                                             <div className="flex flex-col gap-3 mb-4">
@@ -4472,12 +3144,7 @@
                                                                     >
                                                                         Rose Hill HF
                                                                     </button>
-                                                                    <button
-                                                                        onClick={() => { setCalibrationSignalGroup('bkb'); setCalibrationSignal('bkb_noise'); }}
-                                                                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition ${calibrationSignalGroup === 'bkb' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                                                                    >
-                                                                        BKB-SIN
-                                                                    </button>
+                                                                    
                                                                 </div>
 
                                                                 {calibrationSignalGroup === 'nu6' && (
@@ -4574,12 +3241,12 @@
 
                                                         {(['HF1', 'HF2', 'HF3', 'HF4', '3A'].includes(activeTest.listId)) && (
                                                             <div className="space-y-2">
-                                                                <button onClick={toggleNoise} className={`w-full py-2 text-xs font-bold rounded flex items-center justify-center gap-2 transition ${isPlayingNoise ? 'bg-orange-100 text-orange-700 border border-orange-300 animate-pulse' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'}`}>
+                                                                <button onClick={toggleNoise} className={`w-full py-2 text-xs font-bold rounded flex items-center justify-center gap-2 transition ${isPlayingNoise ? 'bg-orange-100 text-orange-700 border border-orange-300 animate-pulse' : 'bg-gradient-to-br from-slate-50 to-blue-50 text-slate-600 hover:bg-slate-100 border border-slate-200'}`}>
                                                                     {isPlayingNoise ? <Square className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
                                                                     {isPlayingNoise ? 'Stop Noise' : 'Background Noise'}
                                                                 </button>
                                                                 {isPlayingNoise && (
-                                                                    <div className="bg-slate-50 p-2 rounded border border-slate-200">
+                                                                    <div className="bg-gradient-to-br from-slate-50 to-blue-50 p-2 rounded border border-slate-200">
                                                                         <label className="block text-[10px] font-bold text-slate-500 mb-1 flex justify-between">
                                                                             <span>SNR</span>
                                                                             <span>{snrLevel > 0 ? '+' : ''}{snrLevel} dB</span>
@@ -4613,7 +3280,7 @@
                                                 )}
                                             </div>
                                             {!activeStats.isBKB && (
-                                                <div><label className="block text-xs font-medium text-slate-500 mb-2">Scoring Mode</label><div className="flex rounded-lg overflow-hidden border border-slate-200"><button onClick={() => updateActiveTest('scoringMode', 'phoneme')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'phoneme' ? 'bg-slate-700 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><ListChecks className="w-3 h-3" /> Phoneme</button><button onClick={() => updateActiveTest('scoringMode', 'word')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'word' ? 'bg-slate-700 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><WholeWord className="w-3 h-3" /> Word</button></div></div>
+                                                <div><label className="block text-xs font-medium text-slate-500 mb-2">Scoring Mode</label><div className="flex rounded-lg overflow-hidden border border-slate-200"><button onClick={() => updateActiveTest('scoringMode', 'phoneme')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'phoneme' ? 'bg-slate-700 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 text-slate-600 hover:bg-slate-100'}`}><ListChecks className="w-3 h-3" /> Phoneme</button><button onClick={() => updateActiveTest('scoringMode', 'word')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'word' ? 'bg-slate-700 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 text-slate-600 hover:bg-slate-100'}`}><WholeWord className="w-3 h-3" /> Word</button></div></div>
                                             )}
                                         </div>
                                         <div className="lg:col-span-7 grid grid-cols-2 gap-4">
@@ -4641,19 +3308,19 @@
                                         onStop={stopAudio}
                                     />
                                 ) : (
-                                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black">
-                                        <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
+                                    <div className="glass rounded-2xl overflow-hidden print:shadow-none print:border-2 print:border-black">
+                                        <div className="bg-gradient-to-br from-slate-50 to-blue-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
                                             <div className="font-bold text-slate-700 flex items-center gap-2">Scoring: Test {activeTestId} <span className="font-normal text-slate-500 mx-1">|</span> {activeTest.listId} {activeTest.section}{activeTest.limitTo10 && <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full border border-orange-200 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Limited to 10 Words</span>}</div>
                                             <div className="flex gap-2 print:hidden"><button onClick={() => markAll(true)} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium">Mark All</button></div>
                                         </div>
                                         <table className="w-full text-left text-sm">
-                                            <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 print:hidden"><tr><th className="px-4 py-2 w-10">#</th>{(activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '1A', '2A', '3A', '4A'].includes(activeTest.listId)) && <th className="px-2 py-2 w-10">Play</th>}<th className="px-4 py-2">Word</th>{activeTest.scoringMode === 'phoneme' && (<React.Fragment><th className="px-2 py-2 text-center">I</th><th className="px-2 py-2 text-center">M</th><th className="px-2 py-2 text-center">F</th></React.Fragment>)}<th className="px-4 py-2 text-center">{activeTest.scoringMode === 'phoneme' ? 'Word' : 'Result'}</th></tr></thead>
+                                            <thead className="bg-gradient-to-br from-slate-50 to-blue-50 border-b border-slate-200 text-xs uppercase text-slate-500 print:hidden"><tr><th className="px-4 py-2 w-10">#</th>{(activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '1A', '2A', '3A', '4A'].includes(activeTest.listId)) && <th className="px-2 py-2 w-10">Play</th>}<th className="px-4 py-2">Word</th>{activeTest.scoringMode === 'phoneme' && (<React.Fragment><th className="px-2 py-2 text-center">I</th><th className="px-2 py-2 text-center">M</th><th className="px-2 py-2 text-center">F</th></React.Fragment>)}<th className="px-4 py-2 text-center">{activeTest.scoringMode === 'phoneme' ? 'Word' : 'Result'}</th></tr></thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {activeStats.visibleWords.map((word) => {
                                                     const listId = activeTest.listId; const phonemeScores = word.p.map((p, idx) => { if (p === '-') return null; return activeTest.scores[`${listId}_${word.i}_${idx}`]; }).filter(val => val !== null); const isWordCorrect = phonemeScores.every(s => s === true); const isWordFullyIncorrect = phonemeScores.every(s => s === false);
                                                     const showAudio = activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '1A', '2A', '3A', '4A'].includes(listId);
                                                     return (
-                                                        <tr key={word.i} className="hover:bg-slate-50"><td className="px-4 py-2 text-slate-400 font-mono text-xs">{word.i}</td>
+                                                        <tr key={word.i} className="hover:bg-gradient-to-br from-slate-50 to-blue-50"><td className="px-4 py-2 text-slate-400 font-mono text-xs">{word.i}</td>
                                                             {showAudio && (
                                                                 <td className="px-2 py-2">
                                                                     <button onClick={() => playAudio(listId, word.i, word.w)} className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 border border-blue-200 transition-colors" title="Play Audio">
@@ -4662,7 +3329,7 @@
                                                                 </td>
                                                             )}
                                                             <td className="px-4 py-2 font-bold text-slate-800">{word.w}</td>
-                                                            {activeTest.scoringMode === 'phoneme' ? (<React.Fragment>{word.p.map((phoneme, pIndex) => { const phonemeScore = activeTest.scores[`${listId}_${word.i}_${pIndex}`]; const isCorrect = phonemeScore === true; const isIncorrect = phonemeScore === false; const isPlaceholder = phoneme === '-'; return (<td key={pIndex} className="px-1 py-1 text-center">{!isPlaceholder ? (<button onClick={() => togglePhoneme(word.i, pIndex)} className={`w-10 h-8 rounded flex items-center justify-center font-medium text-base border transition-colors ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 print:border-none print:text-black print:font-bold' : isIncorrect ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100 print:border-none print:text-black print:font-normal' : 'bg-white border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 hover:bg-red-50'}`}><span className="ipa-text">{phoneme}</span></button>) : <span className="text-slate-300">—</span>}</td>); })}<td className="px-4 py-2 text-center print:hidden"><div className="flex items-center justify-center gap-2"><button onClick={() => toggleWordCorrect(word.i)} title={isWordCorrect ? "Clear Word" : "Mark Whole Word Correct"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordCorrect ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200'}`}><Check className="w-4 h-4" /></button><button onClick={() => setWordScore(word.i, false)} title={isWordFullyIncorrect ? "Clear Word" : "Mark Whole Word Incorrect"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordFullyIncorrect ? 'bg-red-100 border-red-300 text-red-700' : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200'}`}><X className="w-4 h-4" /></button></div></td></React.Fragment>) : (<td className="px-4 py-2 text-center"><div className="flex gap-2 justify-center"><button onClick={() => setWordScore(word.i, true)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordCorrect ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Check className="w-3 h-3" /> Correct</button><button onClick={() => setWordScore(word.i, false)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordFullyIncorrect ? 'bg-red-600 text-white border-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600'}`}><X className="w-3 h-3" /> Incorrect</button></div></td>)}
+                                                            {activeTest.scoringMode === 'phoneme' ? (<React.Fragment>{word.p.map((phoneme, pIndex) => { const phonemeScore = activeTest.scores[`${listId}_${word.i}_${pIndex}`]; const isCorrect = phonemeScore === true; const isIncorrect = phonemeScore === false; const isPlaceholder = phoneme === '-'; return (<td key={pIndex} className="px-1 py-1 text-center">{!isPlaceholder ? (<button onClick={() => togglePhoneme(word.i, pIndex)} className={`w-10 h-8 rounded flex items-center justify-center font-medium text-base border transition-colors ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 print:border-none print:text-black print:font-bold' : isIncorrect ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100 print:border-none print:text-black print:font-normal' : 'bg-white border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 hover:bg-red-50'}`}><span className="ipa-text">{phoneme}</span></button>) : <span className="text-slate-300">—</span>}</td>); })}<td className="px-4 py-2 text-center print:hidden"><div className="flex items-center justify-center gap-2"><button onClick={() => toggleWordCorrect(word.i)} title={isWordCorrect ? "Clear Word" : "Mark Whole Word Correct"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordCorrect ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-gradient-to-br from-slate-50 to-blue-50 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200'}`}><Check className="w-4 h-4" /></button><button onClick={() => setWordScore(word.i, false)} title={isWordFullyIncorrect ? "Clear Word" : "Mark Whole Word Incorrect"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordFullyIncorrect ? 'bg-red-100 border-red-300 text-red-700' : 'bg-gradient-to-br from-slate-50 to-blue-50 border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200'}`}><X className="w-4 h-4" /></button></div></td></React.Fragment>) : (<td className="px-4 py-2 text-center"><div className="flex gap-2 justify-center"><button onClick={() => setWordScore(word.i, true)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordCorrect ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Check className="w-3 h-3" /> Correct</button><button onClick={() => setWordScore(word.i, false)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordFullyIncorrect ? 'bg-red-600 text-white border-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600'}`}><X className="w-3 h-3" /> Incorrect</button></div></td>)}
                                                         </tr>
                                                     );
                                                 })}
@@ -4671,12 +3338,12 @@
                                     </div>
                                 )}
 
-                            </div>
+                            </motion.div>
                         )}
 
                         {activeTab === 'comparison' && (
                             <div className="space-y-6">
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black">
+                                <div className="glass rounded-2xl overflow-hidden print:shadow-none print:border-2 print:border-black">
                                     <div className="bg-slate-800 text-white px-6 py-4 flex items-center justify-between print:bg-black print:text-white">
                                         <h2 className="text-lg font-bold flex items-center gap-2"><BarChart3 className="w-5 h-5" /> Score Comparison</h2>
                                         <div className="text-right"><div className="text-xs opacity-75 font-mono">{testDate} • {patientName} • #{cNumber}</div><div className="hidden">Thornton & Raffin (1978) Model</div></div>
@@ -4684,7 +3351,7 @@
                                     <div className="p-6">
                                         <div className="flex justify-end mb-4 print:hidden"><div className="bg-slate-100 p-1 rounded-lg flex items-center gap-2 text-sm"><span className="px-2 text-xs font-semibold text-slate-500 uppercase">Critical Difference Level</span><button onClick={() => setConfidenceLevel(95)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 95 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>95%</button><button onClick={() => setConfidenceLevel(80)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 80 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>80%</button><button onClick={() => setShowChartModal(true)} className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> View Tables</button></div></div>
                                         <div className="grid grid-cols-3 gap-8 mb-8">
-                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {baselineTest.id} (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{baselineTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {baselineTest.listId}</div><div>Level: {baselineTest.level || '--'}</div><div>Noise: {baselineTest.snr || '--'}</div>{baselineTest.tnt && <div>aTNT: {baselineTest.tnt}</div>}{baselineTest.tntExcursionWidth && <div>TNT Excursion Width: {baselineTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3">{baselineStats.isBKB ? <div className="flex justify-between items-center"><span className="text-sm text-slate-600">SNR-50</span><span className="text-xl font-bold text-blue-600">{baselineStats.snr50?.toFixed(1)} dB</span></div> : <><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{baselineStats.wordPercent}%</span></div>{baselineTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{baselineStats.phonemePercent}%</span></div>)}</>}</div></div>
+                                            <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {baselineTest.id} (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{baselineTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {baselineTest.listId}</div><div>Level: {baselineTest.level || '--'}</div><div>Noise: {baselineTest.snr || '--'}</div>{baselineTest.tnt && <div>aTNT: {baselineTest.tnt}</div>}{baselineTest.tntExcursionWidth && <div>TNT Excursion Width: {baselineTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3">{baselineStats.isBKB ? <div className="flex justify-between items-center"><span className="text-sm text-slate-600">SNR-50</span><span className="text-xl font-bold text-blue-600">{baselineStats.snr50?.toFixed(1)} dB</span></div> : <><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{baselineStats.wordPercent}%</span></div>{baselineTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{baselineStats.phonemePercent}%</span></div>)}</>}</div></div>
 
                                             <div className="flex flex-col items-center justify-center text-center">
                                                 {/* Word recognition difference - label above, styled like Ease label */}
@@ -4726,12 +3393,12 @@
                                                 )}
                                             </div>
 
-                                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {comparisonTest.id} (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{comparisonTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {comparisonTest.listId}</div><div>Level: {comparisonTest.level || '--'}</div><div>Noise: {comparisonTest.snr || '--'}</div>{comparisonTest.tnt && <div>aTNT: {comparisonTest.tnt}</div>}{comparisonTest.tntExcursionWidth && <div>TNT Excursion Width: {comparisonTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3">{comparisonStats.isBKB ? <div className="flex justify-between items-center"><span className="text-sm text-slate-600">SNR-50</span><span className="text-xl font-bold text-blue-600">{comparisonStats.snr50?.toFixed(1)} dB</span></div> : <><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{comparisonStats.wordPercent}%</span></div>{comparisonTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{comparisonStats.phonemePercent}%</span></div>)}</>}</div></div>
+                                            <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {comparisonTest.id} (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{comparisonTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {comparisonTest.listId}</div><div>Level: {comparisonTest.level || '--'}</div><div>Noise: {comparisonTest.snr || '--'}</div>{comparisonTest.tnt && <div>aTNT: {comparisonTest.tnt}</div>}{comparisonTest.tntExcursionWidth && <div>TNT Excursion Width: {comparisonTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3">{comparisonStats.isBKB ? <div className="flex justify-between items-center"><span className="text-sm text-slate-600">SNR-50</span><span className="text-xl font-bold text-blue-600">{comparisonStats.snr50?.toFixed(1)} dB</span></div> : <><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{comparisonStats.wordPercent}%</span></div>{comparisonTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{comparisonStats.phonemePercent}%</span></div>)}</>}</div></div>
                                         </div>
 
                                         {/* Comparative Ease Slider */}
                                         {showComparativeEase && (
-                                            <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                            <div className="mb-6 p-4 bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg border border-slate-200">
                                                 <div className="flex justify-between items-center mb-2">
                                                     <div className="flex items-center gap-2">
                                                         <label className="text-sm font-bold text-slate-700">Comparative Ease of Listening</label>
@@ -4764,18 +3431,18 @@
                                             </div>
                                         )}
 
-                                        <div className="border border-slate-200 rounded-lg overflow-hidden mb-6"><table className="w-full text-sm"><thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200"><tr><th className="px-4 py-2 text-left">Metric (N)</th><th className="px-4 py-2 text-center w-24">Test {baselineTest.id}</th><th className="px-4 py-2 text-center w-32 bg-slate-50">Critical Range <span className="text-[10px] text-slate-400 block font-normal">({confidenceLevel}%)</span></th><th className="px-4 py-2 text-center w-24">Test {comparisonTest.id}</th><th className="px-4 py-2 text-center w-32">Significant?</th></tr></thead><tbody className="divide-y divide-slate-100">
+                                        <div className="border border-slate-200 rounded-lg overflow-hidden mb-6"><table className="w-full text-sm"><thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200"><tr><th className="px-4 py-2 text-left">Metric (N)</th><th className="px-4 py-2 text-center w-24">Test {baselineTest.id}</th><th className="px-4 py-2 text-center w-32 bg-gradient-to-br from-slate-50 to-blue-50">Critical Range <span className="text-[10px] text-slate-400 block font-normal">({confidenceLevel}%)</span></th><th className="px-4 py-2 text-center w-24">Test {comparisonTest.id}</th><th className="px-4 py-2 text-center w-32">Significant?</th></tr></thead><tbody className="divide-y divide-slate-100">
                                             {(baselineStats.isBKB && comparisonStats.isBKB) ? (
-                                                <tr><td className="px-4 py-3 font-medium text-slate-800">SNR-50 <span className="block text-xs text-slate-400 font-normal">Signal-to-Noise Ratio50</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.snr50?.toFixed(1)} dB</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">Diff &gt; {bkbCriticalDiff} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.snr50?.toFixed(1)} dB</td><td className="px-4 py-3 text-center">{isBKBDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>
+                                                <tr><td className="px-4 py-3 font-medium text-slate-800">SNR-50 <span className="block text-xs text-slate-400 font-normal">Signal-to-Noise Ratio50</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.snr50?.toFixed(1)} dB</td><td className="px-4 py-3 text-center text-slate-500 bg-gradient-to-br from-slate-50 to-blue-50 text-xs font-mono">Diff &gt; {bkbCriticalDiff} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.snr50?.toFixed(1)} dB</td><td className="px-4 py-3 text-center">{isBKBDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>
                                             ) : (
                                                 <>
-                                                    <tr><td className="px-4 py-3 font-medium text-slate-800">Word Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalWords}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.wordPercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.wordPercent}%</td><td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>{(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme') && (<tr><td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalPhonemes}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.phonemePercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">{Number(phonemeCriticalLimits.lower).toFixed(1)}% - {Number(phonemeCriticalLimits.upper).toFixed(1)}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.phonemePercent}%</td><td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}
+                                                    <tr><td className="px-4 py-3 font-medium text-slate-800">Word Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalWords}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.wordPercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-gradient-to-br from-slate-50 to-blue-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.wordPercent}%</td><td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>{(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme') && (<tr><td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalPhonemes}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.phonemePercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-gradient-to-br from-slate-50 to-blue-50 text-xs font-mono">{Number(phonemeCriticalLimits.lower).toFixed(1)}% - {Number(phonemeCriticalLimits.upper).toFixed(1)}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.phonemePercent}%</td><td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}
                                                 </>
                                             )}
-                                            {tntDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">aTNT Difference (Tracking Noise Tolerance) <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 2.8 : 1.8} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineTest.tnt || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">±{confidenceLevel === 95 ? 2.8 : 1.8} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonTest.tnt || '--'}</td><td className="px-4 py-3 text-center">{isTNTDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}{tntExcursionWidthDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">TNT Excursion Width <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 1.0 : 0.7} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-slate-50 text-xs font-mono">±{confidenceLevel === 95 ? 1.0 : 0.7} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center">{isTNTExcursionWidthDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}</tbody></table></div>
+                                            {tntExcursionWidthDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">TNT Excursion Width <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 1.0 : 0.7} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-gradient-to-br from-slate-50 to-blue-50 text-xs font-mono">±{confidenceLevel === 95 ? 1.0 : 0.7} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center">{isTNTExcursionWidthDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}</tbody></table></div>
 
                                         {/* Visual Critical Range Comparison */}
-                                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-6">
+                                        <div className="bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-lg p-6 mb-6">
                                             <h4 className="text-sm font-bold text-slate-700 mb-4">Visual Critical Range Comparison</h4>
 
                                             {/* Word Score Visualization */}
@@ -4912,9 +3579,9 @@
                                                 {outcomeMode === 'Demo' ? (
                                                     <div className="flex gap-4">
                                                         <div className="flex rounded-lg overflow-hidden border border-slate-200">
-                                                            <button onClick={() => { setOutcome('Sold'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Sold' ? 'bg-emerald-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Sold</button>
-                                                            <button onClick={() => { setOutcome('Not Sold'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Not Sold' ? 'bg-red-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Not Sold</button>
-                                                            <button onClick={() => { setOutcome('Need to Follow Up'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Need to Follow Up' ? 'bg-blue-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Need to Follow Up</button>
+                                                            <button onClick={() => { setOutcome('Sold'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Sold' ? 'bg-emerald-600 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 hover:bg-slate-100 text-slate-600'}`}>Sold</button>
+                                                            <button onClick={() => { setOutcome('Not Sold'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Not Sold' ? 'bg-red-600 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 hover:bg-slate-100 text-slate-600'}`}>Not Sold</button>
+                                                            <button onClick={() => { setOutcome('Need to Follow Up'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Need to Follow Up' ? 'bg-blue-600 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 hover:bg-slate-100 text-slate-600'}`}>Need to Follow Up</button>
                                                         </div>
                                                         {outcome === 'Sold' && (
                                                             <div className="flex-1">
@@ -4942,8 +3609,8 @@
                                                     <div className="space-y-3">
                                                         <div className="flex gap-4">
                                                             <div className="flex rounded-lg overflow-hidden border border-slate-200">
-                                                                <button onClick={() => { setOutcome('Validation Completed'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Validation Completed' ? 'bg-emerald-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Validation Completed</button>
-                                                                <button onClick={() => { setOutcome('Retest Needed'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Retest Needed' ? 'bg-orange-600 text-white' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'}`}>Retest Needed</button>
+                                                                <button onClick={() => { setOutcome('Validation Completed'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Validation Completed' ? 'bg-emerald-600 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 hover:bg-slate-100 text-slate-600'}`}>Validation Completed</button>
+                                                                <button onClick={() => { setOutcome('Retest Needed'); setHasUnsavedChanges(true); }} className={`px-6 py-2 text-sm font-medium transition ${outcome === 'Retest Needed' ? 'bg-orange-600 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 hover:bg-slate-100 text-slate-600'}`}>Retest Needed</button>
                                                             </div>
                                                             <div className="flex-1 max-w-xs">
                                                                 <div className="relative">
@@ -4971,20 +3638,13 @@
                         )}
 
                         {activeTab === 'history' && (
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 print:shadow-none print:border-2 print:border-black">
+                            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }} className="glass rounded-3xl p-8 print:shadow-none print:border-2 print:border-black">
                                 <HistoryChart cNumber={cNumber} />
-                            </div>
+                            </motion.div>
                         )}
                     </div>
                 </div>
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        try {
-            root.render(<App />);
-            console.log('React app rendered successfully');
-        } catch (error) {
-            console.error('Failed to render React app:', error);
-            document.body.innerHTML = '<div style="padding: 20px; color: red; font-family: monospace;">Error rendering app: ' + error.message + '</div>';
-        }
+        export default App;
