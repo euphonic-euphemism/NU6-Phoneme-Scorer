@@ -23,9 +23,12 @@ jobs:
         include:
           - os: ubuntu-latest
             os-name: Linux
-            args: --linux deb appimage
-            # Match both .deb and .AppImage
-            upload_pattern: dist/*
+            args: --linux deb rpm AppImage
+            # Match .deb, .rpm, and .AppImage
+            upload_pattern: |
+              dist/*.deb
+              dist/*.rpm
+              dist/*.AppImage
 
           - os: windows-latest
             os-name: Windows
@@ -46,6 +49,10 @@ jobs:
         with:
           node-version: 20
           # Removed "cache: 'npm'" to prevent error when package-lock.json is missing
+
+      - name: Install Linux RPM Build Tools
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y rpm
 
       - name: Install Dependencies
         run: npm install

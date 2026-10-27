@@ -708,15 +708,50 @@ const App = () => {
             const [reversedComparison, setReversedComparison] = useState(false);
 
             // Audio Routing State
-            const [channelSwap, setChannelSwap] = useState(true); // true: Speech=R, Noise=L (default)
+            // 'RL': Speech=R, Noise=L (default)
+            // 'LR': Speech=L, Noise=R
+            // 'LL': Speech=L, Noise=L
+            // 'RR': Speech=R, Noise=R
+            const [audioRouting, setAudioRouting] = useState('RL');
             const [speechToBoth, setSpeechToBoth] = useState(false); // Play speech to both L and R
             const audioContextRef = useRef(null);
+            const noisePannerRef = useRef(null);
 
             // New Audio State
             const currentAudioRef = useRef(null);
             const [audioState, setAudioState] = useState('stopped'); // 'playing', 'paused', 'stopped'
 
-            const getAudioContext = () => {
+            const getSpeechPan = (routing = audioRouting, both = speechToBoth) => {
+                if (both) return 0;
+                return (routing === 'RL' || routing === 'RR') ? 1 : -1;
+            };
+
+            const getNoisePan = (routing = audioRouting) => {
+                return (routing === 'RL' || routing === 'LL') ? -1 : 1;
+            };
+
+            const cycleAudioRouting = () => {
+                const order = ['RL', 'LR', 'LL', 'RR'];
+                setAudioRouting(prev => {
+                    const next = order[(order.indexOf(prev) + 1) % order.length];
+                    if (noisePannerRef.current) {
+                        noisePannerRef.current.pan.value = getNoisePan(next);
+                    }
+                    return next;
+                });
+            };
+
+            const getAudioRoutingLabel = (routing = audioRouting) => {
+                switch (routing) {
+                    case 'RL': return 'Speech: R | Noise: L';
+                    case 'LR': return 'Speech: L | Noise: R';
+                    case 'LL': return 'Speech: L | Noise: L';
+                    case 'RR': return 'Speech: R | Noise: R';
+                    default: return 'Speech: R | Noise: L';
+                }
+            };
+
+            const getAudioContext = async () => {
                 if (!audioContextRef.current) {
                     const AudioContext = window.AudioContext || window.webkitAudioContext;
                     audioContextRef.current = new AudioContext();
@@ -724,16 +759,43 @@ const App = () => {
                 }
                 if (audioContextRef.current.state === 'suspended') {
                     console.log("AudioContext suspended, attempting resume...");
-                    audioContextRef.current.resume().then(() => {
+                    try {
+                        await audioContextRef.current.resume();
                         console.log("AudioContext resumed. State:", audioContextRef.current.state);
-                    });
+                    } catch (err) {
+                        console.error("Failed to resume AudioContext:", err);
+                    }
                 }
                 return audioContextRef.current;
             };
 
-            const playSoundWithPan = (audioElement, panValue) => {
+            const resolveAudioPath = (relPath) => {
+                if (typeof require !== 'undefined' && window.location.protocol === 'file:') {
+                    try {
+                        const fs = require('fs');
+                        const path = require('path');
+                        const url = require('url');
+                        const candidates = [
+                            path.join(__dirname, relPath),
+                            path.join(__dirname, '..', relPath),
+                            path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), relPath),
+                            path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), '..', relPath)
+                        ];
+                        for (const candidate of candidates) {
+                            if (fs.existsSync(candidate)) {
+                                return url.pathToFileURL(candidate).href;
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Error resolving audio path:", e);
+                    }
+                }
+                return relPath;
+            };
+
+            const playSoundWithPan = async (audioElement, panValue) => {
                 try {
-                    const ctx = getAudioContext();
+                    const ctx = await getAudioContext();
                     // Fix: Check if element already has a source node (though difficult to check directly, we can wrap in error handler)
                     // Note: ensure we don't create multiple sources for same element if cached? 
                     // But we create new Audio() every time in playAudio, so it's fine.
@@ -742,8 +804,10 @@ const App = () => {
                     panner.pan.value = panValue;
                     source.connect(panner).connect(ctx.destination);
                     console.log(`Connected Web Audio: pan=${panValue}, ctxState=${ctx.state}`);
+                    return panner;
                 } catch (e) {
                     console.error("Web Audio API Error:", e);
+                    return null;
                 }
             };
 
@@ -1069,7 +1133,7 @@ const App = () => {
                 }
             };
 
-            const playAudio = (listId, wordIndex, wordText) => {
+            const playAudio = async (listId, wordIndex, wordText) => {
                 // Stop any currently playing audio
                 if (currentAudioRef.current) {
                     currentAudioRef.current.pause();
@@ -1098,17 +1162,21 @@ const App = () => {
 
                     if (['HF1', 'HF2', 'HF3', 'HF4'].includes(listId)) {
                         // C Series logic: '01_check.wav'
-                        audioPath = `audio/${listId}/${indexStr}_${wordLower}.wav?v=${Date.now()}`;
+                        audioPath = `audio/${listId}/${indexStr}_${wordLower}.wav`;
                     } else if (listId === 'HF4B') {
                         // Special case for HF4B (List 4B)
-                        audioPath = `audio/HF4B/List4B_${titleCaseWord}.wav?v=${Date.now()}`;
+                        audioPath = `audio/HF4B/List4B_${titleCaseWord}.wav`;
                     } else {
                         // Standard logic for 1A, 2A, 3A, 4A: '01_Check.wav'
-                        audioPath = `audio/${listId}/${indexStr}_${titleCaseWord}.wav?v=${Date.now()}`;
+                        audioPath = `audio/${listId}/${indexStr}_${titleCaseWord}.wav`;
                     }
                 }
 
-                const audio = new Audio(audioPath);
+                const resolvedPath = resolveAudioPath(audioPath);
+                const audio = new Audio(resolvedPath);
+                if (window.location.protocol !== 'file:') {
+                    audio.crossOrigin = "anonymous";
+                }
                 // Set Volume to -5 dB (0.5623)
                 audio.volume = 0.5623;
 
@@ -1118,10 +1186,10 @@ const App = () => {
                 // Pan Logic
                 // If BKB (Split Track), force Stereo (0) to preserve L/R split.
                 // Otherwise use standard logic.
-                const pan = isBKB ? 0 : (speechToBoth ? 0 : (channelSwap ? 1 : -1));
-                console.log(`Audio Playing: ${audioPath}, Pan: ${pan}`);
+                const pan = isBKB ? 0 : getSpeechPan();
+                console.log(`Audio Playing: ${resolvedPath}, Pan: ${pan}`);
 
-                playSoundWithPan(audio, pan);
+                await playSoundWithPan(audio, pan);
 
                 audio.onended = () => {
                     setAudioState('stopped');
@@ -1130,6 +1198,7 @@ const App = () => {
                 audio.play().then(() => {
                     setAudioState('playing');
                 }).catch(e => {
+                    if (e.name === 'AbortError') return;
                     console.error("Audio playback error:", e);
                     alert(`Could not play audio file: ${audioPath}\nError: ${e.message}\n(Check if file exists in correct folder)`);
                     setAudioState('stopped');
@@ -1145,7 +1214,7 @@ const App = () => {
                 });
             };
 
-            const toggleCalibration = (side) => {
+            const toggleCalibration = async (side) => {
                 // If clicking the active side, stop it.
                 if (calibrationMode === side) {
                     if (calibrationAudioRef.current) {
@@ -1176,19 +1245,24 @@ const App = () => {
                     audioPath = 'BKB-SIN/21 - Speech Spectrum Noise.flac';
                 }
 
-                const audio = new Audio(audioPath);
+                const resolvedPath = resolveAudioPath(audioPath);
+                const audio = new Audio(resolvedPath);
+                if (window.location.protocol !== 'file:') {
+                    audio.crossOrigin = "anonymous";
+                }
                 audio.loop = true;
                 // Set Calibration Volume to -5 dB to match Speech reference level
                 audio.volume = 0.5623;
 
                 // Hard pan based on side requested: Left = -1, Right = 1
                 const pan = side === 'left' ? -1 : 1;
-                playSoundWithPan(audio, pan);
+                await playSoundWithPan(audio, pan);
 
                 calibrationAudioRef.current = audio;
                 audio.play().then(() => {
                     setCalibrationMode(side);
                 }).catch(e => {
+                    if (e.name === 'AbortError') return;
                     console.error("Calibration playback error:", e);
                     alert(`Could not play calibration file: ${audioPath}\nError: ${e.message}`);
                     setCalibrationMode('none');
@@ -1226,11 +1300,10 @@ const App = () => {
                 return Math.min(Math.max(volume, 0), 1);
             };
 
-            const toggleNoise = () => {
+            const toggleNoise = async () => {
                 if (isPlayingNoise) {
                     if (noiseAudioRef.current) {
                         noiseAudioRef.current.pause();
-                        noiseAudioRef.current.currentTime = 0;
                     }
                     setIsPlayingNoise(false);
                 } else {
@@ -1238,21 +1311,44 @@ const App = () => {
                     if (!['HF1', 'HF2', 'HF3', 'HF4'].includes(listId)) return;
 
                     const audioPath = `audio/noise/${listId}_MasterNoise.wav`;
-                    const audio = new Audio(audioPath);
+                    const resolvedPath = resolveAudioPath(audioPath);
+
+                    // If we already have a paused noise Audio instance for this list, resume it
+                    if (noiseAudioRef.current && noiseAudioRef.current.dataset.listId === listId) {
+                        await getAudioContext();
+                        noiseAudioRef.current.volume = calculateVolumeFromSNR(snrLevel);
+                        if (noisePannerRef.current) {
+                            noisePannerRef.current.pan.value = getNoisePan();
+                        }
+                        noiseAudioRef.current.play().then(() => {
+                            setIsPlayingNoise(true);
+                        }).catch(e => {
+                            if (e.name === 'AbortError') return;
+                            console.error("Noise playback error:", e);
+                            alert(`Could not play noise file: ${audioPath}\nError: ${e.message}`);
+                            setIsPlayingNoise(false);
+                        });
+                        return;
+                    }
+
+                    const audio = new Audio(resolvedPath);
+                    audio.dataset.listId = listId;
+                    if (window.location.protocol !== 'file:') {
+                        audio.crossOrigin = "anonymous";
+                    }
                     audio.loop = true;
                     audio.volume = calculateVolumeFromSNR(snrLevel);
 
-                    // Noise panning:
-                    // Default (channelSwap=true) is Left (-1)
-                    // Swapped (channelSwap=false) is Right (1)
-                    const pan = channelSwap ? -1 : 1;
-                    console.log(`Noise Playing: ${listId}, Pan: ${pan} (Swap: ${channelSwap})`);
-                    playSoundWithPan(audio, pan);
+                    // Noise panning based on audioRouting
+                    const pan = getNoisePan();
+                    console.log(`Noise Playing: ${listId}, Pan: ${pan} (Routing: ${audioRouting})`);
+                    noisePannerRef.current = await playSoundWithPan(audio, pan);
 
                     noiseAudioRef.current = audio;
                     audio.play().then(() => {
                         setIsPlayingNoise(true);
                     }).catch(e => {
+                        if (e.name === 'AbortError') return;
                         console.error("Noise playback error:", e);
                         alert(`Could not play noise file: ${audioPath}\nError: ${e.message}`);
                         setIsPlayingNoise(false);
@@ -1273,7 +1369,9 @@ const App = () => {
                 if (noiseAudioRef.current) {
                     noiseAudioRef.current.pause();
                     noiseAudioRef.current.currentTime = 0;
+                    noiseAudioRef.current = null;
                 }
+                noisePannerRef.current = null;
                 setIsPlayingNoise(false);
 
                 if (calibrationAudioRef.current) {
@@ -3200,22 +3298,6 @@ const App = () => {
                                                                         </label>
                                                                     </div>
                                                                 )}
-
-                                                                {calibrationSignalGroup === 'bkb' && (
-                                                                    <div className="flex gap-4 text-sm pl-2">
-                                                                        <label className="flex items-center gap-2 cursor-pointer">
-                                                                            <input
-                                                                                type="radio"
-                                                                                name="calSignal"
-                                                                                value="bkb_noise"
-                                                                                checked={calibrationSignal === 'bkb_noise'}
-                                                                                onChange={() => setCalibrationSignal('bkb_noise')}
-                                                                                className="text-blue-600 focus:ring-blue-500"
-                                                                            />
-                                                                            <span>Track 21 Speech Spectrum Noise</span>
-                                                                        </label>
-                                                                    </div>
-                                                                )}
                                                             </div>
 
                                                             <div className="grid grid-cols-2 gap-3">
@@ -3242,8 +3324,8 @@ const App = () => {
                                                         {(['HF1', 'HF2', 'HF3', 'HF4', '3A'].includes(activeTest.listId)) && (
                                                             <div className="space-y-2">
                                                                 <button onClick={toggleNoise} className={`w-full py-2 text-xs font-bold rounded flex items-center justify-center gap-2 transition ${isPlayingNoise ? 'bg-orange-100 text-orange-700 border border-orange-300 animate-pulse' : 'bg-gradient-to-br from-slate-50 to-blue-50 text-slate-600 hover:bg-slate-100 border border-slate-200'}`}>
-                                                                    {isPlayingNoise ? <Square className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
-                                                                    {isPlayingNoise ? 'Stop Noise' : 'Background Noise'}
+                                                                    {isPlayingNoise ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                                                                    Background Noise
                                                                 </button>
                                                                 {isPlayingNoise && (
                                                                     <div className="bg-gradient-to-br from-slate-50 to-blue-50 p-2 rounded border border-slate-200">
@@ -3270,73 +3352,72 @@ const App = () => {
                                                                     <ArrowRightLeft className="w-3 h-3" />
                                                                     {speechToBoth ? 'Speech: L+R (Both)' : 'Speech: Single Channel'}
                                                                 </button>
-                                                                <button onClick={() => setChannelSwap(!channelSwap)} className="w-full py-1.5 text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300 rounded hover:bg-slate-200 flex items-center justify-center gap-1">
-                                                                    <ArrowRightLeft className="w-3 h-3" />
-                                                                    {channelSwap ? 'Speech: R | Noise: L' : 'Speech: L | Noise: R'}
-                                                                </button>
+                                                                <div className="grid grid-cols-2 gap-1">
+                                                                    {[
+                                                                        { id: 'RL', label: 'Speech: R | Noise: L' },
+                                                                        { id: 'LR', label: 'Speech: L | Noise: R' },
+                                                                        { id: 'LL', label: 'Speech: L | Noise: L' },
+                                                                        { id: 'RR', label: 'Speech: R | Noise: R' }
+                                                                    ].map(opt => (
+                                                                        <button
+                                                                            key={opt.id}
+                                                                            onClick={() => {
+                                                                                setAudioRouting(opt.id);
+                                                                                if (noisePannerRef.current) {
+                                                                                    noisePannerRef.current.pan.value = getNoisePan(opt.id);
+                                                                                }
+                                                                            }}
+                                                                            className={`py-1.5 px-2 text-[10px] font-bold border rounded flex items-center justify-center gap-1 transition ${audioRouting === opt.id ? 'bg-indigo-100 text-indigo-700 border-indigo-300 shadow-sm' : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'}`}
+                                                                        >
+                                                                            {opt.label}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         )}
                                                     </div>
                                                 )}
                                             </div>
-                                            {!activeStats.isBKB && (
-                                                <div><label className="block text-xs font-medium text-slate-500 mb-2">Scoring Mode</label><div className="flex rounded-lg overflow-hidden border border-slate-200"><button onClick={() => updateActiveTest('scoringMode', 'phoneme')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'phoneme' ? 'bg-slate-700 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 text-slate-600 hover:bg-slate-100'}`}><ListChecks className="w-3 h-3" /> Phoneme</button><button onClick={() => updateActiveTest('scoringMode', 'word')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'word' ? 'bg-slate-700 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 text-slate-600 hover:bg-slate-100'}`}><WholeWord className="w-3 h-3" /> Word</button></div></div>
-                                            )}
+                                            <div><label className="block text-xs font-medium text-slate-500 mb-2">Scoring Mode</label><div className="flex rounded-lg overflow-hidden border border-slate-200"><button onClick={() => updateActiveTest('scoringMode', 'phoneme')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'phoneme' ? 'bg-slate-700 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 text-slate-600 hover:bg-slate-100'}`}><ListChecks className="w-3 h-3" /> Phoneme</button><button onClick={() => updateActiveTest('scoringMode', 'word')} className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1 transition ${activeTest.scoringMode === 'word' ? 'bg-slate-700 text-white' : 'bg-gradient-to-br from-slate-50 to-blue-50 text-slate-600 hover:bg-slate-100'}`}><WholeWord className="w-3 h-3" /> Word</button></div></div>
                                         </div>
                                         <div className="lg:col-span-7 grid grid-cols-2 gap-4">
-                                            <div><label className="block text-xs font-medium text-slate-500 mb-1">Word List</label><select value={activeTest.listId} onChange={(e) => updateActiveTest('listId', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="1A">NU-6 List 1A</option><option value="2A">NU-6 List 2A</option><option value="3A">NU-6 List 3A</option><option value="4A">NU-6 List 4A</option><option value="HF1">Rose Hill HF 1D</option><option value="HF2">Rose Hill HF 2D</option><option value="HF3">Rose Hill HF 3D</option><option value="HF4">Rose Hill HF 4D</option><option value="BKB1">BKB-SIN List Pair 1</option><option value="BKB2">BKB-SIN List Pair 2</option><option value="BKB3">BKB-SIN List Pair 3</option><option value="BKB4">BKB-SIN List Pair 4</option><option value="BKB5">BKB-SIN List Pair 5</option><option value="BKB6">BKB-SIN List Pair 6</option><option value="BKB7">BKB-SIN List Pair 7</option><option value="BKB8">BKB-SIN List Pair 8</option><option value="BKB9">BKB-SIN List Pair 9</option><option value="BKB10">BKB-SIN List Pair 10</option></select></div>
+                                            <div><label className="block text-xs font-medium text-slate-500 mb-1">Word List</label><select value={activeTest.listId} onChange={(e) => updateActiveTest('listId', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="1A">NU-6 List 1A</option><option value="2A">NU-6 List 2A</option><option value="3A">NU-6 List 3A</option><option value="4A">NU-6 List 4A</option><option value="HF1">Rose Hill HF 1D</option><option value="HF2">Rose Hill HF 2D</option><option value="HF3">Rose Hill HF 3D</option><option value="HF4">Rose Hill HF 4D</option></select></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Section</label><select value={activeTest.section} onChange={(e) => updateActiveTest('section', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">{getSectionOptions(activeTestId).map(opt => (<option key={opt.val} value={opt.val}>{opt.label}</option>))}</select></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Level (e.g., MLV-avg or 65 dBC)</label><input type="text" value={activeTest.level} onChange={(e) => updateActiveTest('level', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Speech Azimuth</label><input type="text" value={activeTest.speechAzimuth || ''} onChange={(e) => updateActiveTest('speechAzimuth', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="e.g., 0°" /></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Noise (e.g., +10 dB SNR or 55 dBC)</label><input type="text" value={activeTest.snr} onChange={(e) => updateActiveTest('snr', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" /></div>
                                             <div><label className="block text-xs font-medium text-slate-500 mb-1">Noise Azimuth</label><input type="text" value={activeTest.noiseAzimuth || ''} onChange={(e) => updateActiveTest('noiseAzimuth', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="e.g., 180°" /></div>
-                                            {(activeTest.condition === 'Current Tech' || activeTest.condition === 'New Tech') && (<div><label className="block text-xs font-medium text-slate-500 mb-1">aTNT (Tracking Noise Tolerance)</label><input type="text" value={activeTest.tnt || ''} onChange={(e) => updateActiveTest('tnt', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="e.g., 5 dB" /></div>)}
-                                            {(activeTest.condition === 'Current Tech' || activeTest.condition === 'New Tech') && (<div><label className="block text-xs font-medium text-slate-500 mb-1">TNT Excursion Width</label><input type="text" value={activeTest.tntExcursionWidth || ''} onChange={(e) => updateActiveTest('tntExcursionWidth', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" placeholder="e.g., 3 dB" /></div>)}
                                         </div>
                                     </div>
                                 </div>
-                                {activeStats.isBKB ? (
-                                    <BKBSINScoringPanel
-                                        stats={activeStats}
-                                        scores={activeTest.scores}
-                                        testId={activeTestId}
-                                        updateScore={setBKBScore}
-                                        playTrack={() => playAudio(activeTest.listId, 0, '')}
-                                        audioState={audioState}
-                                        onPause={pauseAudio}
-                                        onResume={resumeAudio}
-                                        onStop={stopAudio}
-                                    />
-                                ) : (
-                                    <div className="glass rounded-2xl overflow-hidden print:shadow-none print:border-2 print:border-black">
-                                        <div className="bg-gradient-to-br from-slate-50 to-blue-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
-                                            <div className="font-bold text-slate-700 flex items-center gap-2">Scoring: Test {activeTestId} <span className="font-normal text-slate-500 mx-1">|</span> {activeTest.listId} {activeTest.section}{activeTest.limitTo10 && <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full border border-orange-200 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Limited to 10 Words</span>}</div>
-                                            <div className="flex gap-2 print:hidden"><button onClick={() => markAll(true)} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium">Mark All</button></div>
-                                        </div>
-                                        <table className="w-full text-left text-sm">
-                                            <thead className="bg-gradient-to-br from-slate-50 to-blue-50 border-b border-slate-200 text-xs uppercase text-slate-500 print:hidden"><tr><th className="px-4 py-2 w-10">#</th>{(activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '1A', '2A', '3A', '4A'].includes(activeTest.listId)) && <th className="px-2 py-2 w-10">Play</th>}<th className="px-4 py-2">Word</th>{activeTest.scoringMode === 'phoneme' && (<React.Fragment><th className="px-2 py-2 text-center">I</th><th className="px-2 py-2 text-center">M</th><th className="px-2 py-2 text-center">F</th></React.Fragment>)}<th className="px-4 py-2 text-center">{activeTest.scoringMode === 'phoneme' ? 'Word' : 'Result'}</th></tr></thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {activeStats.visibleWords.map((word) => {
-                                                    const listId = activeTest.listId; const phonemeScores = word.p.map((p, idx) => { if (p === '-') return null; return activeTest.scores[`${listId}_${word.i}_${idx}`]; }).filter(val => val !== null); const isWordCorrect = phonemeScores.every(s => s === true); const isWordFullyIncorrect = phonemeScores.every(s => s === false);
-                                                    const showAudio = activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '1A', '2A', '3A', '4A'].includes(listId);
-                                                    return (
-                                                        <tr key={word.i} className="hover:bg-gradient-to-br from-slate-50 to-blue-50"><td className="px-4 py-2 text-slate-400 font-mono text-xs">{word.i}</td>
-                                                            {showAudio && (
-                                                                <td className="px-2 py-2">
-                                                                    <button onClick={() => playAudio(listId, word.i, word.w)} className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 border border-blue-200 transition-colors" title="Play Audio">
-                                                                        <Play className="w-3 h-3 fill-current" />
-                                                                    </button>
-                                                                </td>
-                                                            )}
-                                                            <td className="px-4 py-2 font-bold text-slate-800">{word.w}</td>
-                                                            {activeTest.scoringMode === 'phoneme' ? (<React.Fragment>{word.p.map((phoneme, pIndex) => { const phonemeScore = activeTest.scores[`${listId}_${word.i}_${pIndex}`]; const isCorrect = phonemeScore === true; const isIncorrect = phonemeScore === false; const isPlaceholder = phoneme === '-'; return (<td key={pIndex} className="px-1 py-1 text-center">{!isPlaceholder ? (<button onClick={() => togglePhoneme(word.i, pIndex)} className={`w-10 h-8 rounded flex items-center justify-center font-medium text-base border transition-colors ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 print:border-none print:text-black print:font-bold' : isIncorrect ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100 print:border-none print:text-black print:font-normal' : 'bg-white border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 hover:bg-red-50'}`}><span className="ipa-text">{phoneme}</span></button>) : <span className="text-slate-300">—</span>}</td>); })}<td className="px-4 py-2 text-center print:hidden"><div className="flex items-center justify-center gap-2"><button onClick={() => toggleWordCorrect(word.i)} title={isWordCorrect ? "Clear Word" : "Mark Whole Word Correct"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordCorrect ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-gradient-to-br from-slate-50 to-blue-50 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200'}`}><Check className="w-4 h-4" /></button><button onClick={() => setWordScore(word.i, false)} title={isWordFullyIncorrect ? "Clear Word" : "Mark Whole Word Incorrect"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordFullyIncorrect ? 'bg-red-100 border-red-300 text-red-700' : 'bg-gradient-to-br from-slate-50 to-blue-50 border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200'}`}><X className="w-4 h-4" /></button></div></td></React.Fragment>) : (<td className="px-4 py-2 text-center"><div className="flex gap-2 justify-center"><button onClick={() => setWordScore(word.i, true)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordCorrect ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Check className="w-3 h-3" /> Correct</button><button onClick={() => setWordScore(word.i, false)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordFullyIncorrect ? 'bg-red-600 text-white border-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600'}`}><X className="w-3 h-3" /> Incorrect</button></div></td>)}
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
+                                <div className="glass rounded-2xl overflow-hidden print:shadow-none print:border-2 print:border-black">
+                                    <div className="bg-gradient-to-br from-slate-50 to-blue-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-slate-200">
+                                        <div className="font-bold text-slate-700 flex items-center gap-2">Scoring: Test {activeTestId} <span className="font-normal text-slate-500 mx-1">|</span> {activeTest.listId} {activeTest.section}{activeTest.limitTo10 && <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full border border-orange-200 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Limited to 10 Words</span>}</div>
+                                        <div className="flex gap-2 print:hidden"><button onClick={() => markAll(true)} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-medium">Mark All</button></div>
                                     </div>
-                                )}
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gradient-to-br from-slate-50 to-blue-50 border-b border-slate-200 text-xs uppercase text-slate-500 print:hidden"><tr><th className="px-4 py-2 w-10">#</th>{(activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '1A', '2A', '3A', '4A'].includes(activeTest.listId)) && <th className="px-2 py-2 w-10">Play</th>}<th className="px-4 py-2">Word</th>{activeTest.scoringMode === 'phoneme' && (<React.Fragment><th className="px-2 py-2 text-center">I</th><th className="px-2 py-2 text-center">M</th><th className="px-2 py-2 text-center">F</th></React.Fragment>)}<th className="px-4 py-2 text-center">{activeTest.scoringMode === 'phoneme' ? 'Word' : 'Result'}</th></tr></thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {activeStats.visibleWords.map((word) => {
+                                                const listId = activeTest.listId; const phonemeScores = word.p.map((p, idx) => { if (p === '-') return null; return activeTest.scores[`${listId}_${word.i}_${idx}`]; }).filter(val => val !== null); const isWordCorrect = phonemeScores.every(s => s === true); const isWordFullyIncorrect = phonemeScores.every(s => s === false);
+                                                const showAudio = activeTest.stimulusPresentation === 'Recording' && ['HF1', 'HF2', 'HF3', 'HF4', '1A', '2A', '3A', '4A'].includes(listId);
+                                                return (
+                                                    <tr key={word.i} className="hover:bg-gradient-to-br from-slate-50 to-blue-50"><td className="px-4 py-2 text-slate-400 font-mono text-xs">{word.i}</td>
+                                                        {showAudio && (
+                                                            <td className="px-2 py-2">
+                                                                <button onClick={() => playAudio(listId, word.i, word.w)} className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 border border-blue-200 transition-colors" title="Play Audio">
+                                                                    <Play className="w-3 h-3 fill-current" />
+                                                                </button>
+                                                            </td>
+                                                        )}
+                                                        <td className="px-4 py-2 font-bold text-slate-800">{word.w}</td>
+                                                        {activeTest.scoringMode === 'phoneme' ? (<React.Fragment>{word.p.map((phoneme, pIndex) => { const phonemeScore = activeTest.scores[`${listId}_${word.i}_${pIndex}`]; const isCorrect = phonemeScore === true; const isIncorrect = phonemeScore === false; const isPlaceholder = phoneme === '-'; return (<td key={pIndex} className="px-1 py-1 text-center">{!isPlaceholder ? (<button onClick={() => togglePhoneme(word.i, pIndex)} className={`w-10 h-8 rounded flex items-center justify-center font-medium text-base border transition-colors ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 print:border-none print:text-black print:font-bold' : isIncorrect ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100 print:border-none print:text-black print:font-normal' : 'bg-white border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 hover:bg-red-50'}`}><span className="ipa-text">{phoneme}</span></button>) : <span className="text-slate-300">—</span>}</td>); })}<td className="px-4 py-2 text-center print:hidden"><div className="flex items-center justify-center gap-2"><button onClick={() => toggleWordCorrect(word.i)} title={isWordCorrect ? "Clear Word" : "Mark Whole Word Correct"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordCorrect ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-gradient-to-br from-slate-50 to-blue-50 border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200'}`}><Check className="w-4 h-4" /></button><button onClick={() => setWordScore(word.i, false)} title={isWordFullyIncorrect ? "Clear Word" : "Mark Whole Word Incorrect"} className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${isWordFullyIncorrect ? 'bg-red-100 border-red-300 text-red-700' : 'bg-gradient-to-br from-slate-50 to-blue-50 border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200'}`}><X className="w-4 h-4" /></button></div></td></React.Fragment>) : (<td className="px-4 py-2 text-center"><div className="flex gap-2 justify-center"><button onClick={() => setWordScore(word.i, true)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordCorrect ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Check className="w-3 h-3" /> Correct</button><button onClick={() => setWordScore(word.i, false)} className={`flex-1 max-w-[80px] py-1.5 rounded-md font-bold text-xs border transition-colors flex items-center justify-center gap-1 ${isWordFullyIncorrect ? 'bg-red-600 text-white border-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600'}`}><X className="w-3 h-3" /> Incorrect</button></div></td>)}
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
 
                             </motion.div>
                         )}
@@ -3351,38 +3432,19 @@ const App = () => {
                                     <div className="p-6">
                                         <div className="flex justify-end mb-4 print:hidden"><div className="bg-slate-100 p-1 rounded-lg flex items-center gap-2 text-sm"><span className="px-2 text-xs font-semibold text-slate-500 uppercase">Critical Difference Level</span><button onClick={() => setConfidenceLevel(95)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 95 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>95%</button><button onClick={() => setConfidenceLevel(80)} className={`px-3 py-1 rounded-md transition ${confidenceLevel === 80 ? 'bg-white shadow text-blue-700 font-bold' : 'text-slate-600 hover:bg-slate-200'}`}>80%</button><button onClick={() => setShowChartModal(true)} className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> View Tables</button></div></div>
                                         <div className="grid grid-cols-3 gap-8 mb-8">
-                                            <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {baselineTest.id} (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{baselineTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {baselineTest.listId}</div><div>Level: {baselineTest.level || '--'}</div><div>Noise: {baselineTest.snr || '--'}</div>{baselineTest.tnt && <div>aTNT: {baselineTest.tnt}</div>}{baselineTest.tntExcursionWidth && <div>TNT Excursion Width: {baselineTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3">{baselineStats.isBKB ? <div className="flex justify-between items-center"><span className="text-sm text-slate-600">SNR-50</span><span className="text-xl font-bold text-blue-600">{baselineStats.snr50?.toFixed(1)} dB</span></div> : <><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{baselineStats.wordPercent}%</span></div>{baselineTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{baselineStats.phonemePercent}%</span></div>)}</>}</div></div>
+                                            <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {baselineTest.id} (Baseline)</div><div className="text-lg font-bold text-slate-900 mb-2">{baselineTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {baselineTest.listId}</div><div>Level: {baselineTest.level || '--'}</div><div>Noise: {baselineTest.snr || '--'}</div></div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{baselineStats.wordPercent}%</span></div>{baselineTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{baselineStats.phonemePercent}%</span></div>)}</div></div>
 
                                             <div className="flex flex-col items-center justify-center text-center">
                                                 {/* Word recognition difference - label above, styled like Ease label */}
-                                                {!baselineStats.isBKB && !comparisonStats.isBKB && (
-                                                    <>
-                                                        <div className="text-sm font-bold text-slate-500">Word Recognition Difference</div>
-                                                        <div className={`text-3xl font-bold mb-1 ${comparisonStats.wordPercent - baselineStats.wordPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{comparisonStats.wordPercent - baselineStats.wordPercent > 0 ? '+' : ''}{comparisonStats.wordPercent - baselineStats.wordPercent}%</div>
-                                                    </>
-                                                )}
+                                                <div className="text-sm font-bold text-slate-500">Word Recognition Difference</div>
+                                                <div className={`text-3xl font-bold mb-1 ${comparisonStats.wordPercent - baselineStats.wordPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{comparisonStats.wordPercent - baselineStats.wordPercent > 0 ? '+' : ''}{comparisonStats.wordPercent - baselineStats.wordPercent}%</div>
 
-                                                {(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme' && !baselineStats.isBKB) && (
+                                                {(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme') && (
                                                     <React.Fragment>
                                                         {/* Phoneme recognition difference - label above, styled like Ease label */}
                                                         <div className="text-sm font-bold text-slate-500 mt-4">Phoneme Recognition Difference</div>
                                                         <div className={`text-3xl font-bold mt-1 ${comparisonStats.phonemePercent - baselineStats.phonemePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{comparisonStats.phonemePercent - baselineStats.phonemePercent > 0 ? '+' : ''}{comparisonStats.phonemePercent - baselineStats.phonemePercent}%</div>
                                                     </React.Fragment>
-                                                )}
-
-                                                {(baselineStats.isBKB && comparisonStats.isBKB) && (
-                                                    <div className="mt-4">
-                                                        <div className="text-sm font-bold text-slate-500">SNR-50 Difference</div>
-                                                        <div className={`text-3xl font-bold mt-1 ${bkbDifference >= bkbCriticalDiff ? 'text-emerald-600' : 'text-slate-600'}`}>
-                                                            {bkbDifference.toFixed(1)} dB
-                                                        </div>
-                                                        <div className={`text-xs font-bold uppercase mt-1 px-2 py-0.5 rounded-full inline-block ${isBKBDiffSig ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                                                            {isBKBDiffSig ? 'Significant' : 'Not Significant'}
-                                                        </div>
-                                                        <div className="text-[10px] text-slate-400 mt-1">
-                                                            Critical Diff: {bkbCriticalDiff} dB ({confidenceLevel}%)
-                                                        </div>
-                                                    </div>
                                                 )}
 
                                                 {showComparativeEase && (
@@ -3393,7 +3455,7 @@ const App = () => {
                                                 )}
                                             </div>
 
-                                            <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {comparisonTest.id} (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{comparisonTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {comparisonTest.listId}</div><div>Level: {comparisonTest.level || '--'}</div><div>Noise: {comparisonTest.snr || '--'}</div>{comparisonTest.tnt && <div>aTNT: {comparisonTest.tnt}</div>}{comparisonTest.tntExcursionWidth && <div>TNT Excursion Width: {comparisonTest.tntExcursionWidth}</div>}</div><div className="space-y-2 border-t border-slate-200 pt-3">{comparisonStats.isBKB ? <div className="flex justify-between items-center"><span className="text-sm text-slate-600">SNR-50</span><span className="text-xl font-bold text-blue-600">{comparisonStats.snr50?.toFixed(1)} dB</span></div> : <><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{comparisonStats.wordPercent}%</span></div>{comparisonTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{comparisonStats.phonemePercent}%</span></div>)}</>}</div></div>
+                                            <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg p-4 border border-slate-200 print:bg-white print:border-black"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Test {comparisonTest.id} (Comparison)</div><div className="text-lg font-bold text-slate-900 mb-2">{comparisonTest.condition}</div><div className="text-sm text-slate-600 mb-4 space-y-1"><div>List: {comparisonTest.listId}</div><div>Level: {comparisonTest.level || '--'}</div><div>Noise: {comparisonTest.snr || '--'}</div></div><div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex justify-between items-center"><span className="text-sm text-slate-600">Word Score</span><span className="text-xl font-bold text-blue-600">{comparisonStats.wordPercent}%</span></div>{comparisonTest.scoringMode === 'phoneme' && (<div className="flex justify-between items-center"><span className="text-sm text-slate-600">Phoneme Score</span><span className="text-lg font-semibold text-slate-700">{comparisonStats.phonemePercent}%</span></div>)}</div></div>
                                         </div>
 
                                         {/* Comparative Ease Slider */}
@@ -3432,14 +3494,8 @@ const App = () => {
                                         )}
 
                                         <div className="border border-slate-200 rounded-lg overflow-hidden mb-6"><table className="w-full text-sm"><thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200"><tr><th className="px-4 py-2 text-left">Metric (N)</th><th className="px-4 py-2 text-center w-24">Test {baselineTest.id}</th><th className="px-4 py-2 text-center w-32 bg-gradient-to-br from-slate-50 to-blue-50">Critical Range <span className="text-[10px] text-slate-400 block font-normal">({confidenceLevel}%)</span></th><th className="px-4 py-2 text-center w-24">Test {comparisonTest.id}</th><th className="px-4 py-2 text-center w-32">Significant?</th></tr></thead><tbody className="divide-y divide-slate-100">
-                                            {(baselineStats.isBKB && comparisonStats.isBKB) ? (
-                                                <tr><td className="px-4 py-3 font-medium text-slate-800">SNR-50 <span className="block text-xs text-slate-400 font-normal">Signal-to-Noise Ratio50</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.snr50?.toFixed(1)} dB</td><td className="px-4 py-3 text-center text-slate-500 bg-gradient-to-br from-slate-50 to-blue-50 text-xs font-mono">Diff &gt; {bkbCriticalDiff} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.snr50?.toFixed(1)} dB</td><td className="px-4 py-3 text-center">{isBKBDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>
-                                            ) : (
-                                                <>
-                                                    <tr><td className="px-4 py-3 font-medium text-slate-800">Word Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalWords}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.wordPercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-gradient-to-br from-slate-50 to-blue-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.wordPercent}%</td><td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>{(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme') && (<tr><td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalPhonemes}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.phonemePercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-gradient-to-br from-slate-50 to-blue-50 text-xs font-mono">{Number(phonemeCriticalLimits.lower).toFixed(1)}% - {Number(phonemeCriticalLimits.upper).toFixed(1)}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.phonemePercent}%</td><td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}
-                                                </>
-                                            )}
-                                            {tntExcursionWidthDifference !== null && (<tr><td className="px-4 py-3 font-medium text-slate-800">TNT Excursion Width <span className="block text-xs text-slate-400 font-normal">{confidenceLevel}% CI: {'>'} {confidenceLevel === 95 ? 1.0 : 0.7} dB</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center text-slate-500 bg-gradient-to-br from-slate-50 to-blue-50 text-xs font-mono">±{confidenceLevel === 95 ? 1.0 : 0.7} dB</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonTest.tntExcursionWidth || '--'}</td><td className="px-4 py-3 text-center">{isTNTExcursionWidthDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}</tbody></table></div>
+                                            <tr><td className="px-4 py-3 font-medium text-slate-800">Word Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalWords}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.wordPercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-gradient-to-br from-slate-50 to-blue-50 text-xs font-mono">{wordCriticalLimits.lower}% - {wordCriticalLimits.upper}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.wordPercent}%</td><td className="px-4 py-3 text-center">{isWordDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>{(baselineTest.scoringMode === 'phoneme' && comparisonTest.scoringMode === 'phoneme') && (<tr><td className="px-4 py-3 font-medium text-slate-800">Phoneme Score <span className="block text-xs text-slate-400 font-normal">N = {baselineStats.totalPhonemes}</span></td><td className="px-4 py-3 text-center text-slate-700 font-bold">{baselineStats.phonemePercent}%</td><td className="px-4 py-3 text-center text-slate-500 bg-gradient-to-br from-slate-50 to-blue-50 text-xs font-mono">{Number(phonemeCriticalLimits.lower).toFixed(1)}% - {Number(phonemeCriticalLimits.upper).toFixed(1)}%</td><td className="px-4 py-3 text-center text-slate-700 font-bold">{comparisonStats.phonemePercent}%</td><td className="px-4 py-3 text-center">{isPhonemeDiffSig ? <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs"><Check className="w-3 h-3" /> Yes</span> : <span className="inline-flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs"><X className="w-3 h-3" /> No</span>}</td></tr>)}
+                                        </tbody></table></div>
 
                                         {/* Visual Critical Range Comparison */}
                                         <div className="bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-lg p-6 mb-6">

@@ -1,7 +1,7 @@
 {
   "name": "hearing-aid-demonstration-app",
   "productName": "Hearing-Aid-Demonstration-App",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "NU-6 Whole Word and Phoneme Scoring Application",
   "main": "main.js",
   "homepage": "https://github.com/euphonic-euphemism/NU6-Phoneme-Scorer",
@@ -19,13 +19,13 @@
   "author": "Mark Shaver <mark.shaver@posteo.net>",
   "license": "ISC",
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.0",
     "electron": "^28.2.0",
     "electron-builder": "^24.13.0",
-    "vite": "^5.2.0",
-    "@vitejs/plugin-react": "^4.2.0",
-    "tailwindcss": "^3.4.0",
     "postcss": "^8.4.0",
-    "autoprefixer": "^10.4.0"
+    "tailwindcss": "^3.4.0",
+    "vite": "^5.2.0"
   },
   "optionalDependencies": {
     "dmg-license": "^1.0.11"
@@ -49,6 +49,7 @@
     "linux": {
       "target": [
         "deb",
+        "rpm",
         "AppImage"
       ],
       "maintainer": "Mark Shaver <mark.shaver@posteo.net>",
@@ -66,9 +67,15 @@
     }
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/outfit": "^5.3.0",
+    "chart.js": "^4.6.1",
+    "framer-motion": "^11.0.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
     "lucide-react": "^0.292.0",
-    "framer-motion": "^11.0.0"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }

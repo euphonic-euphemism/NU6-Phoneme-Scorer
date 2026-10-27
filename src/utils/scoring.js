@@ -188,55 +188,118 @@ export function generateData(n, confidence, isPhoneme) {
 
         
 
-export let WORD_TABLES = {};
-export let PHONEME_TABLES = {};
-
 export const loadCriticalDifferenceTables = async (confidenceLevel) => {
+    const fileName = `${confidenceLevel}_Word_Recognition_Critical_Differences_Simulated_v2.csv`;
     try {
-        const response = await window.fs.readFile(`word_critical_differences_${confidenceLevel}.csv`, 'utf8');
-        const rows = response.trim().split('\n');
-        const headers = rows[0].split(',');
+        let csvText;
+        if (typeof require !== 'undefined') {
+            const fs = require('fs');
+            const path = require('path');
+            const candidates = [
+                path.join(__dirname, fileName),
+                path.join(__dirname, '..', fileName),
+                path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), fileName),
+                path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), '..', fileName)
+            ];
+            let filePath = candidates.find(p => fs.existsSync(p)) || candidates[0];
+            console.log('Loading CSV from:', filePath);
+            csvText = fs.readFileSync(filePath, 'utf-8');
+        } else {
+            const response = await fetch(fileName);
+            csvText = await response.text();
+        }
+
+        const lines = csvText.trim().split('\n');
         const tables = {};
-        for (let i = 1; i < headers.length; i++) {
-            tables[headers[i]] = {};
-        }
-        for (let j = 1; j < rows.length; j++) {
-            const cols = rows[j].split(',');
-            const score = cols[0];
-            for (let i = 1; i < headers.length; i++) {
-                if (cols[i]) {
-                    const [lower, upper] = cols[i].split('-').map(Number);
-                    tables[headers[i]][score] = [lower, upper];
-                }
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',');
+            const scenario = values[0];
+            const scorePercent = parseFloat(values[5]);
+            const lowerLimit = parseFloat(values[6]);
+            const upperLimit = parseFloat(values[7]);
+
+            if (scenario.startsWith('Phoneme_')) continue;
+
+            const nValue = scenario.split('_')[1];
+            if (!tables[nValue]) {
+                tables[nValue] = {};
             }
+
+            tables[nValue][scorePercent.toFixed(1)] = [lowerLimit, upperLimit];
         }
-        WORD_TABLES[confidenceLevel] = tables;
-    } catch (e) {
-        console.error("Failed to load word tables", e);
+        return tables;
+    } catch (error) {
+        console.error('Error loading critical difference tables:', error);
+        return { "10": {}, "25": {}, "50": {} };
     }
 };
 
 export const loadPhonemeTables = async (confidenceLevel) => {
+    const fileName = `${confidenceLevel}_Word_Recognition_Critical_Differences_Simulated_v2.csv`;
     try {
-        const response = await window.fs.readFile(`phoneme_critical_differences_${confidenceLevel}.csv`, 'utf8');
-        const rows = response.trim().split('\n');
-        const headers = rows[0].split(',');
+        let csvText;
+        if (typeof require !== 'undefined') {
+            const fs = require('fs');
+            const path = require('path');
+            const candidates = [
+                path.join(__dirname, fileName),
+                path.join(__dirname, '..', fileName),
+                path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), fileName),
+                path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), '..', fileName)
+            ];
+            let filePath = candidates.find(p => fs.existsSync(p)) || candidates[0];
+            console.log('Loading CSV from:', filePath);
+            csvText = fs.readFileSync(filePath, 'utf-8');
+        } else {
+            const response = await fetch(fileName);
+            csvText = await response.text();
+        }
+
+        const lines = csvText.trim().split('\n');
         const tables = {};
-        for (let i = 1; i < headers.length; i++) {
-            tables[headers[i]] = {};
-        }
-        for (let j = 1; j < rows.length; j++) {
-            const cols = rows[j].split(',');
-            const score = cols[0];
-            for (let i = 1; i < headers.length; i++) {
-                if (cols[i]) {
-                    const [lower, upper] = cols[i].split('-').map(Number);
-                    tables[headers[i]][score] = [lower, upper];
-                }
+        const scenarioToTableKey = {
+            'Phoneme_10': '30',
+            'Phoneme_25': '75',
+            'Phoneme_50': '150'
+        };
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',');
+            const scenario = values[0];
+            const scorePercent = parseFloat(values[5]);
+            const lowerLimit = parseFloat(values[6]);
+            const upperLimit = parseFloat(values[7]);
+
+            if (!scenario.startsWith('Phoneme_')) continue;
+
+            const tableKey = scenarioToTableKey[scenario];
+            if (!tableKey) continue;
+            if (!tables[tableKey]) {
+                tables[tableKey] = {};
             }
+
+            tables[tableKey][scorePercent.toFixed(1)] = [lowerLimit, upperLimit];
         }
-        PHONEME_TABLES[confidenceLevel] = tables;
-    } catch (e) {
-        console.error("Failed to load phoneme tables", e);
+        return tables;
+    } catch (error) {
+        console.error('Error loading phoneme tables:', error);
+        return { "30": {}, "75": {}, "150": {} };
     }
 };
+
+export let WORD_TABLES = {
+    "80": { "10": {}, "25": {}, "50": {} },
+    "95": { "10": {}, "25": {}, "50": {} }
+};
+
+export let PHONEME_TABLES = {
+    "80": { "30": {}, "75": {}, "150": {} },
+    "95": { "30": {}, "75": {}, "150": {} }
+};
+
+(async () => {
+    WORD_TABLES["80"] = await loadCriticalDifferenceTables(80);
+    WORD_TABLES["95"] = await loadCriticalDifferenceTables(95);
+    PHONEME_TABLES["80"] = await loadPhonemeTables(80);
+    PHONEME_TABLES["95"] = await loadPhonemeTables(95);
+    console.log("Critical difference tables loaded from CSV files");
+})();
